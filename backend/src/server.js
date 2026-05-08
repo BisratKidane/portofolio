@@ -15,7 +15,13 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.use(cors({ origin: env.clientUrl, credentials: true }));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || env.clientOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`Origin ${origin} is not allowed by CORS.`));
+  },
+  credentials: true
+}));
 
 const apollo = new ApolloServer({ typeDefs, resolvers });
 

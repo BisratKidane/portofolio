@@ -23,7 +23,7 @@ services:
       dockerfile: backend/Dockerfile
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-env/local.env}
+      - ${COMPOSE_ENV_FILE:-env/local.container.env}
     environment:
       DB_HOST: mysql
       DB_PORT: 3306
@@ -39,9 +39,10 @@ services:
       dockerfile: frontend/Dockerfile
     restart: unless-stopped
     env_file:
-      - ${ENV_FILE:-env/local.env}
+      - ${COMPOSE_ENV_FILE:-env/local.container.env}
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:4000/graphql}
+      VITE_API_URL: ${VITE_API_URL:-/graphql}
+      VITE_PROXY_TARGET: ${VITE_PROXY_TARGET:-http://backend:4000}
       CLIENT_PORT: ${CLIENT_PORT:-5173}
     ports:
       - "${CLIENT_PORT:-5173}:${CLIENT_PORT:-5173}"

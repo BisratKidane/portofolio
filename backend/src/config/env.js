@@ -8,10 +8,16 @@ const defaultEnvPath = path.resolve(__dirname, '../../../env/local.env');
 
 dotenv.config({ path: process.env.ENV_FILE || defaultEnvPath });
 
+const clientOrigins = (process.env.CLIENT_ORIGINS || process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT || 4000),
-  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  clientUrl: process.env.CLIENT_URL || clientOrigins[0],
+  clientOrigins,
   jwtSecret: process.env.JWT_SECRET || 'change-me',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1d',
   resetTokenExpiresMinutes: Number(process.env.RESET_TOKEN_EXPIRES_MINUTES || 30),

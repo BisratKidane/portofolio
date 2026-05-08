@@ -15,7 +15,7 @@ A full-stack Node.js 18 application with an Express, MySQL, Sequelize, and Graph
   - Admins can see system users on the dashboard; ordinary users only see their own dashboard.
 - React Router protected dashboard route.
 - MUI components for the UI.
-- Frontend GraphQL requests are centralized in `frontend/src/api/graphqlClient.js` and made through Axios.
+- Frontend GraphQL requests are centralized in `frontend/src/api/graphqlClient.js` and made through Axios. The browser calls `/graphql` by default so Vite can proxy requests to the correct backend in npm, local Docker, and remote Docker environments.
 
 ## Requirements
 
@@ -34,11 +34,11 @@ nvm use
 
 Environment files are in the `env` folder:
 
-- `env/local.env` - local development defaults for `npm start`, `npm run dev`, and local Docker Compose.
-- `env/local.container.env` - optional local container-specific example where the database host is `mysql`.
-- `env/remote.env` - remote Docker Compose template. Replace passwords, `JWT_SECRET`, `CLIENT_URL`, and public API settings before using it in production.
+- `env/local.env` - local npm defaults for `npm start` and `npm run dev`; it also tells Docker Compose to load `env/local.container.env` for services.
+- `env/local.container.env` - local Docker Compose service defaults where the database and API hosts use Compose service names.
+- `env/remote.env` - remote Docker Compose template. Replace passwords, `JWT_SECRET`, `CLIENT_URL`, `CLIENT_ORIGINS`, and public API settings before using it in production.
 
-The same code runs in local npm, local Docker, and remote Docker environments. Change the environment file or Docker Compose command; do not change application code.
+The same code runs in local npm, local Docker, and remote Docker environments. Change the environment file or Docker Compose command; do not change application code. For local browser usage, keep `VITE_API_URL=/graphql` so requests go through the Vite proxy; set `VITE_PROXY_TARGET` to the backend location (`http://localhost:4000` for npm, `http://backend:4000` for Compose).
 
 ## Install dependencies
 
@@ -71,7 +71,8 @@ npm install
 3. Open the app:
 
    - Frontend: <http://localhost:5173>
-   - GraphQL endpoint: <http://localhost:4000/graphql>
+   - Frontend API calls: `/graphql` proxied to <http://localhost:4000/graphql>
+   - Direct GraphQL endpoint: <http://localhost:4000/graphql>
    - Backend health check: <http://localhost:4000/health>
 
 ## Run locally with Docker Compose
@@ -99,6 +100,7 @@ Docker Compose starts:
 1. Copy the repository to the server.
 2. Edit `env/remote.env` and replace every placeholder secret or URL:
    - `CLIENT_URL`
+   - `CLIENT_ORIGINS`
    - `VITE_API_URL`
    - `JWT_SECRET`
    - `DB_PASSWORD`
@@ -117,6 +119,17 @@ Docker Compose starts:
    ```
 
 4. Put a reverse proxy such as Nginx, Caddy, or a load balancer in front of the frontend/backend as needed for HTTPS and your public domain.
+
+## Troubleshooting registration network errors
+
+If registration shows `Network Error`, the browser could not reach the GraphQL API. Check these items first:
+
+1. The backend is running and <http://localhost:4000/health> returns `{ "status": "ok" }`.
+2. `VITE_API_URL` is `/graphql` for local npm and Docker runs so the frontend uses the Vite proxy instead of making a cross-origin request.
+3. `VITE_PROXY_TARGET` points to the backend from the frontend process:
+   - `http://localhost:4000` for `npm run dev` or `npm start`
+   - `http://backend:4000` inside Docker Compose
+4. If you intentionally use a full API URL in the browser, add the frontend origin to `CLIENT_ORIGINS` so the backend CORS middleware allows it.
 
 ## Authentication workflow
 
