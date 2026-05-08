@@ -1,0 +1,52 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-env/local.env}
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+    ports:
+      - "${PORT:-4000}:4000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE:-env/local.env}
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:4000/graphql}
+      CLIENT_PORT: ${CLIENT_PORT:-5173}
+    ports:
+      - "${CLIENT_PORT:-5173}:${CLIENT_PORT:-5173}"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:
