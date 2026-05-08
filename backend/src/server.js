@@ -1,0 +1,43 @@
+import express from 'express';
+import cors from 'cors';
+import { ApolloServer } from '@apollo/server';
+import { expressMiddleware } from '@apollo/server/express4';
+import { env } from './config/env.js';
+import { initializeDatabase, models } from './models/index.js';
+import { typeDefs } from './schemas/index.js';
+import { resolvers } from './resolvers/index.js';
+import { getUserFromRequest } from './utils/auth.js';
+
+const app = express();
+
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || env.clientOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`Origin ${origin} is not allowed by CORS.`));
+  },
+  credentials: true
+}));
+
+const apollo = new ApolloServer({ typeDefs, resolvers });
+
+await apollo.start();
+await initializeDatabase();
+
+app.use(
+  '/graphql',
+  express.json(),
+  expressMiddleware(apollo, {
+    context: async ({ req }) => ({
+      models,
+      user: await getUserFromRequest(req, models)
+    })
+  })
+);
+
+app.listen(env.port, () => {
+  console.log(`Backend ready at http://localhost:${env.port}/graphql`);
+});
