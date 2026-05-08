@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
-import { json } from 'body-parser';
 import { env } from './config/env.js';
 import { initializeDatabase, models } from './models/index.js';
 import { typeDefs } from './schemas/index.js';
@@ -30,7 +29,7 @@ await initializeDatabase();
 
 app.use(
   '/graphql',
-  json(),
+  express.json(),
   expressMiddleware(apollo, {
     context: async ({ req }) => ({
       models,
