@@ -21,12 +21,12 @@ Changes to the app can be made with confidence — auth and core flows are prote
 - ✓ Data persisted in MySQL via Sequelize ORM — existing (`backend/src/models/`, `backend/src/config/database.js`)
 - ✓ React + MUI frontend with AuthContext + centralized GraphQL client — existing (`frontend/src/context/AuthContext.jsx`, `frontend/src/api/graphqlClient.js`)
 - ✓ Dockerized dev environment (backend, frontend, MySQL) — existing (`docker-compose.yml`)
+- ✓ Backend has a working test runner (`npm test` → Vitest) with a safe, isolated test database — Validated in Phase 1: Backend Test Tooling & Test Database (`backend/vitest.config.js`, `backend/test/globalSetup.js`, `backend/test/guard.js`)
 
 ### Active
 
 <!-- This milestone: a full-stack testing safety net. Hypotheses until shipped. -->
 
-- [ ] Backend has a working test runner and can run tests via `npm test`
 - [ ] Backend auth utilities (JWT sign/verify, password hashing, role guards) are unit-tested
 - [ ] Backend GraphQL resolvers (register, login, dashboard, password reset) are integration-tested against a test database
 - [ ] Frontend has a working test runner with React Testing Library + jsdom
