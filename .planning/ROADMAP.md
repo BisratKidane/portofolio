@@ -76,7 +76,17 @@ Plans:
   4. `requestPasswordReset` integration test passes and documents its current behavior (including the known reset-token exposure).
   5. Security bugs surfaced while writing these tests are recorded in a tracked known-issues doc (location + expected vs. actual behavior), not fixed.
 
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — graphql() test helper + register mutation integration tests (BE-04)
+
+**Wave 2** *(depends on Wave 1 completion)*
+
+- [ ] 03-02-PLAN.md — login mutation + dashboard/me query integration tests (BE-05, BE-06)
+- [ ] 03-03-PLAN.md — requestPasswordReset integration tests + KNOWN-ISSUES.md (BE-07, DOCS-01)
 
 ### Phase 4: Frontend Test Tooling
 
@@ -128,7 +138,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may be
 |-------|----------------|--------|-----------|
 | 1. Backend Test Tooling & Test Database | 2/2 | Complete   | 2026-07-11 |
 | 2. Backend Unit Tests | 2/2 | Complete   | 2026-07-11 |
-| 3. Backend Integration Tests | 0/TBD | Not started | - |
+| 3. Backend Integration Tests | 0/3 | Not started | - |
 | 4. Frontend Test Tooling | 0/TBD | Not started | - |
 | 5. Frontend Component Tests | 0/TBD | Not started | - |
 | 6. Root Orchestration & CI Pipeline | 0/TBD | Not started | - |
