@@ -55,7 +55,13 @@ Plans:
   2. Password-handling unit tests pass: a new user's password is stored hashed (never plaintext), and `validatePassword` accepts the correct password and rejects an incorrect one.
   3. Role-guard unit tests pass: permitted roles are allowed through and disallowed roles are blocked.
 
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — JWT sign/verify + role guard + reset-token unit tests (BE-01, BE-03)
+- [ ] 02-02-PLAN.md — validatePassword + beforeCreate hashing hook unit tests (BE-02)
 
 ### Phase 3: Backend Integration Tests
 
