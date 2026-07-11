@@ -267,7 +267,7 @@ Assertions: `expect(createResetToken()).toMatch(/^[0-9a-f]{64}$/)`; call twice a
 
 **This table is empty by design** — all claims were verified or cited, not assumed. No user confirmation is needed before planning.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 None remaining. The single open question flagged in CONTEXT.md (D-05's DB boundary) is resolved: use `User.runHooks('beforeCreate', builtInstance)` on a `User.build(...)` instance — no DB connection required for any spec in this phase.
 
