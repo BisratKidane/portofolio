@@ -13,7 +13,7 @@ This milestone stands up a testing safety net from zero — no test framework, t
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Backend Test Tooling & Test Database** - Backend runs `npm test` via a configured test runner, with an isolated test database set up and torn down per run.
+- [x] **Phase 1: Backend Test Tooling & Test Database** - Backend runs `npm test` via a configured test runner, with an isolated test database set up and torn down per run. (completed 2026-07-11)
 - [ ] **Phase 2: Backend Unit Tests** - Auth token utilities, password hashing, and role guards are unit-tested in isolation.
 - [ ] **Phase 3: Backend Integration Tests** - Register, login, dashboard, and password-reset GraphQL flows are integration-tested against the test database; known bugs surfaced are documented.
 - [ ] **Phase 4: Frontend Test Tooling** - Frontend runs `npm test` via a configured runner with jsdom + React Testing Library.
@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Backend integration tests run against a dedicated test database that is provisioned before the run and torn down after — dev data is never touched.
   3. Test configuration (env vars, database name/connection) is clearly separated from local-dev configuration so a developer cannot accidentally point tests at their dev database.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 **Wave 1**
@@ -42,7 +42,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — DB harness: safety guard, globalSetup (provision/teardown), helpers, Docker init script, live DB-connectivity spec (SETUP-04)
+- [x] 01-02-PLAN.md — DB harness: safety guard, globalSetup (provision/teardown), helpers, Docker init script, live DB-connectivity spec (SETUP-04)
 
 ### Phase 2: Backend Unit Tests
 
@@ -120,7 +120,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may be
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Backend Test Tooling & Test Database | 1/2 | In Progress|  |
+| 1. Backend Test Tooling & Test Database | 2/2 | Complete   | 2026-07-11 |
 | 2. Backend Unit Tests | 0/TBD | Not started | - |
 | 3. Backend Integration Tests | 0/TBD | Not started | - |
 | 4. Frontend Test Tooling | 0/TBD | Not started | - |
