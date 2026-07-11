@@ -338,14 +338,14 @@ Note: the official MySQL image does **not** interpolate `${MYSQL_USER}` inside m
 | A1 | Setting `process.env.ENV_FILE`/`NODE_ENV` at the top of `vitest.config.js` reliably propagates into forked test-worker processes under `pool: 'forks'` (relying on Node `child_process.fork()`'s default env-inheritance, not an explicit Vitest doc statement) | Architecture Patterns > Pattern 3 | If it does NOT propagate to the fork (only to the main process/globalSetup), test files would read `env/local.env` instead of `env/test.env` when they import `config/database.js` fresh in their own fork — connectivity test could silently target the dev DB. Mitigation already recommended: add an explicit DB-name assertion inside the connectivity proof spec, not just a successful `authenticate()`. |
 | A2 | `docker-entrypoint-initdb.d/*.sql` files do not support `${VAR}` interpolation (only `.sh` scripts do) | Code Examples > Docker Compose init script | If wrong, the simpler `.sql`-with-interpolation approach would work and the `.sh`-with-envsubst fallback would be unnecessary extra complexity. Low risk either way — plan should verify against the actual `DB_USER` value at implementation time. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact `DB_USER` value for the GRANT statement in the init script**
+1. **Exact `DB_USER` value for the GRANT statement in the init script** — RESOLVED: Plan 01-02 Task 3 uses a `.sh` init script referencing the container's own `$MYSQL_USER`, so no value is hardcoded (matches the recommendation below).
    - What we know: `env/local.env` and `env/local.container.env` define `DB_USER`/`MYSQL_USER` (variable names confirmed via `grep`), but per `STRUCTURE.md`'s explicit policy these files are treated as sensitive and their values were not read during this research.
    - What's unclear: Whether the app DB user is literally `portofolio` (matching the DB name convention seen in `backend/src/config/env.js`'s fallback default `'portofolio'`) or something else in the actual `env/local.env`.
    - Recommendation: The planner/implementer should read `env/local.env`'s `DB_USER`/`MYSQL_USER` value directly when writing the init script (a legitimate, necessary read at implementation time, not a research-time read), or use a `.sh` init script with `$MYSQL_USER` (already exported into the MySQL container's own environment by the official image) to avoid hardcoding it at all — this is actually the more robust option since the container already has `MYSQL_USER` available as an env var without needing to duplicate it into the `.sql` file.
 
-2. **Exact filenames for the two proof specs (smoke + DB-connect) under D-06's co-location rule**
+2. **Exact filenames for the two proof specs (smoke + DB-connect) under D-06's co-location rule** — RESOLVED: Plans use `backend/src/smoke.test.js` and `backend/src/models/database.test.js` (matches the recommendation below).
    - What we know: D-06 locks `src/**/*.test.js` co-location; D-09 locks "two focused specs."
    - What's unclear: A trivial smoke test doesn't naturally "co-locate" with any existing source file (there's no `smoke.js` to sit beside).
    - Recommendation: Planner's discretion per CONTEXT.md — suggested: `backend/src/smoke.test.js` (root of `src/`, acceptable exception) and `backend/src/models/database.test.js` (co-located with `models/index.js`, which owns `initializeDatabase()`/`sequelize` — the natural home for a DB-connectivity proof).
