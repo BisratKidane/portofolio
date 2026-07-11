@@ -1,4 +1,17 @@
+import { ApolloServer } from '@apollo/server';
 import { models } from '../src/models/index.js';
+import { typeDefs } from '../src/schemas/index.js';
+import { resolvers } from '../src/resolvers/index.js';
+
+const server = new ApolloServer({ typeDefs, resolvers });
+
+export async function graphql(query, variables, user = null) {
+  const response = await server.executeOperation(
+    { query, variables },
+    { contextValue: { models, user } }
+  );
+  return response.body.singleResult;
+}
 
 export async function resetTables() {
   await models.User.destroy({ where: {}, truncate: true });
