@@ -14,7 +14,7 @@ This milestone stands up a testing safety net from zero — no test framework, t
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Backend Test Tooling & Test Database** - Backend runs `npm test` via a configured test runner, with an isolated test database set up and torn down per run. (completed 2026-07-11)
-- [ ] **Phase 2: Backend Unit Tests** - Auth token utilities, password hashing, and role guards are unit-tested in isolation.
+- [x] **Phase 2: Backend Unit Tests** - Auth token utilities, password hashing, and role guards are unit-tested in isolation. (completed 2026-07-11)
 - [ ] **Phase 3: Backend Integration Tests** - Register, login, dashboard, and password-reset GraphQL flows are integration-tested against the test database; known bugs surfaced are documented.
 - [ ] **Phase 4: Frontend Test Tooling** - Frontend runs `npm test` via a configured runner with jsdom + React Testing Library.
 - [ ] **Phase 5: Frontend Component Tests** - AuthContext, ProtectedRoute, Login, and Register are component-tested.
@@ -55,13 +55,13 @@ Plans:
   2. Password-handling unit tests pass: a new user's password is stored hashed (never plaintext), and `validatePassword` accepts the correct password and rejects an incorrect one.
   3. Role-guard unit tests pass: permitted roles are allowed through and disallowed roles are blocked.
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — JWT sign/verify + role guard + reset-token unit tests (BE-01, BE-03)
-- [ ] 02-02-PLAN.md — validatePassword + beforeCreate hashing hook unit tests (BE-02)
+- [x] 02-01-PLAN.md — JWT sign/verify + role guard + reset-token unit tests (BE-01, BE-03)
+- [x] 02-02-PLAN.md — validatePassword + beforeCreate hashing hook unit tests (BE-02)
 
 ### Phase 3: Backend Integration Tests
 
@@ -127,7 +127,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may be
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Backend Test Tooling & Test Database | 2/2 | Complete   | 2026-07-11 |
-| 2. Backend Unit Tests | 0/TBD | Not started | - |
+| 2. Backend Unit Tests | 2/2 | Complete   | 2026-07-11 |
 | 3. Backend Integration Tests | 0/TBD | Not started | - |
 | 4. Frontend Test Tooling | 0/TBD | Not started | - |
 | 5. Frontend Component Tests | 0/TBD | Not started | - |
