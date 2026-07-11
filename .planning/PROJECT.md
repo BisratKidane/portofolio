@@ -22,12 +22,12 @@ Changes to the app can be made with confidence — auth and core flows are prote
 - ✓ React + MUI frontend with AuthContext + centralized GraphQL client — existing (`frontend/src/context/AuthContext.jsx`, `frontend/src/api/graphqlClient.js`)
 - ✓ Dockerized dev environment (backend, frontend, MySQL) — existing (`docker-compose.yml`)
 - ✓ Backend has a working test runner (`npm test` → Vitest) with a safe, isolated test database — Validated in Phase 1: Backend Test Tooling & Test Database (`backend/vitest.config.js`, `backend/test/globalSetup.js`, `backend/test/guard.js`)
+- ✓ Backend auth utilities (JWT sign/verify, password hashing, role guards) are unit-tested — Validated in Phase 2: Backend Unit Tests (`backend/src/utils/auth.test.js`, `backend/src/models/User.test.js`)
 
 ### Active
 
 <!-- This milestone: a full-stack testing safety net. Hypotheses until shipped. -->
 
-- [ ] Backend auth utilities (JWT sign/verify, password hashing, role guards) are unit-tested
 - [ ] Backend GraphQL resolvers (register, login, dashboard, password reset) are integration-tested against a test database
 - [ ] Frontend has a working test runner with React Testing Library + jsdom
 - [ ] Frontend auth surfaces (AuthContext, ProtectedRoute, Login/Register pages) are component-tested
@@ -86,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-11 after Phase 1 completion*
+*Last updated: 2026-07-12 after Phase 2 completion*
