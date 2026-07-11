@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Alert, Box, Button, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Link, Stack, TextField, Typography } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 import { graphqlRequest } from '../api/graphqlClient.js';
+import AuthShell from '../components/AuthShell.jsx';
 
 const RESET_PASSWORD = `
   mutation ResetPassword($token: String!, $password: String!) {
@@ -12,31 +14,65 @@ export default function ResetPassword() {
   const [form, setForm] = useState({ token: '', password: '' });
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setSuccess(false);
+    setLoading(true);
     try {
       await graphqlRequest(RESET_PASSWORD, form);
       setSuccess(true);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Paper sx={{ maxWidth: 560, mx: 'auto', p: 4 }}>
-      <Typography variant="h4" gutterBottom>Set a new password</Typography>
-      <Box component="form" onSubmit={handleSubmit}>
-        <Stack spacing={2}>
+    <AuthShell
+      eyebrow="New password"
+      title="Set a new password"
+      subtitle="Paste your reset token and choose a new password."
+      footer={
+        <Typography variant="body2" color="text.secondary">
+          <Link component={RouterLink} to="/login">
+            Return to sign in
+          </Link>
+        </Typography>
+      }
+    >
+      <Box component="form" onSubmit={handleSubmit} noValidate>
+        <Stack spacing={2.25}>
           {error && <Alert severity="error">{error}</Alert>}
-          {success && <Alert severity="success">Password updated. You can log in with your new password.</Alert>}
-          <TextField label="Reset token" value={form.token} onChange={(e) => setForm({ ...form, token: e.target.value })} required />
-          <TextField label="New password" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-          <Button type="submit" variant="contained">Reset password</Button>
+          {success && (
+            <Alert severity="success">
+              Password updated. You can now sign in with your new password.
+            </Alert>
+          )}
+          <TextField
+            label="Reset token"
+            value={form.token}
+            onChange={(e) => setForm({ ...form, token: e.target.value })}
+            required
+            fullWidth
+          />
+          <TextField
+            label="New password"
+            type="password"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            required
+            fullWidth
+            autoComplete="new-password"
+          />
+          <Button type="submit" variant="contained" size="large" fullWidth disabled={loading}>
+            {loading ? 'Updating…' : 'Update password'}
+          </Button>
         </Stack>
       </Box>
-    </Paper>
+    </AuthShell>
   );
 }
