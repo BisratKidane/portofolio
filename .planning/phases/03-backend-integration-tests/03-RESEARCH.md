@@ -365,17 +365,19 @@ it('returns the same generic message for a non-existing email', async () => {
 
 **All other claims in this document were verified either by direct code inspection of this repository or by executing disposable prototype tests against the live `portofolio_test` database in this session** — no assumption-only claims remain regarding the core `executeOperation` mechanics, error message strings, or role-matrix behavior.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Whether to split specs per-flow or into one file**
    - What we know: CONTEXT.md explicitly leaves this to planner discretion; Phase 2 precedent (`auth.test.js`, `User.test.js`) uses one file per source module.
    - What's unclear: Whether "one file per source module" maps to one `user.resolver.test.js`, or whether four flows in one resolver file warrants splitting for readability.
    - Recommendation: Follow the Phase 2 precedent — one `backend/src/resolvers/user.resolver.test.js` co-located next to `user.resolver.js`, using nested `describe` blocks per flow (`register`, `login`, `dashboard`/`me`, `requestPasswordReset`), consistent with how `auth.test.js` nests `describe` per exported function.
+   - **RESOLVED (planning):** Per-flow spec files (`register.test.js`, `login.test.js`, `dashboard.test.js`, `resetPassword.test.js`) chosen over one combined file — the split lets Wave 2 plans (03-02, 03-03) execute in parallel with zero `files_modified` overlap. Still co-located under `backend/src/resolvers/`, still nested `describe` per flow.
 
 2. **Whether to add the optional `graphqlTestServer.js` helper under `backend/test/`**
    - What we know: The wrapper pattern shown above measurably reduces boilerplate (confirmed in the prototype — the raw `body.kind === 'single'` unwrap is repetitive across every assertion).
    - What's unclear: CONTEXT.md marks this as discretionary ("add if it reduces per-spec boilerplate; not mandated").
    - Recommendation: Add it — the prototype needed the unwrap in every single test; a shared `graphql(query, variables, user)` helper in `backend/test/helpers.js` (extending the existing file, consistent with its role per the canonical refs) removes this repetition with negligible complexity cost.
+   - **RESOLVED (planning):** Helper added — as a `graphql()` extension to the existing `backend/test/helpers.js` (created in Task 03-01-01) rather than a separate `graphqlTestServer.js`, matching `03-PATTERNS.md`'s in-place-extension guidance.
 
 ## Environment Availability
 
