@@ -16,9 +16,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Backend Tests
 
-- [ ] **BE-01**: Auth token utilities are unit-tested — signing produces a verifiable JWT; verification accepts a valid token and rejects tampered/expired ones
+- [x] **BE-01**: Auth token utilities are unit-tested — signing produces a verifiable JWT; verification accepts a valid token and rejects tampered/expired ones
 - [ ] **BE-02**: Password handling is unit-tested — passwords are hashed on user creation and `validatePassword` accepts the correct password and rejects an incorrect one
-- [ ] **BE-03**: Role/authorization guards in `auth.js` are unit-tested (allows permitted roles, blocks others)
+- [x] **BE-03**: Role/authorization guards in `auth.js` are unit-tested (allows permitted roles, blocks others)
 - [ ] **BE-04**: The `register` mutation is integration-tested — creates a user, rejects a duplicate email, and rejects invalid input
 - [ ] **BE-05**: The `login` mutation is integration-tested — returns a JWT for valid credentials and rejects invalid credentials
 - [ ] **BE-06**: The protected dashboard/me query is integration-tested — returns data for an authenticated request and rejects an unauthenticated one
@@ -80,9 +80,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SETUP-02 | Phase 4 | Pending |
 | SETUP-03 | Phase 6 | Pending |
 | SETUP-04 | Phase 1 | Complete |
-| BE-01 | Phase 2 | Pending |
+| BE-01 | Phase 2 | Complete |
 | BE-02 | Phase 2 | Pending |
-| BE-03 | Phase 2 | Pending |
+| BE-03 | Phase 2 | Complete |
 | BE-04 | Phase 3 | Pending |
 | BE-05 | Phase 3 | Pending |
 | BE-06 | Phase 3 | Pending |
