@@ -76,31 +76,31 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SETUP-01 | TBD | Pending |
-| SETUP-02 | TBD | Pending |
-| SETUP-03 | TBD | Pending |
-| SETUP-04 | TBD | Pending |
-| BE-01 | TBD | Pending |
-| BE-02 | TBD | Pending |
-| BE-03 | TBD | Pending |
-| BE-04 | TBD | Pending |
-| BE-05 | TBD | Pending |
-| BE-06 | TBD | Pending |
-| BE-07 | TBD | Pending |
-| FE-01 | TBD | Pending |
-| FE-02 | TBD | Pending |
-| FE-03 | TBD | Pending |
-| FE-04 | TBD | Pending |
-| CI-01 | TBD | Pending |
-| CI-02 | TBD | Pending |
-| CI-03 | TBD | Pending |
-| DOCS-01 | TBD | Pending |
+| SETUP-01 | Phase 1 | Pending |
+| SETUP-02 | Phase 4 | Pending |
+| SETUP-03 | Phase 6 | Pending |
+| SETUP-04 | Phase 1 | Pending |
+| BE-01 | Phase 2 | Pending |
+| BE-02 | Phase 2 | Pending |
+| BE-03 | Phase 2 | Pending |
+| BE-04 | Phase 3 | Pending |
+| BE-05 | Phase 3 | Pending |
+| BE-06 | Phase 3 | Pending |
+| BE-07 | Phase 3 | Pending |
+| FE-01 | Phase 5 | Pending |
+| FE-02 | Phase 5 | Pending |
+| FE-03 | Phase 5 | Pending |
+| FE-04 | Phase 5 | Pending |
+| CI-01 | Phase 6 | Pending |
+| CI-02 | Phase 6 | Pending |
+| CI-03 | Phase 6 | Pending |
+| DOCS-01 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 19 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 19 ⚠️ (resolved by roadmapper)
+- Mapped to phases: 19
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-11*
-*Last updated: 2026-07-11 after initialization*
+*Last updated: 2026-07-11 after roadmap creation (6 phases, 19/19 requirements mapped)*
