@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Backend Test Tooling & Test Database** - Backend runs `npm test` via a configured test runner, with an isolated test database set up and torn down per run. (completed 2026-07-11)
 - [x] **Phase 2: Backend Unit Tests** - Auth token utilities, password hashing, and role guards are unit-tested in isolation. (completed 2026-07-11)
-- [ ] **Phase 3: Backend Integration Tests** - Register, login, dashboard, and password-reset GraphQL flows are integration-tested against the test database; known bugs surfaced are documented.
+- [x] **Phase 3: Backend Integration Tests** - Register, login, dashboard, and password-reset GraphQL flows are integration-tested against the test database; known bugs surfaced are documented. (completed 2026-07-11)
 - [ ] **Phase 4: Frontend Test Tooling** - Frontend runs `npm test` via a configured runner with jsdom + React Testing Library.
 - [ ] **Phase 5: Frontend Component Tests** - AuthContext, ProtectedRoute, Login, and Register are component-tested.
 - [ ] **Phase 6: Root Orchestration & CI Pipeline** - A single root command runs both suites; GitHub Actions runs and enforces the full suite on every push/PR.
@@ -76,7 +76,7 @@ Plans:
   4. `requestPasswordReset` integration test passes and documents its current behavior (including the known reset-token exposure).
   5. Security bugs surfaced while writing these tests are recorded in a tracked known-issues doc (location + expected vs. actual behavior), not fixed.
 
-**Plans:** 1/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -85,8 +85,8 @@ Plans:
 
 **Wave 2** *(depends on Wave 1 completion)*
 
-- [ ] 03-02-PLAN.md — login mutation + dashboard/me query integration tests (BE-05, BE-06)
-- [ ] 03-03-PLAN.md — requestPasswordReset integration tests + KNOWN-ISSUES.md (BE-07, DOCS-01)
+- [x] 03-02-PLAN.md — login mutation + dashboard/me query integration tests (BE-05, BE-06)
+- [x] 03-03-PLAN.md — requestPasswordReset integration tests + KNOWN-ISSUES.md (BE-07, DOCS-01)
 
 ### Phase 4: Frontend Test Tooling
 
@@ -138,7 +138,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may be
 |-------|----------------|--------|-----------|
 | 1. Backend Test Tooling & Test Database | 2/2 | Complete   | 2026-07-11 |
 | 2. Backend Unit Tests | 2/2 | Complete   | 2026-07-11 |
-| 3. Backend Integration Tests | 1/3 | In Progress|  |
+| 3. Backend Integration Tests | 3/3 | Complete   | 2026-07-11 |
 | 4. Frontend Test Tooling | 0/TBD | Not started | - |
 | 5. Frontend Component Tests | 0/TBD | Not started | - |
 | 6. Root Orchestration & CI Pipeline | 0/TBD | Not started | - |
