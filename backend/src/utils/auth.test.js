@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
-import { signToken, getUserFromRequest } from './auth.js';
+import {
+  signToken,
+  getUserFromRequest,
+  requireAuth,
+  requireAdmin,
+  createResetToken,
+  resetTokenExpiry
+} from './auth.js';
 
 describe('signToken', () => {
   it('produces a token whose decoded payload carries the expected sub and role claims', () => {
@@ -67,5 +74,53 @@ describe('getUserFromRequest', () => {
     const result = await getUserFromRequest(req, models);
 
     expect(result).toBeNull();
+  });
+});
+
+describe('requireAuth', () => {
+  it('does not throw for an authenticated user', () => {
+    expect(() => requireAuth({ id: 1, role: 'USER' })).not.toThrow();
+  });
+
+  it('throws for null', () => {
+    expect(() => requireAuth(null)).toThrow();
+  });
+
+  it('throws for undefined', () => {
+    expect(() => requireAuth(undefined)).toThrow();
+  });
+});
+
+describe('requireAdmin', () => {
+  it('does not throw for ADMIN', () => {
+    expect(() => requireAdmin({ role: 'ADMIN' })).not.toThrow();
+  });
+
+  it('throws for USER', () => {
+    expect(() => requireAdmin({ role: 'USER' })).toThrow();
+  });
+
+  it('throws for null (via requireAuth)', () => {
+    expect(() => requireAdmin(null)).toThrow();
+  });
+});
+
+describe('createResetToken', () => {
+  it('returns a 64-char hex string', () => {
+    expect(createResetToken()).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('returns a different value on each call', () => {
+    expect(createResetToken()).not.toBe(createResetToken());
+  });
+});
+
+describe('resetTokenExpiry', () => {
+  it('returns a Date in the future, within tolerance of env.resetTokenExpiresMinutes', () => {
+    const expiry = resetTokenExpiry();
+    const now = Date.now();
+
+    expect(expiry.getTime()).toBeGreaterThan(now);
+    expect(expiry.getTime()).toBeLessThanOrEqual(now + (env.resetTokenExpiresMinutes + 1) * 60000);
   });
 });
