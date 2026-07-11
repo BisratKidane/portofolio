@@ -33,12 +33,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Backend integration tests run against a dedicated test database that is provisioned before the run and torn down after — dev data is never touched.
   3. Test configuration (env vars, database name/connection) is clearly separated from local-dev configuration so a developer cannot accidentally point tests at their dev database.
 
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Vitest runner setup: install vitest, wire test script, vitest.config.js, env/test.env, smoke test (SETUP-01)
+- [x] 01-01-PLAN.md — Vitest runner setup: install vitest, wire test script, vitest.config.js, env/test.env, smoke test (SETUP-01)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -120,7 +120,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may be
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Backend Test Tooling & Test Database | 0/2 | Planned | - |
+| 1. Backend Test Tooling & Test Database | 1/2 | In Progress|  |
 | 2. Backend Unit Tests | 0/TBD | Not started | - |
 | 3. Backend Integration Tests | 0/TBD | Not started | - |
 | 4. Frontend Test Tooling | 0/TBD | Not started | - |

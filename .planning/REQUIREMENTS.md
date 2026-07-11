@@ -9,7 +9,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Test Tooling
 
-- [ ] **SETUP-01**: Backend has a configured test runner; running `npm test` in the backend workspace executes the suite and reports pass/fail
+- [x] **SETUP-01**: Backend has a configured test runner; running `npm test` in the backend workspace executes the suite and reports pass/fail
 - [ ] **SETUP-02**: Frontend has a configured test runner with jsdom + React Testing Library; running `npm test` in the frontend workspace executes the suite
 - [ ] **SETUP-03**: A single root-level command runs both workspace test suites
 - [ ] **SETUP-04**: Backend integration tests run against an isolated test database (never dev data), set up and torn down per run
@@ -76,7 +76,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SETUP-01 | Phase 1 | Pending |
+| SETUP-01 | Phase 1 | Complete |
 | SETUP-02 | Phase 4 | Pending |
 | SETUP-03 | Phase 6 | Pending |
 | SETUP-04 | Phase 1 | Pending |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-07-11T20:01:57.230Z"
-last_activity: 2026-07-11 -- Phase 1 planning complete
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-07-11T20:12:58.532Z"
+last_activity: 2026-07-11
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 2
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-11)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 1 — Backend Test Tooling & Test Database
+**Current focus:** Phase 01 — backend-test-tooling-test-database
 
 ## Current Position
 
-Phase: 1 of 6 (Backend Test Tooling & Test Database)
-Plan: 0 of TBD in current phase
+Phase: 01 (backend-test-tooling-test-database) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-11 -- Phase 1 planning complete
+Last activity: 2026-07-11
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01 P01 | 12min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,7 @@ Recent decisions affecting current work:
 - Milestone init: Document known security bugs (reset-token leak, JWT-secret fallback, no rate limiting) rather than fix them here
 - Milestone init: Vitest proposed as the shared runner across backend (ESM) and frontend (Vite/React) — to be confirmed during phase research
 - Roadmap: Horizontal-layer phase order (backend tooling → backend unit → backend integration → frontend tooling → frontend component → CI) so tooling always precedes the tests that depend on it, and CI comes last once there's a full suite to run
+- [Phase 01]: Dropped poolOptions.forks.singleFork from vitest.config.js — deprecated/removed in Vitest 4.1.10; fileParallelism: false alone reproduces single-fork sequential execution
 
 ### Pending Todos
 
@@ -87,6 +89,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T18:27:28.086Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-backend-test-tooling-test-database/01-CONTEXT.md
+Last session: 2026-07-11T20:12:58.527Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None
