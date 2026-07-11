@@ -9,7 +9,6 @@ process.env.NODE_ENV = 'test';
 export default defineConfig({
   test: {
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
     fileParallelism: false
   }
 });
