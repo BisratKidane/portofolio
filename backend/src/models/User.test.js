@@ -19,3 +19,31 @@ describe('validatePassword', () => {
     await expect(user.validatePassword('WrongPassword')).resolves.toBe(false);
   });
 });
+
+describe('beforeCreate hashing hook', () => {
+  it('does not hash the password on build() alone', () => {
+    const user = User.build({
+      name: 'Test',
+      email: 'test@example.com',
+      passwordHash: 'Password123!',
+      role: 'USER'
+    });
+
+    expect(user.passwordHash).toBe('Password123!');
+  });
+
+  it('hashes the password when the beforeCreate hook runs, without persisting', async () => {
+    const user = User.build({
+      name: 'Test',
+      email: 'test@example.com',
+      passwordHash: 'Password123!',
+      role: 'USER'
+    });
+
+    await User.runHooks('beforeCreate', user);
+
+    expect(user.passwordHash).not.toBe('Password123!');
+    await expect(bcrypt.compare('Password123!', user.passwordHash)).resolves.toBe(true);
+    expect(user.isNewRecord).toBe(true);
+  });
+});
