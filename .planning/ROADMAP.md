@@ -29,7 +29,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. Running `npm test` in the backend workspace executes the configured test runner and reports pass/fail (including at least one passing smoke test).
   2. Backend integration tests run against a dedicated test database that is provisioned before the run and torn down after — dev data is never touched.
   3. Test configuration (env vars, database name/connection) is clearly separated from local-dev configuration so a developer cannot accidentally point tests at their dev database.
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Vitest runner setup: install vitest, wire test script, vitest.config.js, env/test.env, smoke test (SETUP-01)
+- [ ] 01-02-PLAN.md — DB harness: safety guard, globalSetup (provision/teardown), helpers, Docker init script, live DB-connectivity spec (SETUP-04)
 
 ### Phase 2: Backend Unit Tests
 **Goal**: The security-critical backend utility functions (tokens, passwords, role checks) are protected by fast, isolated unit tests.
@@ -92,7 +96,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may be
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Backend Test Tooling & Test Database | 0/TBD | Not started | - |
+| 1. Backend Test Tooling & Test Database | 0/2 | Planned | - |
 | 2. Backend Unit Tests | 0/TBD | Not started | - |
 | 3. Backend Integration Tests | 0/TBD | Not started | - |
 | 4. Frontend Test Tooling | 0/TBD | Not started | - |
