@@ -1,9 +1,15 @@
+import request from 'supertest';
 import { ApolloServer } from '@apollo/server';
 import { models } from '../src/models/index.js';
 import { typeDefs } from '../src/schemas/index.js';
 import { resolvers } from '../src/resolvers/index.js';
+import { app } from '../src/server.js';
 
 const server = new ApolloServer({ typeDefs, resolvers });
+
+export function httpClient() {
+  return request(app);
+}
 
 export async function graphql(query, variables, user = null) {
   const response = await server.executeOperation(
