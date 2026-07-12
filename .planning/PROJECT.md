@@ -2,11 +2,24 @@
 
 ## What This Is
 
-A full-stack authentication application built as a portfolio piece: a React + MUI single-page frontend talking to an Express + Apollo GraphQL backend, with user accounts persisted in MySQL via Sequelize. It currently ships working registration, JWT login, protected routes, and a dashboard. This milestone adds an automated testing foundation across the whole stack so the app can keep growing without silently breaking authentication.
+A full-stack authentication application built as a portfolio piece: a React + MUI single-page frontend talking to an Express + Apollo GraphQL backend, with user accounts persisted in MySQL via Sequelize. It ships working registration, JWT login, protected routes, a dashboard, and (as of v1.0) a full-stack automated test suite enforced in CI. This milestone hardens the security posture — remediating the account-takeover and brute-force vulnerabilities that v1.0 deliberately documented but left unfixed.
 
 ## Core Value
 
 Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
+
+## Current Milestone: v1.1 Security Remediation
+
+**Goal:** Remediate the security bugs deferred from v1.0 — closing the account-takeover and brute-force vectors — while keeping the test suite green.
+
+**Target features:**
+- Reset-token exposure fixed: token delivered via a pluggable mailer (logs to console in dev, wired for a real provider in prod) and dropped from the API response
+- JWT secret fail-fast: refuse to boot in production when `JWT_SECRET` is unset or equals the insecure `'change-me'` default
+- Rate limiting on `login` / `register` / `requestPasswordReset` to block brute-force, enumeration, and reset-token guessing
+- Token/session revocation via `passwordChangedAt` so a password reset invalidates JWTs issued beforehand
+- Server-side password strength validation in `register` and `resetPassword`
+- Email verification on registration, closing the first-user-becomes-ADMIN land-grab race
+- CORS rejection no longer echoes the rejected origin back to the client
 
 ## Requirements
 
@@ -31,19 +44,27 @@ Changes to the app can be made with confidence — auth and core flows are prote
 
 ### Active
 
-<!-- This milestone: a full-stack testing safety net. Hypotheses until shipped. -->
+<!-- This milestone (v1.1): security remediation. Hypotheses until shipped; scoped in REQUIREMENTS.md. -->
 
-<!-- All milestone requirements validated as of Phase 6. -->
-- (none — all milestone requirements validated)
+- Reset-token no longer returned over the API; delivered via a pluggable mailer (dev-logs, prod-wired)
+- JWT secret fail-fast at startup in production
+- Rate limiting on auth-sensitive mutations (login, register, requestPasswordReset)
+- Token/session revocation via `passwordChangedAt`
+- Server-side password strength validation
+- Email verification on registration (fixes first-user-ADMIN race)
+- CORS rejection no longer leaks the rejected origin
 
 ### Out of Scope
 
 <!-- Explicit boundaries with reasoning to prevent re-adding. -->
 
-- Fixing the known security bugs (reset-token leak, insecure JWT-secret fallback, missing rate limiting) — deliberately deferred to a dedicated follow-up milestone; this milestone characterizes current behavior and documents the bugs, it does not remediate them
+- Live email-provider account/credentials — v1.1 ships a pluggable mailer that logs the token in dev and is wired for a provider in prod; standing up an actual SES/SendGrid/Postmark account is a deployment concern, not this milestone
+- Full OAuth / social login / MFA — this milestone hardens the existing email+password flow, it does not add new auth methods
+- Refresh-token / short-lived-access-token rotation — revocation is handled via `passwordChangedAt` invalidation; a full refresh-token architecture is deferred
 - 100% / exhaustive coverage targets — the goal is a meaningful safety net over auth + core flows, not a coverage-number chase
 - Full browser end-to-end tests (Playwright/Cypress) — deferred; backend integration + frontend component tests cover the safety-net need for now
-- New product features or UI redesign — this milestone is testing infrastructure only
+- Infra hardening (Sequelize migrations vs `sync()`, Node 18 EOL upgrade, production frontend Docker build) — real concerns, but a separate milestone from security remediation
+- UI redesign — frontend changes this milestone are limited to what the security fixes require (reset flow, registration verification UX)
 
 ## Context
 
@@ -69,6 +90,10 @@ Changes to the app can be made with confidence — auth and core flows are prote
 | Test-only for known bugs; document, don't fix | Keeps milestone scope clean; remediation is its own milestone with its own risk profile | ✓ Good — reset-token exposure + others tracked in `KNOWN-ISSUES.md`, none fixed |
 | Propose Vitest as the shared runner | One tool works for the ESM backend and the Vite/React frontend; less config surface | ✓ Good — Vitest 4.1.10 confirmed and used across both workspaces |
 | No browser E2E this milestone | Backend integration + frontend component tests meet the safety-net need at lower cost | ✓ Good — component + integration coverage met the safety-net need |
+| v1.1: remediate ALL documented security issues (7), not just the flagship reset-token bug | v1.0's test suite makes wholesale auth changes safe; fixing them together avoids re-touching the same resolvers repeatedly | Pending v1.1 |
+| v1.1: reset token delivered via a pluggable mailer that logs in dev, wired for a provider in prod | Portfolio app — closes the account-takeover vector without requiring a live email account; same mailer backs email verification | Pending v1.1 |
+| v1.1: each fix is test-driven; v1.0 tests that document bugs get flipped to assert the fixed behavior | The safety net only stays meaningful if it tracks the new intended behavior; CI must stay green | Pending v1.1 |
+| v1.1 is a minor bump (v1.1, not v2.0) | Hardening + fixes on the existing feature set; no new auth methods or rewrite | Pending v1.1 |
 
 ## Current State
 
@@ -76,10 +101,10 @@ Changes to the app can be made with confidence — auth and core flows are prote
 
 ## Next Milestone Goals
 
-Candidate directions for the next milestone (to be refined via `/gsd:new-milestone`):
-- **Security remediation** — fix the documented bugs: reset-token exposure (account-takeover risk), insecure JWT-secret fallback, missing auth-mutation rate limiting, no token/session revocation. This was explicitly deferred out of v1.0.
+Candidate directions after v1.1 (to be refined via `/gsd:new-milestone`):
 - **Coverage expansion** — extend tests to the remaining pages/flows (Dashboard, ForgotPassword/ResetPassword UI) and add browser E2E (Playwright/Cypress) if the safety net needs to cover full user journeys.
 - **Infra hardening** — Sequelize migrations instead of `sync()`, upgrade off EOL Node 18 (repo already runs Node 24 via `.nvmrc`; docs still say 18), production frontend Docker build instead of the dev server.
+- **Live email provider** — stand up a real SES/SendGrid/Postmark integration behind the v1.1 mailer abstraction (deployment concern deferred out of v1.1).
 
 ## Evolution
 
@@ -99,4 +124,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12 after v1.0 milestone*
+*Last updated: 2026-07-12 — v1.1 Security Remediation milestone started*
