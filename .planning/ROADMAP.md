@@ -43,7 +43,10 @@ Full detail archived in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
   3. `NODE_ENV=test` and `NODE_ENV=development` boot normally with the existing weak/shared secret — the full v1.0 test suite (51 tests) stays green after this change lands.
   4. `register` rejects passwords shorter than 8 characters, server-side, before hashing, surfaced through the existing GraphQL-error/`Alert` convention.
   5. `resetPassword` enforces the same 8-character minimum server-side.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 07-01-PLAN.md — HTTP test harness (importable app + supertest) and CORS-01 origin-echo fix
+- [ ] 07-02-PLAN.md — JWT-secret production fail-fast (SECRET-01/02) and 8-char password minimum (PWD-01/02)
 
 ### Phase 8: Mailer Abstraction & Reset-Token Remediation
 **Goal**: Password reset tokens are never exposed via the API — they reach only the account owner, via a pluggable mailer — closing the documented account-takeover vector.
