@@ -14,7 +14,8 @@
     "start": "dotenv -e env/local.env -- concurrently -n backend,frontend -c blue,green \"npm start --workspace backend\" \"npm start --workspace frontend\"",
     "build": "npm run build --workspace frontend",
     "docker:local": "docker compose --env-file env/local.env up --build",
-    "docker:remote": "docker compose --env-file env/remote.env up --build -d"
+    "docker:remote": "docker compose --env-file env/remote.env up --build -d",
+    "test": "npm test --workspaces"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
