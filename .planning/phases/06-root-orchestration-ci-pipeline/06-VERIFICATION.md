@@ -1,8 +1,9 @@
 ---
 phase: 06-root-orchestration-ci-pipeline
 verified: 2026-07-12T16:55:00Z
-status: human_needed
+status: passed
 score: 7/7 must-haves verified
+human_verification_resolved: "2026-07-12 — repo made public by owner; branch protection on `main` requiring the `test` check enabled and confirmed via gh api (required_status_checks.contexts=[\"test\"]). CI-03 blocks-merge half now live-verified."
 overrides_applied: 0
 human_verification:
   - test: "Attempt to enable 'Require status checks to pass before merging' on the `family`/default branch in GitHub Settings -> Branches, selecting the `test` job, exactly as README.md's new Continuous Integration section instructs."
