@@ -10,6 +10,12 @@ const REQUEST_RESET_MUTATION = `
   }
 `;
 
+const RESET_PASSWORD_MUTATION = `
+  mutation ResetPassword($token: String!, $password: String!) {
+    resetPassword(token: $token, password: $password)
+  }
+`;
+
 beforeEach(resetTables);
 
 // Per D-09: this suite asserts the happy path only — the reset-token exposure
@@ -39,5 +45,26 @@ describe('requestPasswordReset', () => {
       'If the account exists, a password reset token has been generated.'
     );
     expect(response.data.requestPasswordReset.resetToken).toBeNull();
+  });
+});
+
+describe('resetPassword', () => {
+  it('rejects a password shorter than 8 characters before persisting anything', async () => {
+    const user = await createTestUser({
+      email: 'reset-me@example.com',
+      resetPasswordToken: 'a-valid-reset-token',
+      resetPasswordExpiresAt: new Date(Date.now() + 30 * 60 * 1000)
+    });
+
+    const response = await graphql(RESET_PASSWORD_MUTATION, {
+      token: 'a-valid-reset-token',
+      password: 'short'
+    });
+
+    expect(response.errors[0].message).toBe('Password must be at least 8 characters.');
+    expect(response.data).toBeNull();
+
+    await user.reload();
+    expect(user.resetPasswordToken).toBe('a-valid-reset-token');
   });
 });
