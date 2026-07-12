@@ -3,6 +3,7 @@ import cors from 'cors';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
 import { env } from './config/env.js';
+import { buildCorsOptions } from './config/corsOptions.js';
 import { initializeDatabase, models } from './models/index.js';
 import { typeDefs } from './schemas/index.js';
 import { resolvers } from './resolvers/index.js';
@@ -16,13 +17,7 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin || env.clientOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error(`Origin ${origin} is not allowed by CORS.`));
-  },
-  credentials: true
-}));
+app.use(cors(buildCorsOptions(env)));
 
 const apollo = new ApolloServer({ typeDefs, resolvers });
 
