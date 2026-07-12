@@ -11,7 +11,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 - [x] **SETUP-01**: Backend has a configured test runner; running `npm test` in the backend workspace executes the suite and reports pass/fail
 - [x] **SETUP-02**: Frontend has a configured test runner with jsdom + React Testing Library; running `npm test` in the frontend workspace executes the suite
-- [ ] **SETUP-03**: A single root-level command runs both workspace test suites
+- [x] **SETUP-03**: A single root-level command runs both workspace test suites
 - [x] **SETUP-04**: Backend integration tests run against an isolated test database (never dev data), set up and torn down per run
 
 ### Backend Tests
@@ -33,9 +33,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Continuous Integration
 
-- [ ] **CI-01**: A GitHub Actions workflow runs the full test suite on every push and pull request
-- [ ] **CI-02**: CI provisions the test-database dependency so backend integration tests pass in the pipeline
-- [ ] **CI-03**: CI fails the build (blocks merge) when any test fails
+- [x] **CI-01**: A GitHub Actions workflow runs the full test suite on every push and pull request
+- [x] **CI-02**: CI provisions the test-database dependency so backend integration tests pass in the pipeline
+- [x] **CI-03**: CI fails the build (blocks merge) when any test fails
 
 ### Known-Issue Documentation
 
@@ -78,7 +78,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | SETUP-01 | Phase 1 | Complete |
 | SETUP-02 | Phase 4 | Complete |
-| SETUP-03 | Phase 6 | Pending |
+| SETUP-03 | Phase 6 | Complete |
 | SETUP-04 | Phase 1 | Complete |
 | BE-01 | Phase 2 | Complete |
 | BE-02 | Phase 2 | Complete |
@@ -91,9 +91,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FE-02 | Phase 5 | Pending |
 | FE-03 | Phase 5 | Pending |
 | FE-04 | Phase 5 | Pending |
-| CI-01 | Phase 6 | Pending |
-| CI-02 | Phase 6 | Pending |
-| CI-03 | Phase 6 | Pending |
+| CI-01 | Phase 6 | Complete |
+| CI-02 | Phase 6 | Complete |
+| CI-03 | Phase 6 | Complete |
 | DOCS-01 | Phase 3 | Complete |
 
 **Coverage:**

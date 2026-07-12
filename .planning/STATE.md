@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 context gathered
-last_updated: "2026-07-12T13:34:01.581Z"
-last_activity: 2026-07-12 -- Phase 06 planning complete
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-07-12T13:47:34.486Z"
+last_activity: 2026-07-12
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 83
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-11)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 6 — root orchestration & ci pipeline
+**Current focus:** Phase 06 — root-orchestration-ci-pipeline
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 06 (root-orchestration-ci-pipeline) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
-Last activity: 2026-07-12 -- Phase 06 planning complete
+Last activity: 2026-07-12
 
-Progress: [██████████] 100%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [██████████] 100%
 | Phase 01 P01 | 12min | 3 tasks | 5 files |
 | Phase 01 P02 | 2min | 3 tasks | 8 files |
 | Phase 04 P01 | 3min | 3 tasks | 5 files |
+| Phase 06 P01 | 3min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Recent decisions affecting current work:
 - [Phase 04]: D-01: Standalone frontend/vitest.config.js re-declares @vitejs/plugin-react; frontend/vite.config.js left completely unmodified
 - [Phase 04]: D-02/D-03: Full RTL kit installed as frontend devDependencies now; single shared test/setup.js handles jest-dom matchers, window.matchMedia stub, and RTL afterEach(cleanup) with explicit vitest imports (no globals)
 - [Phase 04]: jsdom pinned to ^26.0.0 (resolved 26.1.0) per plan guidance, rather than the newer 27-29 lines available on the registry
+- [Phase 06]: D-01: npm-native `npm test --workspaces` chosen for root fan-out over manual workspace chaining or concurrently parallel execution — sequential avoids cross-suite MySQL DB contention and keeps failure output readable
+- [Phase 06]: CI workflow invokes the exact same root npm test script Task 1 added, no CI-only test command — what runs locally is exactly what runs in CI
 
 ### Pending Todos
 
@@ -99,6 +102,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T12:42:58.132Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-root-orchestration-ci-pipeline/06-CONTEXT.md
+Last session: 2026-07-12T13:47:34.478Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None
