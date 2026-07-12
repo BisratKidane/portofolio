@@ -99,7 +99,12 @@ Plans:
   2. React Testing Library is installed and configured; a sample component test can render a component and query it by role/text.
   3. Test setup handles the browser globals MUI/React Router need in jsdom (e.g. matchMedia) without runtime errors.
 
-**Plans**: TBD
+**Plans:** 1 plan
+
+Plans:
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Frontend Vitest harness: RTL/jsdom devDeps + test script, standalone vitest.config.js (react plugin + jsdom + setupFiles), shared setup.js (jest-dom + matchMedia stub + RTL cleanup), throwaway proof spec (SETUP-02)
 
 ### Phase 5: Frontend Component Tests
 
@@ -139,6 +144,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may be
 | 1. Backend Test Tooling & Test Database | 2/2 | Complete   | 2026-07-11 |
 | 2. Backend Unit Tests | 2/2 | Complete   | 2026-07-11 |
 | 3. Backend Integration Tests | 3/3 | Complete   | 2026-07-11 |
-| 4. Frontend Test Tooling | 0/TBD | Not started | - |
+| 4. Frontend Test Tooling | 0/1 | Not started | - |
 | 5. Frontend Component Tests | 0/TBD | Not started | - |
 | 6. Root Orchestration & CI Pipeline | 0/TBD | Not started | - |
