@@ -64,11 +64,22 @@ Changes to the app can be made with confidence — auth and core flows are prote
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Test the full stack (backend + frontend) in this milestone | User wants a safety net before adding new features; auth spans both layers | — Pending |
-| Include a GitHub Actions CI pipeline | A safety net only works if enforced; unenforced tests rot, and CI is the portfolio-visible signal | — Pending |
-| Test-only for known bugs; document, don't fix | Keeps milestone scope clean; remediation is its own milestone with its own risk profile | — Pending |
-| Propose Vitest as the shared runner | One tool works for the ESM backend and the Vite/React frontend; less config surface | — Pending (confirm in research) |
-| No browser E2E this milestone | Backend integration + frontend component tests meet the safety-net need at lower cost | — Pending |
+| Test the full stack (backend + frontend) in this milestone | User wants a safety net before adding new features; auth spans both layers | ✓ Good — 51 tests across both workspaces (backend 39, frontend 12) validated in v1.0 |
+| Include a GitHub Actions CI pipeline | A safety net only works if enforced; unenforced tests rot, and CI is the portfolio-visible signal | ✓ Good — CI runs on every push/PR; `main` branch protection requires the `test` check (red build proven live to block merge) |
+| Test-only for known bugs; document, don't fix | Keeps milestone scope clean; remediation is its own milestone with its own risk profile | ✓ Good — reset-token exposure + others tracked in `KNOWN-ISSUES.md`, none fixed |
+| Propose Vitest as the shared runner | One tool works for the ESM backend and the Vite/React frontend; less config surface | ✓ Good — Vitest 4.1.10 confirmed and used across both workspaces |
+| No browser E2E this milestone | Backend integration + frontend component tests meet the safety-net need at lower cost | ✓ Good — component + integration coverage met the safety-net need |
+
+## Current State
+
+**Shipped: v1.0 Full-Stack Testing Safety Net (2026-07-12).** The app now has an automated test suite across the whole stack — 51 tests (backend 39: unit + integration; frontend 12: component), a Vitest runner in each workspace, an isolated MySQL test database provisioned/torn down per run, a single root `npm test`, and a GitHub Actions CI pipeline that runs and enforces the suite on every push/PR. `main` branch protection requires the `test` check, so a red build blocks merge (proven live). No application runtime behavior was changed; known security bugs are documented in `KNOWN-ISSUES.md`, not fixed. Delivered via PR #2 (family → main).
+
+## Next Milestone Goals
+
+Candidate directions for the next milestone (to be refined via `/gsd:new-milestone`):
+- **Security remediation** — fix the documented bugs: reset-token exposure (account-takeover risk), insecure JWT-secret fallback, missing auth-mutation rate limiting, no token/session revocation. This was explicitly deferred out of v1.0.
+- **Coverage expansion** — extend tests to the remaining pages/flows (Dashboard, ForgotPassword/ResetPassword UI) and add browser E2E (Playwright/Cypress) if the safety net needs to cover full user journeys.
+- **Infra hardening** — Sequelize migrations instead of `sync()`, upgrade off EOL Node 18 (repo already runs Node 24 via `.nvmrc`; docs still say 18), production frontend Docker build instead of the dev server.
 
 ## Evolution
 
@@ -88,4 +99,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12 after Phase 6 completion — milestone v1.0 (full-stack testing safety net) complete*
+*Last updated: 2026-07-12 after v1.0 milestone*

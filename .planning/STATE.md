@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: "Phase 6 shipped — PR #2"
+status: Awaiting next milestone
 stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-07-12T15:10:35.215Z"
-last_activity: 2026-07-12
+last_updated: "2026-07-12T15:28:35.177Z"
+last_activity: 2026-07-12 — Milestone v1.0 completed and archived
 progress:
   total_phases: 6
   completed_phases: 6
@@ -25,12 +25,10 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 
 ## Current Position
 
-Phase: 06
-Plan: Not started
-Status: Phase 6 shipped — PR #2
-Last activity: 2026-07-12
-
-Progress: [██████████] 100%
+Phase: Milestone v1.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-12 — Milestone v1.0 completed and archived
 
 ## Performance Metrics
 
@@ -109,3 +107,7 @@ Items acknowledged and carried forward from previous milestone close:
 Last session: 2026-07-12T14:42:03.081Z
 Stopped at: Completed 06-02-PLAN.md
 Resume file: None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
