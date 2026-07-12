@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Backend Unit Tests** - Auth token utilities, password hashing, and role guards are unit-tested in isolation. (completed 2026-07-11)
 - [x] **Phase 3: Backend Integration Tests** - Register, login, dashboard, and password-reset GraphQL flows are integration-tested against the test database; known bugs surfaced are documented. (completed 2026-07-11)
 - [x] **Phase 4: Frontend Test Tooling** - Frontend runs `npm test` via a configured runner with jsdom + React Testing Library. (completed 2026-07-12)
-- [ ] **Phase 5: Frontend Component Tests** - AuthContext, ProtectedRoute, Login, and Register are component-tested.
+- [x] **Phase 5: Frontend Component Tests** - AuthContext, ProtectedRoute, Login, and Register are component-tested. (completed 2026-07-12)
 - [ ] **Phase 6: Root Orchestration & CI Pipeline** - A single root command runs both suites; GitHub Actions runs and enforces the full suite on every push/PR.
 
 ## Phase Details
@@ -118,14 +118,14 @@ Plans:
   3. Login page test passes: submits credentials and handles both the success and error response states.
   4. Register page test passes: submits registration input and handles both the success and error response states.
 
-**Plans:** 0/3 plans complete
+**Plans:** 3/3 plans complete
 
 Plans:
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — AuthContext test (me-on-mount, login, logout) + localStorage isolation + harness cleanup (FE-01)
-- [ ] 05-02-PLAN.md — ProtectedRoute test: loading, redirect, authorized, role-mismatch (FE-02)
-- [ ] 05-03-PLAN.md — Login + Register page tests: success navigation + error alert (FE-03, FE-04)
+- [x] 05-01-PLAN.md — AuthContext test (me-on-mount, login, logout) + localStorage isolation + harness cleanup (FE-01)
+- [x] 05-02-PLAN.md — ProtectedRoute test: loading, redirect, authorized, role-mismatch (FE-02)
+- [x] 05-03-PLAN.md — Login + Register page tests: success navigation + error alert (FE-03, FE-04)
 
 ### Phase 6: Root Orchestration & CI Pipeline
 
@@ -152,5 +152,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may be
 | 2. Backend Unit Tests | 2/2 | Complete   | 2026-07-11 |
 | 3. Backend Integration Tests | 3/3 | Complete   | 2026-07-11 |
 | 4. Frontend Test Tooling | 1/1 | Complete   | 2026-07-12 |
-| 5. Frontend Component Tests | 0/3 | Not started | - |
+| 5. Frontend Component Tests | 3/3 | Complete   | 2026-07-12 |
 | 6. Root Orchestration & CI Pipeline | 0/TBD | Not started | - |
