@@ -365,9 +365,9 @@ Notes tying this back to the phase's decisions:
 | A2 | GitHub-hosted `ubuntu-latest` runners have the `mysql` client CLI available if the planner ever wants a `mysqladmin ping` step outside the service's own internal health check | Architecture Patterns | Low — the health check itself runs *inside* the mysql container image (which always has `mysqladmin`), not on the runner, so this is not actually a dependency; flagged only in case the planner adds an extra runner-side wait step, which is not recommended (avoid — see Don't Hand-Roll) |
 | A3 | Backend Dockerfile (`node:18-alpine`) staleness relative to the 24.x `engines` pin is out of scope for this phase and not something Phase 6 should fix | Common Pitfalls / Pitfall 1 | Low for this phase (CI doesn't build/use `backend/Dockerfile`), but worth a one-line flag to the user since it's the same root cause (stale Node pin) surfacing in a second place |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Does the workflow job name need to exactly match what's typed into GitHub's branch-protection "required status checks" picker?**
+1. **RESOLVED: Does the workflow job name need to exactly match what's typed into GitHub's branch-protection "required status checks" picker?**
    - What we know: GitHub's branch protection UI lists the job's `name:`/`id` (here, `test`) as the selectable check once at least one workflow run has completed.
    - What's unclear: Nothing blocking — this is standard GitHub UI behavior, just worth calling out explicitly in the README note so the documented steps are copy-pasteable.
    - Recommendation: In the README section, tell the user to push once first (so GitHub has seen the check at least once), then go configure branch protection and select the `test` job.
