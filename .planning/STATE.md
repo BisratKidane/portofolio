@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-07-12T00:30:33.329Z"
-last_activity: 2026-07-12 -- Phase 04 planning complete
+status: verifying
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-07-12T00:41:56.875Z"
+last_activity: 2026-07-12
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
-  percent: 50
+  completed_plans: 8
+  percent: 67
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-11)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 4 — frontend test tooling
+**Current focus:** Phase 04 — frontend-test-tooling
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-12 -- Phase 04 planning complete
+Phase: 04 (frontend-test-tooling) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-07-12
 
 Progress: [██████████] 100%
 
@@ -56,6 +56,7 @@ Progress: [██████████] 100%
 *Updated after each plan completion*
 | Phase 01 P01 | 12min | 3 tasks | 5 files |
 | Phase 01 P02 | 2min | 3 tasks | 8 files |
+| Phase 04 P01 | 3min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,9 @@ Recent decisions affecting current work:
 - Roadmap: Horizontal-layer phase order (backend tooling → backend unit → backend integration → frontend tooling → frontend component → CI) so tooling always precedes the tests that depend on it, and CI comes last once there's a full suite to run
 - [Phase 01]: Dropped poolOptions.forks.singleFork from vitest.config.js — deprecated/removed in Vitest 4.1.10; fileParallelism: false alone reproduces single-fork sequential execution
 - [Phase 01]: [Phase 01 P02]: globalSetup.js imports models/index.js (not config/database.js) so the User model is registered before sync({force:true}) runs — Importing config/database.js alone left zero models attached to the sequelize instance, so sync() silently created no tables
+- [Phase 04]: D-01: Standalone frontend/vitest.config.js re-declares @vitejs/plugin-react; frontend/vite.config.js left completely unmodified
+- [Phase 04]: D-02/D-03: Full RTL kit installed as frontend devDependencies now; single shared test/setup.js handles jest-dom matchers, window.matchMedia stub, and RTL afterEach(cleanup) with explicit vitest imports (no globals)
+- [Phase 04]: jsdom pinned to ^26.0.0 (resolved 26.1.0) per plan guidance, rather than the newer 27-29 lines available on the registry
 
 ### Pending Todos
 
@@ -93,6 +97,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-12T00:19:32.410Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-frontend-test-tooling/04-CONTEXT.md
+Last session: 2026-07-12T00:41:56.870Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
