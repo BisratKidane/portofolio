@@ -75,6 +75,7 @@ Changes to the app can be made with confidence — auth and core flows are prote
 
 ## Constraints
 
+- **TDD, red-green-refactor (v1.1)**: Every security fix is driven test-first — write a failing test that asserts the secure behavior (red), implement the minimum to pass (green), then refactor. v1.0 tests that currently document a bug get flipped to assert the fixed behavior as the red step. No fix lands without a test that fails before it and passes after; CI stays green on `main`.
 - **Tech stack**: JavaScript ES Modules, Node 18.x, npm workspaces — tests must run under the existing ESM + workspace setup without a bundler rewrite.
 - **Test tooling (proposed)**: Vitest as the single runner across backend and frontend; React Testing Library + jsdom for the frontend; resolver integration via Apollo `executeOperation`. To be confirmed/version-pinned in the research phase.
 - **Database**: backend integration tests need an isolated test database (or in-memory/containerized MySQL) so they don't touch dev data.
