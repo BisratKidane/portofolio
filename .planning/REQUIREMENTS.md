@@ -19,10 +19,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **BE-01**: Auth token utilities are unit-tested — signing produces a verifiable JWT; verification accepts a valid token and rejects tampered/expired ones
 - [x] **BE-02**: Password handling is unit-tested — passwords are hashed on user creation and `validatePassword` accepts the correct password and rejects an incorrect one
 - [x] **BE-03**: Role/authorization guards in `auth.js` are unit-tested (allows permitted roles, blocks others)
-- [ ] **BE-04**: The `register` mutation is integration-tested — creates a user, rejects a duplicate email, and rejects invalid input
-- [ ] **BE-05**: The `login` mutation is integration-tested — returns a JWT for valid credentials and rejects invalid credentials
-- [ ] **BE-06**: The protected dashboard/me query is integration-tested — returns data for an authenticated request and rejects an unauthenticated one
-- [ ] **BE-07**: The `requestPasswordReset` flow is integration-tested, documenting its current behavior
+- [x] **BE-04**: The `register` mutation is integration-tested — creates a user, rejects a duplicate email, and rejects invalid input
+- [x] **BE-05**: The `login` mutation is integration-tested — returns a JWT for valid credentials and rejects invalid credentials
+- [x] **BE-06**: The protected dashboard/me query is integration-tested — returns data for an authenticated request and rejects an unauthenticated one
+- [x] **BE-07**: The `requestPasswordReset` flow is integration-tested, documenting its current behavior
 
 ### Frontend Tests
 
@@ -39,7 +39,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Known-Issue Documentation
 
-- [ ] **DOCS-01**: Security bugs surfaced while writing tests are recorded as tracked known-issues (location + expected vs. actual behavior), not fixed in this milestone
+- [x] **DOCS-01**: Security bugs surfaced while writing tests are recorded as tracked known-issues (location + expected vs. actual behavior), not fixed in this milestone
 
 ## v2 Requirements
 
@@ -83,10 +83,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BE-01 | Phase 2 | Complete |
 | BE-02 | Phase 2 | Complete |
 | BE-03 | Phase 2 | Complete |
-| BE-04 | Phase 3 | Pending |
-| BE-05 | Phase 3 | Pending |
-| BE-06 | Phase 3 | Pending |
-| BE-07 | Phase 3 | Pending |
+| BE-04 | Phase 3 | Complete |
+| BE-05 | Phase 3 | Complete |
+| BE-06 | Phase 3 | Complete |
+| BE-07 | Phase 3 | Complete |
 | FE-01 | Phase 5 | Pending |
 | FE-02 | Phase 5 | Pending |
 | FE-03 | Phase 5 | Pending |
@@ -94,7 +94,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CI-01 | Phase 6 | Pending |
 | CI-02 | Phase 6 | Pending |
 | CI-03 | Phase 6 | Pending |
-| DOCS-01 | Phase 3 | Pending |
+| DOCS-01 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 19 total
