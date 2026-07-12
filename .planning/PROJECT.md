@@ -25,12 +25,12 @@ Changes to the app can be made with confidence — auth and core flows are prote
 - ✓ Backend auth utilities (JWT sign/verify, password hashing, role guards) are unit-tested — Validated in Phase 2: Backend Unit Tests (`backend/src/utils/auth.test.js`, `backend/src/models/User.test.js`)
 - ✓ Backend GraphQL auth flows (register, login, dashboard/me, requestPasswordReset) are integration-tested against a real test database — Validated in Phase 3: Backend Integration Tests (`backend/test/helpers.js`, `backend/src/resolvers/*.test.js`)
 - ✓ Known security bugs surfaced during testing are recorded as tracked known-issues, not fixed — Validated in Phase 3: Backend Integration Tests (`KNOWN-ISSUES.md` — reset-token exposure)
+- ✓ Frontend has a working test runner (`npm test` → Vitest) with React Testing Library + jsdom that renders and queries React components — Validated in Phase 4: Frontend Test Tooling (`frontend/vitest.config.js`, `frontend/test/setup.js`, `frontend/src/harness.test.jsx`)
 
 ### Active
 
 <!-- This milestone: a full-stack testing safety net. Hypotheses until shipped. -->
 
-- [ ] Frontend has a working test runner with React Testing Library + jsdom
 - [ ] Frontend auth surfaces (AuthContext, ProtectedRoute, Login/Register pages) are component-tested
 - [ ] A CI pipeline runs the full test suite on every push and pull request
 
@@ -86,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12 after Phase 3 completion*
+*Last updated: 2026-07-12 after Phase 4 completion*
