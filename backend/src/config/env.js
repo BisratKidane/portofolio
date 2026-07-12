@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
+import { assertProductionSecrets } from './assertProductionSecrets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,3 +30,5 @@ export const env = {
     password: process.env.DB_PASSWORD || 'portofolio'
   }
 };
+
+assertProductionSecrets({ nodeEnv: env.nodeEnv, jwtSecret: env.jwtSecret });

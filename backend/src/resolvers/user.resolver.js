@@ -1,4 +1,5 @@
 import { createResetToken, requireAdmin, requireAuth, resetTokenExpiry, signToken } from '../utils/auth.js';
+import { assertPasswordStrength } from '../utils/passwordPolicy.js';
 
 function serializeUser(user) {
   return user ? user.get({ plain: true }) : null;
@@ -23,6 +24,8 @@ export const userResolvers = {
   },
   Mutation: {
     register: async (_parent, { name, email, password }, { models }) => {
+      assertPasswordStrength(password);
+
       const existingUser = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
       if (existingUser) throw new Error('A user with this email already exists.');
 
@@ -65,6 +68,8 @@ export const userResolvers = {
       if (!user || !user.resetPasswordExpiresAt || user.resetPasswordExpiresAt < new Date()) {
         throw new Error('The password reset token is invalid or has expired.');
       }
+
+      assertPasswordStrength(password);
 
       user.passwordHash = password;
       user.resetPasswordToken = null;

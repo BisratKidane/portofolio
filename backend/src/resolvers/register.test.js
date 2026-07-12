@@ -73,4 +73,18 @@ describe('register', () => {
     expect(errors[0].message).toBe('Validation error: Validation isEmail on email failed');
     expect(data).toBeNull();
   });
+
+  it('rejects a password shorter than 8 characters before creating the user', async () => {
+    const { data, errors } = await graphql(REGISTER_MUTATION, {
+      name: 'Weak',
+      email: 'weak@example.com',
+      password: 'short'
+    });
+
+    expect(errors[0].message).toBe('Password must be at least 8 characters.');
+    expect(data).toBeNull();
+
+    const row = await models.User.findOne({ where: { email: 'weak@example.com' } });
+    expect(row).toBeNull();
+  });
 });
