@@ -23,16 +23,16 @@ Changes to the app can be made with confidence — auth and core flows are prote
 - ✓ Dockerized dev environment (backend, frontend, MySQL) — existing (`docker-compose.yml`)
 - ✓ Backend has a working test runner (`npm test` → Vitest) with a safe, isolated test database — Validated in Phase 1: Backend Test Tooling & Test Database (`backend/vitest.config.js`, `backend/test/globalSetup.js`, `backend/test/guard.js`)
 - ✓ Backend auth utilities (JWT sign/verify, password hashing, role guards) are unit-tested — Validated in Phase 2: Backend Unit Tests (`backend/src/utils/auth.test.js`, `backend/src/models/User.test.js`)
+- ✓ Backend GraphQL auth flows (register, login, dashboard/me, requestPasswordReset) are integration-tested against a real test database — Validated in Phase 3: Backend Integration Tests (`backend/test/helpers.js`, `backend/src/resolvers/*.test.js`)
+- ✓ Known security bugs surfaced during testing are recorded as tracked known-issues, not fixed — Validated in Phase 3: Backend Integration Tests (`KNOWN-ISSUES.md` — reset-token exposure)
 
 ### Active
 
 <!-- This milestone: a full-stack testing safety net. Hypotheses until shipped. -->
 
-- [ ] Backend GraphQL resolvers (register, login, dashboard, password reset) are integration-tested against a test database
 - [ ] Frontend has a working test runner with React Testing Library + jsdom
 - [ ] Frontend auth surfaces (AuthContext, ProtectedRoute, Login/Register pages) are component-tested
 - [ ] A CI pipeline runs the full test suite on every push and pull request
-- [ ] Known security bugs surfaced during testing are documented as tracked known-issues (not fixed here)
 
 ### Out of Scope
 
@@ -86,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12 after Phase 2 completion*
+*Last updated: 2026-07-12 after Phase 3 completion*
