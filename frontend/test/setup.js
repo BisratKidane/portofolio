@@ -19,5 +19,6 @@ window.matchMedia =
   };
 
 afterEach(() => {
+  localStorage.clear();
   cleanup();
 });
