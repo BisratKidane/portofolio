@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Backend Integration Tests** - Register, login, dashboard, and password-reset GraphQL flows are integration-tested against the test database; known bugs surfaced are documented. (completed 2026-07-11)
 - [x] **Phase 4: Frontend Test Tooling** - Frontend runs `npm test` via a configured runner with jsdom + React Testing Library. (completed 2026-07-12)
 - [x] **Phase 5: Frontend Component Tests** - AuthContext, ProtectedRoute, Login, and Register are component-tested. (completed 2026-07-12)
-- [ ] **Phase 6: Root Orchestration & CI Pipeline** - A single root command runs both suites; GitHub Actions runs and enforces the full suite on every push/PR.
+- [x] **Phase 6: Root Orchestration & CI Pipeline** - A single root command runs both suites; GitHub Actions runs and enforces the full suite on every push/PR. (completed 2026-07-12)
 
 ## Phase Details
 
@@ -139,7 +139,7 @@ Plans:
   3. The CI workflow provisions the test-database dependency (e.g. a service container) so backend integration tests pass in the pipeline exactly as they do locally.
   4. When any test fails, the CI run fails and the workflow blocks/flags the merge — a red build is visible on the PR.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 **Wave 1**
@@ -148,7 +148,7 @@ Plans:
 
 **Wave 2** *(depends on Wave 1 completion)*
 
-- [ ] 06-02-PLAN.md — Live verification: push to confirm a green CI run, then a deliberate scratch-branch failure to confirm a red run (CI-01, CI-02, CI-03)
+- [x] 06-02-PLAN.md — Live verification: push to confirm a green CI run, then a deliberate scratch-branch failure to confirm a red run (CI-01, CI-02, CI-03)
 
 ## Progress
 
@@ -162,4 +162,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 4 may be
 | 3. Backend Integration Tests | 3/3 | Complete   | 2026-07-11 |
 | 4. Frontend Test Tooling | 1/1 | Complete   | 2026-07-12 |
 | 5. Frontend Component Tests | 3/3 | Complete   | 2026-07-12 |
-| 6. Root Orchestration & CI Pipeline | 1/2 | In Progress|  |
+| 6. Root Orchestration & CI Pipeline | 2/2 | Complete   | 2026-07-12 |
