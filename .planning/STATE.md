@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Security Remediation
 status: planning
-last_updated: "2026-07-12T16:17:59.601Z"
+last_updated: "2026-07-12T21:23:00.000Z"
 last_activity: 2026-07-12
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,25 +17,27 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-11)
+See: .planning/PROJECT.md (updated 2026-07-12)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Milestone complete
+**Current focus:** Phase 7 — Foundation Hardening (CORS, JWT Fail-Fast & Password Strength)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-07-12 — Milestone v1.1 started
+Phase: 7 of 11 (Foundation Hardening — CORS, JWT Fail-Fast & Password Strength)
+Plan: — (not yet planned)
+Status: Roadmap approved, ready to plan Phase 7
+Last activity: 2026-07-12 — ROADMAP.md created for v1.1 (Phases 7–11), REQUIREMENTS.md traceability filled (28/28 mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 13 (all v1.0)
 - Average duration: - min
-- Total execution time: 0 hours
+- Total execution time: 0 hours (v1.1)
 
 **By Phase:**
 
@@ -47,6 +49,11 @@ Last activity: 2026-07-12 — Milestone v1.1 started
 | 04 | 1 | - | - |
 | 05 | 3 | - | - |
 | 06 | 2 | - | - |
+| 07 | TBD | - | - |
+| 08 | TBD | - | - |
+| 09 | TBD | - | - |
+| 10 | TBD | - | - |
+| 11 | TBD | - | - |
 
 **Recent Trend:**
 
@@ -54,11 +61,6 @@ Last activity: 2026-07-12 — Milestone v1.1 started
 - Trend: -
 
 *Updated after each plan completion*
-| Phase 01 P01 | 12min | 3 tasks | 5 files |
-| Phase 01 P02 | 2min | 3 tasks | 8 files |
-| Phase 04 P01 | 3min | 3 tasks | 5 files |
-| Phase 06 P01 | 3min | 3 tasks | 3 files |
-| Phase 06 P02 | 10min | 2 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -67,20 +69,12 @@ Last activity: 2026-07-12 — Milestone v1.1 started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Milestone init: Test full stack (backend + frontend) this milestone — auth spans both layers
-- Milestone init: Include GitHub Actions CI so the test suite is enforced, not just present
-- Milestone init: Document known security bugs (reset-token leak, JWT-secret fallback, no rate limiting) rather than fix them here
-- Milestone init: Vitest proposed as the shared runner across backend (ESM) and frontend (Vite/React) — to be confirmed during phase research
-- Roadmap: Horizontal-layer phase order (backend tooling → backend unit → backend integration → frontend tooling → frontend component → CI) so tooling always precedes the tests that depend on it, and CI comes last once there's a full suite to run
-- [Phase 01]: Dropped poolOptions.forks.singleFork from vitest.config.js — deprecated/removed in Vitest 4.1.10; fileParallelism: false alone reproduces single-fork sequential execution
-- [Phase 01]: [Phase 01 P02]: globalSetup.js imports models/index.js (not config/database.js) so the User model is registered before sync({force:true}) runs — Importing config/database.js alone left zero models attached to the sequelize instance, so sync() silently created no tables
-- [Phase 04]: D-01: Standalone frontend/vitest.config.js re-declares @vitejs/plugin-react; frontend/vite.config.js left completely unmodified
-- [Phase 04]: D-02/D-03: Full RTL kit installed as frontend devDependencies now; single shared test/setup.js handles jest-dom matchers, window.matchMedia stub, and RTL afterEach(cleanup) with explicit vitest imports (no globals)
-- [Phase 04]: jsdom pinned to ^26.0.0 (resolved 26.1.0) per plan guidance, rather than the newer 27-29 lines available on the registry
-- [Phase 06]: D-01: npm-native `npm test --workspaces` chosen for root fan-out over manual workspace chaining or concurrently parallel execution — sequential avoids cross-suite MySQL DB contention and keeps failure output readable
-- [Phase 06]: CI workflow invokes the exact same root npm test script Task 1 added, no CI-only test command — what runs locally is exactly what runs in CI
-- [Phase 06]: Task 1 required no file changes -- pushed pre-existing 06-01 commits to origin directly and confirmed a live green Actions run
-- [Phase 06]: Task 2's break-and-revert cycle was confined entirely to a scratch branch (ci-smoke-check), deleted local+remote after confirming a live red Actions run naming smoke.test.js as the failure
+- v1.1: Remediate all 7 documented security issues, not just the flagship reset-token bug — v1.0's suite makes wholesale auth changes safe
+- v1.1: Reset token delivered via a pluggable mailer (console-logs in dev, wired for a provider in prod); same mailer backs email verification
+- v1.1: Each fix is TDD'd test-first; v1.0 tests documenting bugs are flipped to assert fixed behavior; CI must stay green throughout
+- Roadmap: Phases 7–11 sequenced dependency-first per research — (7) CORS + JWT fail-fast + password strength share one low-risk foundation phase; (8) mailer built once, consumed by reset-token fix; (9) passwordChangedAt sequenced right after Phase 8 since it touches the same resetPassword resolver; (10) rate limiting built after auth resolvers reach final v1.1 shape; (11) email verification last — largest blast radius, changes register's contract
+- Roadmap: Phases 9 and 11 each carry an explicit manual boot-and-verify acceptance criterion (non-force-synced dev DB) because sequelize.sync() won't alter existing tables and CI/test DB force-recreation can't catch missing columns
+- Roadmap: Phase 7 must stand up an HTTP-level (supertest) test harness — the existing in-process executeOperation() helper can't reach CORS/Express-layer code
 
 ### Pending Todos
 
@@ -88,8 +82,9 @@ None yet.
 
 ### Blockers/Concerns
 
-- No test framework, linter, or CI exists today in either workspace — Phase 1 starts from zero (expected, not a blocker).
-- Phase 3 (backend integration tests) will surface known security bugs (reset-token leak, JWT-secret fallback) by design; these must be documented per DOCS-01, not fixed.
+- Phase 7's JWT fail-fast check must be gated exclusively on `NODE_ENV === 'production'` — an ungated check would crash the entire test/CI suite (env/test.env uses a deliberately weak shared secret).
+- Phase 9/11 column additions are invisible-safe in CI (globalSetup force-recreates tables) but will break any real, already-provisioned dev/prod database via `sequelize.sync()` not altering existing tables — each phase's plan must include the manual boot-and-verify step, not rely on green tests alone.
+- Phase 11 (email verification) breaks several v1.0 tests by design (`register.test.js` JWT-usability assertions, `Register.test.jsx` auto-navigate assertion, `createTestUser()` default) — these flips are expected TDD red steps, not regressions.
 
 ## Deferred Items
 
@@ -99,14 +94,16 @@ Items acknowledged and carried forward from previous milestone close:
 |----------|------|--------|-------------|
 | Quality | Coverage reporting/thresholds (QUAL-01), linter/formatter + CI gate (QUAL-02) | Deferred to v2 | Milestone init |
 | Testing | Full browser E2E tests (E2E-01) | Deferred to v2 | Milestone init |
-| Remediation | Fix documented security bugs (FIX-01) | Deferred to dedicated milestone | Milestone init |
+| Rate limiting | Coarse whole-`/graphql` `express-rate-limit` guard (RATE-F1), operation-aware graduated limits | Deferred to v2 | v1.1 requirements |
+| Admin bootstrap | Env-seeded initial admin `ADMIN_EMAIL` as belt-and-suspenders (VERIFY-F1) | Deferred to v2 | v1.1 requirements |
+| UX | Frontend-specific 429 message, password-strength meter (UX-F1) | Deferred to v2 | v1.1 requirements |
 
 ## Session Continuity
 
-Last session: 2026-07-12T14:42:03.081Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-07-12T21:23:00.000Z
+Stopped at: ROADMAP.md and REQUIREMENTS.md traceability written for v1.1 (Phases 7–11)
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Review and approve the v1.1 roadmap, then run `/gsd:plan-phase 7` to begin Foundation Hardening.

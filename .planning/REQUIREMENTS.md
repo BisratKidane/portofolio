@@ -85,8 +85,35 @@
 
 ## Traceability
 
-*Filled by the roadmapper — every requirement above maps to exactly one phase.*
+Every v1.1 requirement mapped to exactly one phase. Coverage: 28/28.
 
 | REQ-ID | Phase |
 |--------|-------|
-| _(pending roadmap)_ | |
+| CORS-01 | Phase 7 |
+| SECRET-01 | Phase 7 |
+| SECRET-02 | Phase 7 |
+| PWD-01 | Phase 7 |
+| PWD-02 | Phase 7 |
+| MAIL-01 | Phase 8 |
+| MAIL-02 | Phase 8 |
+| RESET-01 | Phase 8 |
+| RESET-02 | Phase 8 |
+| RESET-03 | Phase 8 |
+| RESET-04 | Phase 8 |
+| RESET-05 | Phase 8 |
+| SESS-01 | Phase 9 |
+| SESS-02 | Phase 9 |
+| SESS-03 | Phase 9 |
+| RATE-01 | Phase 10 |
+| RATE-02 | Phase 10 |
+| RATE-03 | Phase 10 |
+| RATE-04 | Phase 10 |
+| RATE-05 | Phase 10 |
+| VERIFY-01 | Phase 11 |
+| VERIFY-02 | Phase 11 |
+| VERIFY-03 | Phase 11 |
+| VERIFY-04 | Phase 11 |
+| VERIFY-05 | Phase 11 |
+| VERIFY-06 | Phase 11 |
+| VERIFY-07 | Phase 11 |
+| VERIFY-08 | Phase 11 |
