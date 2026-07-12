@@ -10,6 +10,8 @@ import { getUserFromRequest } from './utils/auth.js';
 
 const app = express();
 
+export { app };
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });
 });
@@ -38,6 +40,8 @@ app.use(
   })
 );
 
-app.listen(env.port, () => {
-  console.log(`Backend ready at http://localhost:${env.port}/graphql`);
-});
+if (env.nodeEnv !== 'test') {
+  app.listen(env.port, () => {
+    console.log(`Backend ready at http://localhost:${env.port}/graphql`);
+  });
+}
