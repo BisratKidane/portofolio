@@ -25,7 +25,7 @@ Full detail archived in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 
 **Milestone Goal:** Remediate the security bugs deferred from v1.0 — closing the account-takeover and brute-force vectors — while keeping the CI-enforced test suite green. Every fix is TDD'd red-green-refactor; v1.0 tests that document a bug are flipped to assert the fixed behavior.
 
-- [ ] **Phase 7: Foundation Hardening — CORS, JWT Fail-Fast & Password Strength** - Independent, low-risk fixes that prove the v1.1 TDD rhythm and stand up an HTTP-level test harness reused by later phases
+- [x] **Phase 7: Foundation Hardening — CORS, JWT Fail-Fast & Password Strength** - Independent, low-risk fixes that prove the v1.1 TDD rhythm and stand up an HTTP-level test harness reused by later phases (completed 2026-07-12)
 - [ ] **Phase 8: Mailer Abstraction & Reset-Token Remediation** - Reset tokens are delivered via a pluggable mailer and dropped from the API entirely
 - [ ] **Phase 9: Session Revocation via passwordChangedAt** - A password reset invalidates JWTs issued beforehand
 - [ ] **Phase 10: Rate Limiting on Auth Mutations** - login/register/requestPasswordReset are throttled per-IP without affecting normal usage
@@ -45,8 +45,8 @@ Full detail archived in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
   5. `resetPassword` enforces the same 8-character minimum server-side.
 **Plans**: 2 plans
 Plans:
-- [ ] 07-01-PLAN.md — HTTP test harness (importable app + supertest) and CORS-01 origin-echo fix
-- [ ] 07-02-PLAN.md — JWT-secret production fail-fast (SECRET-01/02) and 8-char password minimum (PWD-01/02)
+- [x] 07-01-PLAN.md — HTTP test harness (importable app + supertest) and CORS-01 origin-echo fix
+- [x] 07-02-PLAN.md — JWT-secret production fail-fast (SECRET-01/02) and 8-char password minimum (PWD-01/02)
 
 ### Phase 8: Mailer Abstraction & Reset-Token Remediation
 **Goal**: Password reset tokens are never exposed via the API — they reach only the account owner, via a pluggable mailer — closing the documented account-takeover vector.
@@ -107,7 +107,7 @@ Plans:
 | 4. Frontend Test Tooling | v1.0 | 1/1 | Complete | 2026-07-12 |
 | 5. Frontend Component Tests | v1.0 | 3/3 | Complete | 2026-07-12 |
 | 6. Root Orchestration & CI Pipeline | v1.0 | 2/2 | Complete | 2026-07-12 |
-| 7. Foundation Hardening — CORS, JWT Fail-Fast & Password Strength | v1.1 | 0/? | Not started | - |
+| 7. Foundation Hardening — CORS, JWT Fail-Fast & Password Strength | v1.1 | 2/2 | Complete   | 2026-07-12 |
 | 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 0/? | Not started | - |
 | 9. Session Revocation via passwordChangedAt | v1.1 | 0/? | Not started | - |
 | 10. Rate Limiting on Auth Mutations | v1.1 | 0/? | Not started | - |
