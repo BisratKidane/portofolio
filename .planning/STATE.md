@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Security Remediation
-status: executing
-stopped_at: Phase 7 context gathered
-last_updated: "2026-07-12T20:50:22.183Z"
+status: ready_to_plan
+stopped_at: Phase 07 complete (2/2) — ready to discuss Phase 8
+last_updated: 2026-07-12T21:16:07.995Z
 last_activity: 2026-07-12 -- Phase 07 execution started
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 2
-  completed_plans: 0
+  completed_plans: 2
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-12)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 07 — foundation-hardening-cors-jwt-fail-fast-password-strength
+**Current focus:** Phase 8 — mailer abstraction & reset token remediation
 
 ## Current Position
 
-Phase: 07 (foundation-hardening-cors-jwt-fail-fast-password-strength) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 07
-Last activity: 2026-07-12 -- Phase 07 execution started
+Phase: 8
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-12
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -36,7 +36,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 13 (all v1.0)
+- Total plans completed: 15 (all v1.0)
 - Average duration: - min
 - Total execution time: 0 hours (v1.1)
 
@@ -50,7 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 | 04 | 1 | - | - |
 | 05 | 3 | - | - |
 | 06 | 2 | - | - |
-| 07 | TBD | - | - |
+| 07 | 2 | - | - |
 | 08 | TBD | - | - |
 | 09 | TBD | - | - |
 | 10 | TBD | - | - |
