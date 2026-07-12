@@ -150,6 +150,15 @@ npm run docker:local # Build and run the local Docker stack
 npm run docker:remote# Build and run the remote Docker stack in detached mode
 ```
 
+## Continuous Integration
+
+1. `.github/workflows/ci.yml` runs the root `npm test` command (the same command listed under "Useful scripts") on every `push` and every `pull_request`, with no branch filter.
+2. A workflow file alone does not block a merge. GitHub Actions checks are purely informational until a branch protection rule marks one as required.
+3. One-time setup to make the `test` job required:
+   1. Push at least once so the `test` job has run and appears as a selectable check.
+   2. In the GitHub repo, go to Settings -> Branches -> add or edit a branch protection rule.
+   3. Enable "Require status checks to pass before merging" and select the `test` job.
+
 ## Project structure
 
 ```text
