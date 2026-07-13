@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Security Remediation
-status: executing
-stopped_at: Phase 8 context gathered
-last_updated: "2026-07-13T17:59:01.764Z"
+status: ready_to_plan
+stopped_at: Phase 08 complete (3/3) — ready to discuss Phase 9
+last_updated: 2026-07-13T20:12:01.424Z
 last_activity: 2026-07-13 -- Phase 08 execution started
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 5
   percent: 20
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-12)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 08 — mailer-abstraction-reset-token-remediation
+**Current focus:** Phase 9 — session revocation via passwordchangedat
 
 ## Current Position
 
-Phase: 08 (mailer-abstraction-reset-token-remediation) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 08
-Last activity: 2026-07-13 -- Phase 08 execution started
+Phase: 9
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-13
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -36,7 +36,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 15 (all v1.0)
+- Total plans completed: 18 (all v1.0)
 - Average duration: - min
 - Total execution time: 0 hours (v1.1)
 
@@ -51,7 +51,7 @@ Progress: [░░░░░░░░░░] 0%
 | 05 | 3 | - | - |
 | 06 | 2 | - | - |
 | 07 | 2 | - | - |
-| 08 | TBD | - | - |
+| 08 | 3 | - | - |
 | 09 | TBD | - | - |
 | 10 | TBD | - | - |
 | 11 | TBD | - | - |
