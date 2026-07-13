@@ -103,3 +103,7 @@ None - no external service configuration required.
 ---
 *Phase: 08-mailer-abstraction-reset-token-remediation*
 *Completed: 2026-07-13*
+
+## Self-Check: PASSED
+
+All created files verified present on disk (ForgotPassword.jsx, ForgotPassword.test.jsx, ResetPassword.jsx, ResetPassword.test.jsx, this SUMMARY.md). All 5 task/metadata commits (`b3b3361`, `1a80743`, `baba18f`, `dedd280`, `d28c0bd`) verified present in `git log --all`.
