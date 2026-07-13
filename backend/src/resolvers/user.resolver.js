@@ -1,5 +1,6 @@
 import { createResetToken, requireAdmin, requireAuth, resetTokenExpiry, signToken } from '../utils/auth.js';
 import { assertPasswordStrength } from '../utils/passwordPolicy.js';
+import { sendPasswordResetEmail } from '../services/mailer.js';
 
 function serializeUser(user) {
   return user ? user.get({ plain: true }) : null;
@@ -50,18 +51,19 @@ export const userResolvers = {
     },
     requestPasswordReset: async (_parent, { email }, { models }) => {
       const user = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
-      const message = 'If the account exists, a password reset token has been generated.';
-      if (!user) return { message, resetToken: null };
+      const message = 'If the account exists, a password reset link has been sent.';
+      if (!user) return { message };
 
       const resetToken = createResetToken();
       user.resetPasswordToken = resetToken;
       user.resetPasswordExpiresAt = resetTokenExpiry();
       await user.save();
 
-      return {
-        message,
-        resetToken
-      };
+      sendPasswordResetEmail({ to: user.email, token: resetToken }).catch((err) => {
+        console.error('Failed to send password reset email:', err);
+      });
+
+      return { message };
     },
     resetPassword: async (_parent, { token, password }, { models }) => {
       const user = await models.User.findOne({ where: { resetPasswordToken: token } });

@@ -20,7 +20,6 @@ export const userTypeDefs = `#graphql
 
   type PasswordResetPayload {
     message: String!
-    resetToken: String
   }
 
   type Dashboard {
