@@ -1,7 +1,21 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
 
+vi.mock('../services/mailer.js', () => ({
+  sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined)
+}));
+
+import { sendPasswordResetEmail } from '../services/mailer.js';
+
 const REQUEST_RESET_MUTATION = `
+  mutation RequestPasswordReset($email: String!) {
+    requestPasswordReset(email: $email) {
+      message
+    }
+  }
+`;
+
+const REQUEST_RESET_WITH_TOKEN_FIELD = `
   mutation RequestPasswordReset($email: String!) {
     requestPasswordReset(email: $email) {
       message
@@ -16,11 +30,11 @@ const RESET_PASSWORD_MUTATION = `
   }
 `;
 
-beforeEach(resetTables);
+beforeEach(async () => {
+  await resetTables();
+  vi.clearAllMocks();
+});
 
-// Per D-09: this suite asserts the happy path only — the reset-token exposure
-// itself is documented in the repo-root KNOWN-ISSUES.md (Task 2 of this plan),
-// not asserted here as expected/desired behavior.
 describe('requestPasswordReset', () => {
   it('returns the generic message and persists a reset token + expiry for an existing email', async () => {
     const user = await createTestUser({ email: 'existing-user@example.com' });
@@ -29,22 +43,33 @@ describe('requestPasswordReset', () => {
 
     expect(response.errors).toBeUndefined();
     expect(response.data.requestPasswordReset.message).toBe(
-      'If the account exists, a password reset token has been generated.'
+      'If the account exists, a password reset link has been sent.'
     );
 
     await user.reload();
     expect(user.resetPasswordToken).not.toBeNull();
     expect(user.resetPasswordExpiresAt).not.toBeNull();
+
+    await vi.waitFor(() =>
+      expect(sendPasswordResetEmail).toHaveBeenCalledWith({ to: user.email, token: user.resetPasswordToken })
+    );
   });
 
-  it('returns the identical generic message and a null resetToken for a non-existing email', async () => {
+  it('returns the identical generic message and never calls the mailer for a non-existing email', async () => {
     const response = await graphql(REQUEST_RESET_MUTATION, { email: 'no-such-user@example.com' });
 
     expect(response.errors).toBeUndefined();
     expect(response.data.requestPasswordReset.message).toBe(
-      'If the account exists, a password reset token has been generated.'
+      'If the account exists, a password reset link has been sent.'
     );
-    expect(response.data.requestPasswordReset.resetToken).toBeNull();
+    expect(sendPasswordResetEmail).not.toHaveBeenCalled();
+  });
+
+  it('rejects querying the removed resetToken field with a GraphQL validation error', async () => {
+    const response = await graphql(REQUEST_RESET_WITH_TOKEN_FIELD, { email: 'existing-user@example.com' });
+
+    expect(response.errors).toBeDefined();
+    expect(response.data).toBeFalsy();
   });
 });
 
