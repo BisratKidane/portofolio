@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
+import { assertProductionMailConfig } from './assertProductionMailConfig.js';
 import { assertProductionSecrets } from './assertProductionSecrets.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -37,3 +38,9 @@ export const env = {
 };
 
 assertProductionSecrets({ nodeEnv: env.nodeEnv, jwtSecret: env.jwtSecret });
+assertProductionMailConfig({
+  nodeEnv: env.nodeEnv,
+  smtpHost: env.smtpHost,
+  smtpUser: env.smtpUser,
+  smtpPass: env.smtpPass
+});
