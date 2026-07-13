@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Box, Button, Link, Stack, TextField, Typography } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { graphqlRequest } from '../api/graphqlClient.js';
 import AuthShell from '../components/AuthShell.jsx';
 
@@ -11,7 +11,10 @@ const RESET_PASSWORD = `
 `;
 
 export default function ResetPassword() {
-  const [form, setForm] = useState({ token: '', password: '' });
+  const [searchParams] = useSearchParams();
+  const tokenFromUrl = searchParams.get('token');
+
+  const [form, setForm] = useState({ token: tokenFromUrl || '', password: '' });
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,13 +55,15 @@ export default function ResetPassword() {
               Password updated. You can now sign in with your new password.
             </Alert>
           )}
-          <TextField
-            label="Reset token"
-            value={form.token}
-            onChange={(e) => setForm({ ...form, token: e.target.value })}
-            required
-            fullWidth
-          />
+          {!tokenFromUrl && (
+            <TextField
+              label="Reset token"
+              value={form.token}
+              onChange={(e) => setForm({ ...form, token: e.target.value })}
+              required
+              fullWidth
+            />
+          )}
           <TextField
             label="New password"
             type="password"
