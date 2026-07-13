@@ -58,7 +58,11 @@ Plans:
   3. The mailer is called with the exact token persisted to the user's `resetPasswordToken` column (not a stand-in value), and is invoked only for accounts that actually exist.
   4. `requestPasswordReset` still returns the identical generic message whether or not the account exists, and reset-token single-use + 30-minute expiry behavior is regression-proofed by test.
   5. The `ForgotPassword` page no longer renders a raw token or a token-gated "continue to reset" button; it shows a static "check your email" confirmation with a persistent link to `/reset-password`.
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 08-01-PLAN.md — Mailer service (nodemailer, jsonTransport) + production SMTP boot assertion
+- [ ] 08-02-PLAN.md — Frontend: ForgotPassword confirmation panel + ResetPassword URL-token read
+- [ ] 08-03-PLAN.md — Reset-token remediation: schema deletion + resolver mailer wiring + single-use/expiry regression tests
 **UI hint**: yes
 
 ### Phase 9: Session Revocation via passwordChangedAt
