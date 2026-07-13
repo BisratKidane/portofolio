@@ -106,6 +106,7 @@ Docker Compose starts:
    - `DB_PASSWORD`
    - `MYSQL_PASSWORD`
    - `MYSQL_ROOT_PASSWORD`
+   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` (see [Email configuration](#email-configuration))
 3. Start the stack:
 
    ```bash
@@ -138,7 +139,25 @@ If registration shows `Network Error`, the browser could not reach the GraphQL A
 3. Login stores a JWT in browser local storage.
 4. The protected dashboard route sends the JWT in the `Authorization: Bearer <token>` header.
 5. Logout clears the token from local storage and calls the backend logout mutation.
-6. Password reset currently returns a development reset token from the GraphQL mutation so the flow works without email infrastructure. For production, connect `requestPasswordReset` to an email provider and avoid returning the token to the browser.
+6. Password reset is email-based. `requestPasswordReset` never returns the reset token: it emails a single-use link to the account address and always responds with the same generic message, whether or not the account exists. The token is delivered only by email and expires after `RESET_TOKEN_EXPIRES_MINUTES`.
+
+## Email configuration
+
+The mailer only sends real email when `NODE_ENV=production`. In development and test it uses a no-op transport, so no SMTP configuration is needed and no mail leaves the machine — the reset link is logged to the console instead.
+
+In production the backend **refuses to boot** unless `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS` are set. This is deliberate: a silently broken mailer would mean users can never recover their accounts.
+
+| Variable | Required in production | Default | Notes |
+|---|---|---|---|
+| `SMTP_HOST` | yes | _(none)_ | Hostname of the SMTP relay. |
+| `SMTP_PORT` | no | `587` | `587` uses enforced STARTTLS; `465` uses implicit TLS. Both are encrypted — the backend never sends over a cleartext session. |
+| `SMTP_USER` | yes | _(none)_ | SMTP username. Many providers use a literal value such as `apikey`. |
+| `SMTP_PASS` | yes | _(none)_ | SMTP password or API key. |
+| `SMTP_FROM` | no | `no-reply@portfolio.local` | Sender address. Set this to an address on a domain you control, or your relay will reject the message or it will land in spam. |
+
+`CLIENT_URL` is used to build the reset link (`${CLIENT_URL}/reset-password?token=...`), so it must be the public URL of the frontend in production.
+
+The values committed in `env/remote.env` are placeholders. Replace them with real credentials on the server and never commit them.
 
 ## Useful scripts
 
