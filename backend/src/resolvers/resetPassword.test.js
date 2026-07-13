@@ -92,4 +92,45 @@ describe('resetPassword', () => {
     await user.reload();
     expect(user.resetPasswordToken).toBe('a-valid-reset-token');
   });
+
+  it('rejects reusing an already-consumed reset token', async () => {
+    await createTestUser({
+      email: 'single-use@example.com',
+      resetPasswordToken: 'single-use-token',
+      resetPasswordExpiresAt: new Date(Date.now() + 30 * 60 * 1000)
+    });
+
+    const firstResponse = await graphql(RESET_PASSWORD_MUTATION, {
+      token: 'single-use-token',
+      password: 'ValidPass123'
+    });
+    expect(firstResponse.data.resetPassword).toBe(true);
+
+    const secondResponse = await graphql(RESET_PASSWORD_MUTATION, {
+      token: 'single-use-token',
+      password: 'AnotherValid456'
+    });
+    expect(secondResponse.errors[0].message).toBe('The password reset token is invalid or has expired.');
+    expect(secondResponse.data).toBeNull();
+  });
+
+  it('rejects an expired reset token', async () => {
+    const user = await createTestUser({
+      email: 'expired@example.com',
+      resetPasswordToken: 'expired-token',
+      resetPasswordExpiresAt: new Date(Date.now() - 1000)
+    });
+    const passwordHashBefore = user.passwordHash;
+
+    const response = await graphql(RESET_PASSWORD_MUTATION, {
+      token: 'expired-token',
+      password: 'ValidPass123'
+    });
+
+    expect(response.errors[0].message).toBe('The password reset token is invalid or has expired.');
+    expect(response.data).toBeNull();
+
+    await user.reload();
+    expect(user.passwordHash).toBe(passwordHashBefore);
+  });
 });
