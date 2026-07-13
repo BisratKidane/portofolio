@@ -6,6 +6,12 @@ vi.mock('../services/mailer.js', () => ({
 }));
 
 import { sendPasswordResetEmail } from '../services/mailer.js';
+import { MIN_RESET_RESPONSE_MS } from './user.resolver.js';
+
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
 
 const REQUEST_RESET_MUTATION = `
   mutation RequestPasswordReset($email: String!) {
@@ -64,6 +70,37 @@ describe('requestPasswordReset', () => {
     );
     expect(sendPasswordResetEmail).not.toHaveBeenCalled();
   });
+
+  it('does not leak account existence through response latency', async () => {
+    await createTestUser({ email: 'timing-existing@example.com' });
+
+    const sample = async (email) => {
+      const startedAt = performance.now();
+      const response = await graphql(REQUEST_RESET_MUTATION, { email });
+      const elapsed = performance.now() - startedAt;
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data.requestPasswordReset.message).toBe(
+        'If the account exists, a password reset link has been sent.'
+      );
+      return elapsed;
+    };
+
+    const existing = [];
+    const missing = [];
+    for (let i = 0; i < 5; i += 1) {
+      existing.push(await sample('timing-existing@example.com'));
+      missing.push(await sample('no-such-user@example.com'));
+    }
+
+    const existingMedian = median(existing);
+    const missingMedian = median(missing);
+    const tolerance = 25;
+
+    expect(existingMedian).toBeGreaterThanOrEqual(MIN_RESET_RESPONSE_MS - tolerance);
+    expect(missingMedian).toBeGreaterThanOrEqual(MIN_RESET_RESPONSE_MS - tolerance);
+    expect(Math.abs(existingMedian - missingMedian)).toBeLessThan(50);
+  }, 20000);
 
   it('rejects querying the removed resetToken field with a GraphQL validation error', async () => {
     const response = await graphql(REQUEST_RESET_WITH_TOKEN_FIELD, { email: 'existing-user@example.com' });

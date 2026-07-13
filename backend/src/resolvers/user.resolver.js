@@ -2,8 +2,16 @@ import { createResetToken, requireAdmin, requireAuth, resetTokenExpiry, signToke
 import { assertPasswordStrength } from '../utils/passwordPolicy.js';
 import { sendPasswordResetEmail } from '../services/mailer.js';
 
+const RESET_REQUEST_MESSAGE = 'If the account exists, a password reset link has been sent.';
+
+export const MIN_RESET_RESPONSE_MS = 250;
+
 function serializeUser(user) {
   return user ? user.get({ plain: true }) : null;
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export const userResolvers = {
@@ -50,20 +58,32 @@ export const userResolvers = {
       return true;
     },
     requestPasswordReset: async (_parent, { email }, { models }) => {
-      const user = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
-      const message = 'If the account exists, a password reset link has been sent.';
-      if (!user) return { message };
+      const startedAt = Date.now();
 
-      const resetToken = createResetToken();
-      user.resetPasswordToken = resetToken;
-      user.resetPasswordExpiresAt = resetTokenExpiry();
-      await user.save();
+      const issueResetToken = async () => {
+        const user = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
+        if (!user) return;
 
-      sendPasswordResetEmail({ to: user.email, token: resetToken }).catch((err) => {
-        console.error('Failed to send password reset email:', err);
-      });
+        const resetToken = createResetToken();
+        user.resetPasswordToken = resetToken;
+        user.resetPasswordExpiresAt = resetTokenExpiry();
+        await user.save();
 
-      return { message };
+        sendPasswordResetEmail({ to: user.email, token: resetToken }).catch((err) => {
+          console.error('Failed to send password reset email:', err);
+        });
+      };
+
+      try {
+        await issueResetToken();
+      } catch (err) {
+        console.error('Failed to issue password reset token:', err);
+      }
+
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_RESET_RESPONSE_MS) await delay(MIN_RESET_RESPONSE_MS - elapsed);
+
+      return { message: RESET_REQUEST_MESSAGE };
     },
     resetPassword: async (_parent, { token, password }, { models }) => {
       const user = await models.User.findOne({ where: { resetPasswordToken: token } });
