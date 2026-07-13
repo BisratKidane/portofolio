@@ -26,7 +26,7 @@ Full detail archived in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 **Milestone Goal:** Remediate the security bugs deferred from v1.0 — closing the account-takeover and brute-force vectors — while keeping the CI-enforced test suite green. Every fix is TDD'd red-green-refactor; v1.0 tests that document a bug are flipped to assert the fixed behavior.
 
 - [x] **Phase 7: Foundation Hardening — CORS, JWT Fail-Fast & Password Strength** - Independent, low-risk fixes that prove the v1.1 TDD rhythm and stand up an HTTP-level test harness reused by later phases (completed 2026-07-12)
-- [ ] **Phase 8: Mailer Abstraction & Reset-Token Remediation** - Reset tokens are delivered via a pluggable mailer and dropped from the API entirely
+- [x] **Phase 8: Mailer Abstraction & Reset-Token Remediation** - Reset tokens are delivered via a pluggable mailer and dropped from the API entirely (completed 2026-07-13)
 - [ ] **Phase 9: Session Revocation via passwordChangedAt** - A password reset invalidates JWTs issued beforehand
 - [ ] **Phase 10: Rate Limiting on Auth Mutations** - login/register/requestPasswordReset are throttled per-IP without affecting normal usage
 - [ ] **Phase 11: Email Verification & ADMIN Race Fix** - Registration requires proven email ownership before a session or the ADMIN role is granted
@@ -74,7 +74,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 08-03-PLAN.md — Reset-token remediation: schema deletion + resolver mailer wiring + single-use/expiry regression tests
+- [x] 08-03-PLAN.md — Reset-token remediation: schema deletion + resolver mailer wiring + single-use/expiry regression tests
 
 **UI hint**: yes
 
@@ -134,7 +134,7 @@ Plans:
 | 5. Frontend Component Tests | v1.0 | 3/3 | Complete | 2026-07-12 |
 | 6. Root Orchestration & CI Pipeline | v1.0 | 2/2 | Complete | 2026-07-12 |
 | 7. Foundation Hardening — CORS, JWT Fail-Fast & Password Strength | v1.1 | 2/2 | Complete   | 2026-07-12 |
-| 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 2/3 | In Progress|  |
+| 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 3/3 | Complete   | 2026-07-13 |
 | 9. Session Revocation via passwordChangedAt | v1.1 | 0/? | Not started | - |
 | 10. Rate Limiting on Auth Mutations | v1.1 | 0/? | Not started | - |
 | 11. Email Verification & ADMIN Race Fix | v1.1 | 0/? | Not started | - |
