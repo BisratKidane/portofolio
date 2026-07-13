@@ -1,15 +1,21 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env.js';
 
-const transporter = nodemailer.createTransport(
-  env.nodeEnv === 'production'
-    ? {
-        host: env.smtpHost,
-        port: env.smtpPort,
-        auth: { user: env.smtpUser, pass: env.smtpPass }
-      }
-    : { jsonTransport: true }
-);
+export function buildTransportOptions({ nodeEnv, smtpHost, smtpPort, smtpUser, smtpPass }) {
+  if (nodeEnv !== 'production') return { jsonTransport: true };
+
+  const port = Number(smtpPort);
+
+  return {
+    host: smtpHost,
+    port,
+    secure: port === 465,
+    requireTLS: true,
+    auth: { user: smtpUser, pass: smtpPass }
+  };
+}
+
+const transporter = nodemailer.createTransport(buildTransportOptions(env));
 
 export async function sendMail({ to, subject, text, html }) {
   const result = await transporter.sendMail({ from: env.smtpFrom, to, subject, text, html });
