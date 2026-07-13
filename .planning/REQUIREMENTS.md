@@ -20,7 +20,7 @@
 
 ### Mailer Abstraction (MAIL)
 
-- [ ] **MAIL-01**: A pluggable mailer module exposes a single `sendMail({ to, subject, text/html })` interface that logs the message to the server console in dev/test (no network egress) and is wired for a real SMTP provider in production without a code rewrite.
+- [x] **MAIL-01**: A pluggable mailer module exposes a single `sendMail({ to, subject, text/html })` interface that logs the message to the server console in dev/test (no network egress) and is wired for a real SMTP provider in production without a code rewrite.
 - [ ] **MAIL-02**: Backend tests can assert "an email was sent" (recipient + token/link) at the mailer boundary without a live transport.
 
 ### JWT Secret Fail-Fast (SECRET) — Fix #2
