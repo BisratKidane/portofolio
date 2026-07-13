@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
+import { assertProductionMailConfig } from './assertProductionMailConfig.js';
 import { assertProductionSecrets } from './assertProductionSecrets.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,6 +23,11 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET || 'change-me',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1d',
   resetTokenExpiresMinutes: Number(process.env.RESET_TOKEN_EXPIRES_MINUTES || 30),
+  smtpHost: process.env.SMTP_HOST || '',
+  smtpPort: Number(process.env.SMTP_PORT || 587),
+  smtpUser: process.env.SMTP_USER || '',
+  smtpPass: process.env.SMTP_PASS || '',
+  smtpFrom: process.env.SMTP_FROM || 'no-reply@portfolio.local',
   database: {
     host: process.env.DB_HOST || '127.0.0.1',
     port: Number(process.env.DB_PORT || 3306),
@@ -32,3 +38,9 @@ export const env = {
 };
 
 assertProductionSecrets({ nodeEnv: env.nodeEnv, jwtSecret: env.jwtSecret });
+assertProductionMailConfig({
+  nodeEnv: env.nodeEnv,
+  smtpHost: env.smtpHost,
+  smtpUser: env.smtpUser,
+  smtpPass: env.smtpPass
+});
