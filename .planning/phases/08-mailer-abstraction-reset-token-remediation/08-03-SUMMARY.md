@@ -126,3 +126,7 @@ This is flagged for visibility, not treated as a plan failure — the substantiv
 ---
 *Phase: 08-mailer-abstraction-reset-token-remediation*
 *Completed: 2026-07-13*
+
+## Self-Check: PASSED
+
+All modified files exist on disk (`backend/src/schemas/user.schema.js`, `backend/src/resolvers/user.resolver.js`, `backend/src/resolvers/resetPassword.test.js`); all task commits (`5bee0dc`, `fe38ec7`, `9b0cafc`) and the summary commit (`e4d87b2`) exist in git history.
