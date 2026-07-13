@@ -4,8 +4,8 @@ milestone: v1.1
 milestone_name: Security Remediation
 status: executing
 stopped_at: Phase 8 context gathered
-last_updated: "2026-07-13T17:57:04.852Z"
-last_activity: 2026-07-13 -- Phase 08 planning complete
+last_updated: "2026-07-13T17:59:01.764Z"
+last_activity: 2026-07-13 -- Phase 08 execution started
 progress:
   total_phases: 5
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-12)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 8 — mailer abstraction & reset token remediation
+**Current focus:** Phase 08 — mailer-abstraction-reset-token-remediation
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-13 -- Phase 08 planning complete
+Phase: 08 (mailer-abstraction-reset-token-remediation) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 08
+Last activity: 2026-07-13 -- Phase 08 execution started
 
 Progress: [░░░░░░░░░░] 0%
 

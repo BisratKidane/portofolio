@@ -69,8 +69,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — Mailer service (nodemailer, jsonTransport) + production SMTP boot assertion
-- [ ] 08-02-PLAN.md — Frontend: ForgotPassword confirmation panel + ResetPassword URL-token read
+- [x] 08-01-PLAN.md — Mailer service (nodemailer, jsonTransport) + production SMTP boot assertion
+- [x] 08-02-PLAN.md — Frontend: ForgotPassword confirmation panel + ResetPassword URL-token read
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -134,7 +134,7 @@ Plans:
 | 5. Frontend Component Tests | v1.0 | 3/3 | Complete | 2026-07-12 |
 | 6. Root Orchestration & CI Pipeline | v1.0 | 2/2 | Complete | 2026-07-12 |
 | 7. Foundation Hardening — CORS, JWT Fail-Fast & Password Strength | v1.1 | 2/2 | Complete   | 2026-07-12 |
-| 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 0/? | Not started | - |
+| 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 2/3 | In Progress|  |
 | 9. Session Revocation via passwordChangedAt | v1.1 | 0/? | Not started | - |
 | 10. Rate Limiting on Auth Mutations | v1.1 | 0/? | Not started | - |
 | 11. Email Verification & ADMIN Race Fix | v1.1 | 0/? | Not started | - |
