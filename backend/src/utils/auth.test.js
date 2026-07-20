@@ -7,7 +7,10 @@ import {
   requireAuth,
   requireAdmin,
   createResetToken,
-  resetTokenExpiry
+  resetTokenExpiry,
+  createVerificationToken,
+  hashVerificationToken,
+  verificationTokenExpiry
 } from './auth.js';
 
 describe('signToken', () => {
@@ -25,12 +28,12 @@ describe('getUserFromRequest', () => {
     const token = signToken({ id: 7, role: 'USER' });
     const req = { headers: { authorization: `Bearer ${token}` } };
     let calledWith;
-    const models = { User: { findByPk: (id) => { calledWith = id; return { id, role: 'USER' }; } } };
+    const models = { User: { findByPk: (id) => { calledWith = id; return { id, role: 'USER', emailVerified: true }; } } };
 
     const result = await getUserFromRequest(req, models);
 
     expect(calledWith).toBe(7);
-    expect(result).toEqual({ id: 7, role: 'USER' });
+    expect(result).toEqual({ id: 7, role: 'USER', emailVerified: true });
   });
 
   it('returns null without invoking findByPk when there is no Authorization header', async () => {
@@ -95,7 +98,7 @@ describe('getUserFromRequest — passwordChangedAt revocation (SESS-03)', () => 
     // the same-second boundary, and must not accidentally expire relative to the real wall clock.
     const token = jwt.sign({ sub: 7, role: 'USER', iat: iatSameSecond }, env.jwtSecret, { expiresIn: '3650d' });
     const req = { headers: { authorization: `Bearer ${token}` } };
-    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', passwordChangedAt: changedAt }) } };
+    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', passwordChangedAt: changedAt, emailVerified: true }) } };
 
     const result = await getUserFromRequest(req, models);
 
@@ -118,11 +121,33 @@ describe('getUserFromRequest — passwordChangedAt revocation (SESS-03)', () => 
   it('does not revoke when passwordChangedAt is NULL (D-05 — no backfill)', async () => {
     const token = signToken({ id: 7, role: 'USER' });
     const req = { headers: { authorization: `Bearer ${token}` } };
-    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', passwordChangedAt: null }) } };
+    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', passwordChangedAt: null, emailVerified: true }) } };
 
     const result = await getUserFromRequest(req, models);
 
     expect(result).not.toBeNull();
+  });
+});
+
+describe('getUserFromRequest — email verification gate (VERIFY-05)', () => {
+  it('resolves the user when emailVerified is true for an otherwise-valid token', async () => {
+    const token = signToken({ id: 7, role: 'USER' });
+    const req = { headers: { authorization: `Bearer ${token}` } };
+    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', emailVerified: true }) } };
+
+    const result = await getUserFromRequest(req, models);
+
+    expect(result).not.toBeNull();
+  });
+
+  it('returns null when emailVerified is false, even with a valid, unexpired token', async () => {
+    const token = signToken({ id: 7, role: 'USER' });
+    const req = { headers: { authorization: `Bearer ${token}` } };
+    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', emailVerified: false }) } };
+
+    const result = await getUserFromRequest(req, models);
+
+    expect(result).toBeNull();
   });
 });
 
@@ -171,5 +196,34 @@ describe('resetTokenExpiry', () => {
 
     expect(expiry.getTime()).toBeGreaterThan(now);
     expect(expiry.getTime()).toBeLessThanOrEqual(now + (env.resetTokenExpiresMinutes + 1) * 60000);
+  });
+});
+
+describe('createVerificationToken', () => {
+  it('returns a 64-char hex string', () => {
+    expect(createVerificationToken()).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('returns a different value on each call', () => {
+    expect(createVerificationToken()).not.toBe(createVerificationToken());
+  });
+});
+
+describe('hashVerificationToken', () => {
+  it('is deterministic for a fixed input token', () => {
+    const token = 'a'.repeat(64);
+
+    expect(hashVerificationToken(token)).toBe(hashVerificationToken(token));
+    expect(hashVerificationToken(token)).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe('verificationTokenExpiry', () => {
+  it('returns a Date roughly 24h in the future', () => {
+    const expiry = verificationTokenExpiry();
+    const now = Date.now();
+
+    expect(expiry.getTime()).toBeGreaterThan(now);
+    expect(expiry.getTime()).toBeLessThanOrEqual(now + 24 * 60 * 60 * 1000 + 60000);
   });
 });

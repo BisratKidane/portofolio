@@ -83,3 +83,21 @@ describe('beforeUpdate passwordChangedAt stamping hook (SESS-01)', () => {
     expect(user.passwordChangedAt).toBeFalsy();
   });
 });
+
+describe('emailVerified / emailVerificationToken / emailVerificationExpiresAt columns (VERIFY-01)', () => {
+  it('defaults emailVerified to false on build() when not provided', () => {
+    const user = User.build({
+      name: 'Test',
+      email: 'test@example.com',
+      passwordHash: 'Password123!',
+      role: 'USER'
+    });
+
+    expect(user.emailVerified).toBe(false);
+  });
+
+  it('declares emailVerificationToken and emailVerificationExpiresAt as nullable', () => {
+    expect(User.rawAttributes.emailVerificationToken.allowNull).toBe(true);
+    expect(User.rawAttributes.emailVerificationExpiresAt.allowNull).toBe(true);
+  });
+});

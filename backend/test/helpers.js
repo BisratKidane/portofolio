@@ -33,6 +33,7 @@ export async function createTestUser(overrides = {}) {
     email: `test-${Date.now()}@example.com`,
     passwordHash: 'Password123!',
     role: 'USER',
+    emailVerified: true,
     ...overrides
   });
 }
