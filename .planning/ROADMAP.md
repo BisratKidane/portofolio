@@ -141,7 +141,27 @@ Plans:
   4. `resendVerificationEmail(email)` reissues a fresh, single-use, 24-hour-expiry token for an unverified account, so a lost/expired verification email is recoverable without re-registration.
   5. The frontend `/verify-email` route reads the token, calls `verifyEmail`, and logs the user in on success; `Register` shows a "check your email" state instead of auto-navigating to the dashboard; `AuthContext` handles the message-only register response without setting a session. Manual acceptance: booting the backend against a pre-existing, non-force-synced local dev database with the new `emailVerified`/`emailVerificationToken`/`emailVerificationExpiresAt` columns produces zero `Unknown column` SQL errors.
 
-**Plans**: TBD
+**Plans**: 7 plans
+Plans:
+**Wave 1**
+
+- [ ] 11-01-PLAN.md — User model email-verification columns + auth.js token helpers + central verified-gate (VERIFY-01/05/06)
+- [ ] 11-02-PLAN.md — Mailer sendVerificationEmail + GraphQL schema contracts + resendVerificationEmail rate limit (VERIFY-02/03/07 groundwork)
+- [ ] 11-06-PLAN.md — AuthContext message-only register + verifyEmail action (VERIFY-08 contract)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 11-03-PLAN.md — Manual migration SQL + README documentation (VERIFY-01 / SC-5 groundwork)
+- [ ] 11-04-PLAN.md — register creates an unverified user + login rejects unverified accounts (VERIFY-02/05/06)
+
+**Wave 3** *(blocked on Wave 2 completion — shares user.resolver.js with 11-04)*
+
+- [ ] 11-05-PLAN.md — verifyEmail (race-safe ADMIN assignment) + resendVerificationEmail (VERIFY-03/04/06/07)
+
+**Wave 4** *(blocked on Waves 1-3 — runs last so the manual checkpoint proves the whole stack)*
+
+- [ ] 11-07-PLAN.md — Register confirmation state + /verify-email route + manual migration boot-and-verify (VERIFY-08 / SC-5)
+
 **UI hint**: yes
 
 ## Progress
@@ -158,4 +178,4 @@ Plans:
 | 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 3/3 | Complete   | 2026-07-13 |
 | 9. Session Revocation via passwordChangedAt | v1.1 | 3/3 | Complete   | 2026-07-20 |
 | 10. Rate Limiting on Auth Mutations | v1.1 | 3/3 | Complete    | 2026-07-20 |
-| 11. Email Verification & ADMIN Race Fix | v1.1 | 0/? | Not started | - |
+| 11. Email Verification & ADMIN Race Fix | v1.1 | 0/7 | Not started | - |
