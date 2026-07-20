@@ -75,6 +75,15 @@ describe('getUserFromRequest', () => {
 
     expect(result).toBeNull();
   });
+
+  it('propagates a DB/infrastructure error from findByPk instead of swallowing it as unauthenticated (WR-01)', async () => {
+    const token = signToken({ id: 7, role: 'USER' });
+    const req = { headers: { authorization: `Bearer ${token}` } };
+    const dbError = new Error('connection pool exhausted');
+    const models = { User: { findByPk: async () => { throw dbError; } } };
+
+    await expect(getUserFromRequest(req, models)).rejects.toThrow('connection pool exhausted');
+  });
 });
 
 describe('getUserFromRequest — passwordChangedAt revocation (SESS-03)', () => {

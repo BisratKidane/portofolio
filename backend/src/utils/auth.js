@@ -11,20 +11,22 @@ export async function getUserFromRequest(req, models) {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return null;
 
+  let payload;
   try {
-    const payload = jwt.verify(token, env.jwtSecret);
-    const user = await models.User.findByPk(payload.sub);
-    if (!user) return null;
-
-    if (user.passwordChangedAt) {
-      const changedAtSeconds = Math.floor(user.passwordChangedAt.getTime() / 1000);
-      if (payload.iat < changedAtSeconds) return null;
-    }
-
-    return user;
+    payload = jwt.verify(token, env.jwtSecret);
   } catch {
     return null;
   }
+
+  const user = await models.User.findByPk(payload.sub); // DB errors propagate as real errors
+  if (!user) return null;
+
+  if (user.passwordChangedAt) {
+    const changedAtSeconds = Math.floor(user.passwordChangedAt.getTime() / 1000);
+    if (payload.iat < changedAtSeconds) return null;
+  }
+
+  return user;
 }
 
 export function requireAuth(user) {
