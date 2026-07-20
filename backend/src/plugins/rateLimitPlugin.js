@@ -18,13 +18,42 @@ export function enforceRateLimit(clientIp, fieldNames) {
   }
 }
 
+function collectRootFieldNames(selections, fragments, visited = new Set()) {
+  const fieldNames = [];
+
+  for (const selection of selections) {
+    if (selection.kind === 'Field') {
+      // A root field of the operation — do NOT recurse into its sub-selections
+      // (those are response fields, not rate-limited operations).
+      fieldNames.push(selection.name.value);
+    } else if (selection.kind === 'InlineFragment') {
+      fieldNames.push(...collectRootFieldNames(selection.selectionSet.selections, fragments, visited));
+    } else if (selection.kind === 'FragmentSpread') {
+      const fragmentName = selection.name.value;
+      if (visited.has(fragmentName)) continue;
+      visited.add(fragmentName);
+      const fragment = fragments[fragmentName];
+      if (fragment) {
+        fieldNames.push(...collectRootFieldNames(fragment.selectionSet.selections, fragments, visited));
+      }
+    }
+  }
+
+  return fieldNames;
+}
+
 export const rateLimitPlugin = {
   async requestDidStart() {
     return {
-      async didResolveOperation({ contextValue, operation }) {
-        const fieldNames = operation.selectionSet.selections
-          .filter((selection) => selection.kind === 'Field')
-          .map((selection) => selection.name.value);
+      async didResolveOperation({ contextValue, document, operation }) {
+        const fragments = {};
+        for (const definition of document.definitions) {
+          if (definition.kind === 'FragmentDefinition') {
+            fragments[definition.name.value] = definition;
+          }
+        }
+
+        const fieldNames = collectRootFieldNames(operation.selectionSet.selections, fragments);
 
         enforceRateLimit(contextValue.clientIp, fieldNames);
       }
