@@ -215,6 +215,22 @@ This project has no migration framework. `sequelize.sync()` creates tables for b
 
 3. Reset that same user's password through the app, then immediately log in again with the new password, and confirm the new session authenticates successfully.
 
+### Add email verification columns to users (Phase 11 / VERIFY-01)
+
+1. Apply the migration against your database, using the `DB_USER`/`DB_PASSWORD`/`DB_NAME` values from the active env file:
+
+   ```bash
+   docker compose --env-file env/local.env exec -T mysql mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < backend/migrations/manual/011-add-email-verification-columns.sql
+   ```
+
+   Or run the equivalent statement with any MySQL client pointed at your `DB_HOST`/`DB_PORT`/`DB_NAME`.
+
+2. Boot the backend against that same database (`npm run dev` or `npm start`) and confirm:
+   - No `Unknown column 'emailVerified' in 'field list'` error appears anywhere in the startup/request logs.
+   - `curl http://localhost:4000/health` returns `{"status":"ok"}`.
+
+3. The full functional boot-and-verify (login gate against unverified accounts, and the end-to-end register/verify-email flow) happens once the whole phase's resolvers and frontend route land — see Plan 11-07's final manual-verification task for that proof rather than repeating it here.
+
 ## Project structure
 
 ```text
