@@ -51,4 +51,28 @@ describe('login', () => {
     expect(errors[0].message).toBe('Invalid email or password.');
     expect(data).toBeNull();
   });
+
+  it('rejects a correct password for an unverified account', async () => {
+    await createTestUser({ email: 'unverified@example.com', emailVerified: false });
+
+    const { data, errors } = await graphql(LOGIN_MUTATION, {
+      email: 'unverified@example.com',
+      password: 'Password123!'
+    });
+
+    expect(errors[0].message).toBe('Please verify your email before signing in.');
+    expect(data).toBeNull();
+  });
+
+  it('rejects a wrong password for an unverified account with the credentials message, not the verify message', async () => {
+    await createTestUser({ email: 'unverified@example.com', emailVerified: false });
+
+    const { data, errors } = await graphql(LOGIN_MUTATION, {
+      email: 'unverified@example.com',
+      password: 'WrongPassword!'
+    });
+
+    expect(errors[0].message).toBe('Invalid email or password.');
+    expect(data).toBeNull();
+  });
 });
