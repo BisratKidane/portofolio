@@ -100,6 +100,8 @@ Changes to the app can be made with confidence — auth and core flows are prote
 
 **Shipped: v1.0 Full-Stack Testing Safety Net (2026-07-12).** The app now has an automated test suite across the whole stack — 51 tests (backend 39: unit + integration; frontend 12: component), a Vitest runner in each workspace, an isolated MySQL test database provisioned/torn down per run, a single root `npm test`, and a GitHub Actions CI pipeline that runs and enforces the suite on every push/PR. `main` branch protection requires the `test` check, so a red build blocks merge (proven live). No application runtime behavior was changed; known security bugs are documented in `KNOWN-ISSUES.md`, not fixed. Delivered via PR #2 (family → main).
 
+**In progress: v1.1 Security Remediation.** Phase 9 complete (2026-07-20): session revocation via `passwordChangedAt` — a password reset now invalidates JWTs issued beforehand (`getUserFromRequest` rejects tokens whose `iat` predates the user's `passwordChangedAt`, null-safe seconds-floor compare), and password-reset tokens are stored hashed (sha256) at rest (RESET-06). Validated SESS-01, SESS-02, SESS-03, RESET-06; backend suite at 75 tests, all green.
+
 ## Next Milestone Goals
 
 Candidate directions after v1.1 (to be refined via `/gsd:new-milestone`):
@@ -125,4 +127,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-12 — v1.1 Security Remediation milestone started*
+*Last updated: 2026-07-20 — Phase 9 (Session Revocation via passwordChangedAt) complete*
