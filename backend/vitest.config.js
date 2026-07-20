@@ -9,6 +9,7 @@ process.env.NODE_ENV = 'test';
 export default defineConfig({
   test: {
     globalSetup: ['./test/globalSetup.js'],
+    setupFiles: ['./test/setupRateLimit.js'],
     pool: 'forks',
     fileParallelism: false
   }

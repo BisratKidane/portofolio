@@ -91,9 +91,9 @@ describe('requestPasswordReset', () => {
   it('does not leak account existence through response latency', async () => {
     await createTestUser({ email: 'timing-existing@example.com' });
 
-    const sample = async (email) => {
+    const sample = async (email, clientIp) => {
       const startedAt = performance.now();
-      const response = await graphql(REQUEST_RESET_MUTATION, { email });
+      const response = await graphql(REQUEST_RESET_MUTATION, { email }, null, clientIp);
       const elapsed = performance.now() - startedAt;
 
       expect(response.errors).toBeUndefined();
@@ -106,8 +106,8 @@ describe('requestPasswordReset', () => {
     const existing = [];
     const missing = [];
     for (let i = 0; i < 5; i += 1) {
-      existing.push(await sample('timing-existing@example.com'));
-      missing.push(await sample('no-such-user@example.com'));
+      existing.push(await sample('timing-existing@example.com', `10.0.0.${i}`));
+      missing.push(await sample('no-such-user@example.com', `10.0.1.${i}`));
     }
 
     const existingMedian = median(existing);
