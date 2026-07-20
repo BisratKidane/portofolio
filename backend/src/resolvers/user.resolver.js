@@ -1,4 +1,4 @@
-import { createResetToken, requireAdmin, requireAuth, resetTokenExpiry, signToken } from '../utils/auth.js';
+import { createResetToken, hashResetToken, requireAdmin, requireAuth, resetTokenExpiry, signToken } from '../utils/auth.js';
 import { assertPasswordStrength } from '../utils/passwordPolicy.js';
 import { sendPasswordResetEmail } from '../services/mailer.js';
 
@@ -65,7 +65,7 @@ export const userResolvers = {
         if (!user) return;
 
         const resetToken = createResetToken();
-        user.resetPasswordToken = resetToken;
+        user.resetPasswordToken = hashResetToken(resetToken);
         user.resetPasswordExpiresAt = resetTokenExpiry();
         await user.save();
 
@@ -86,7 +86,7 @@ export const userResolvers = {
       return { message: RESET_REQUEST_MESSAGE };
     },
     resetPassword: async (_parent, { token, password }, { models }) => {
-      const user = await models.User.findOne({ where: { resetPasswordToken: token } });
+      const user = await models.User.findOne({ where: { resetPasswordToken: hashResetToken(token) } });
       if (!user || !user.resetPasswordExpiresAt || user.resetPasswordExpiresAt < new Date()) {
         throw new Error('The password reset token is invalid or has expired.');
       }

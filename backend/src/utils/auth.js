@@ -32,6 +32,10 @@ export function createResetToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
+export function hashResetToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
 export function resetTokenExpiry() {
   return new Date(Date.now() + env.resetTokenExpiresMinutes * 60 * 1000);
 }
