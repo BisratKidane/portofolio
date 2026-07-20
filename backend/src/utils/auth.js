@@ -13,7 +13,15 @@ export async function getUserFromRequest(req, models) {
 
   try {
     const payload = jwt.verify(token, env.jwtSecret);
-    return models.User.findByPk(payload.sub);
+    const user = await models.User.findByPk(payload.sub);
+    if (!user) return null;
+
+    if (user.passwordChangedAt) {
+      const changedAtSeconds = Math.floor(user.passwordChangedAt.getTime() / 1000);
+      if (payload.iat < changedAtSeconds) return null;
+    }
+
+    return user;
   } catch {
     return null;
   }
