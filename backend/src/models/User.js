@@ -41,6 +41,11 @@ export function initUser(sequelize) {
       resetPasswordExpiresAt: {
         type: DataTypes.DATE,
         allowNull: true
+      },
+      passwordChangedAt: {
+        type: DataTypes.DATE(3),
+        allowNull: true,
+        defaultValue: null
       }
     },
     {
@@ -55,7 +60,10 @@ export function initUser(sequelize) {
           if (user.passwordHash) user.passwordHash = await bcrypt.hash(user.passwordHash, 12);
         },
         async beforeUpdate(user) {
-          if (user.changed('passwordHash')) user.passwordHash = await bcrypt.hash(user.passwordHash, 12);
+          if (user.changed('passwordHash')) {
+            user.passwordHash = await bcrypt.hash(user.passwordHash, 12);
+            user.passwordChangedAt = new Date();
+          }
         }
       }
     }
