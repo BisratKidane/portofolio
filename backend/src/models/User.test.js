@@ -47,3 +47,39 @@ describe('beforeCreate hashing hook', () => {
     expect(user.isNewRecord).toBe(true);
   });
 });
+
+describe('beforeUpdate passwordChangedAt stamping hook (SESS-01)', () => {
+  it('stamps passwordChangedAt with the current time when passwordHash changes', async () => {
+    const user = User.build({
+      name: 'Test',
+      email: 'test@example.com',
+      passwordHash: 'Password123!',
+      role: 'USER'
+    });
+    user.set('passwordHash', 'NewPassword123!');
+
+    await User.runHooks('beforeUpdate', user);
+
+    expect(user.passwordChangedAt).toBeInstanceOf(Date);
+    expect(Date.now() - user.passwordChangedAt.getTime()).toBeLessThan(5000);
+  });
+
+  it('does not stamp passwordChangedAt when an unrelated field changes', async () => {
+    const user = User.build({
+      name: 'Test',
+      email: 'test@example.com',
+      passwordHash: 'Password123!',
+      role: 'USER'
+    });
+    // Simulate an already-persisted record (build() marks every provided
+    // attribute as changed for a brand-new instance) so that only the
+    // subsequent name update is tracked as dirty.
+    user.changed('passwordHash', false);
+    user.set('name', 'Updated Name');
+
+    await User.runHooks('beforeUpdate', user);
+
+    expect(user.changed('passwordHash')).toBe(false);
+    expect(user.passwordChangedAt).toBeFalsy();
+  });
+});
