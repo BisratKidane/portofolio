@@ -1,0 +1,5 @@
+# Deferred Items — Phase 11
+
+## Plan 11-02
+
+- **Shared MySQL test-DB race across parallel worktree agents (out of scope):** `npm test --workspace backend` intermittently fails with `Table 'portofolio_test.users' doesn't exist` or destroy/update races in `resetPassword.test.js` / `sessionRevocation.test.js`. Confirmed via `ps aux` that another vitest process (running from the main repo path, a sibling worktree agent) was executing concurrently against the same shared `portofolio_test` database (env/test.env DB_NAME is not worktree-scoped). `globalSetup.js`'s `sync({ force: true })` + teardown `drop()` collide across concurrently-running agents sharing one MySQL container. Not caused by this plan's changes (pure additive SDL/mailer/config edits); verified independently via a standalone schema-build check (`makeExecutableSchema` succeeds) and the targeted `mailer.test.js` run (passes cleanly). Recommend: give each parallel worktree agent's test run a unique `DB_NAME` (e.g. suffixed with worktree id) or serialize backend test runs across concurrent phase-11 wave agents.

@@ -22,6 +22,10 @@ export const userTypeDefs = `#graphql
     message: String!
   }
 
+  type RegisterPayload {
+    message: String!
+  }
+
   type Dashboard {
     message: String!
     user: User!
@@ -40,5 +44,7 @@ export const userTypeDefs = `#graphql
     logout: Boolean!
     requestPasswordReset(email: String!): PasswordResetPayload!
     resetPassword(token: String!, password: String!): Boolean!
+    verifyEmail(token: String!): AuthPayload!
+    resendVerificationEmail(email: String!): PasswordResetPayload!
   }
 `;
