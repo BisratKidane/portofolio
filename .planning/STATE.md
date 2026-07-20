@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Security Remediation
 status: executing
-stopped_at: Phase 11 context gathered
-last_updated: "2026-07-20T19:40:04.237Z"
+stopped_at: 11-07 Tasks 1-2 complete (Register confirmation panel, VerifyEmail page/route); paused at Task 3 human-action checkpoint (apply Plan 11-03 migration + manual flow verification)
+last_updated: "2026-07-20T21:01:09.227Z"
 last_activity: 2026-07-20 -- Phase 11 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 18
-  completed_plans: 11
-  percent: 61
+  completed_plans: 17
+  percent: 80
 ---
 
 # Project State
@@ -91,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 10]: [Phase 10]: Plan 02: rate-limit field identification uses the parsed GraphQL operation AST (operation.selectionSet.selections), never the client-supplied operationName string — Closes an operation-renaming/anonymizing bypass vector; verified by a 0-match grep on 'operationName' in rateLimitPlugin.js
 - [Phase 10]: Plan 02: server.js sets trust proxy = 1 unconditionally and derives clientIp: req.ip onto contextValue; the rate-limit plugin never reads req directly — Matches the file's flat, always-on middleware style; keeps the plugin HTTP-free/testable; documented in README as a hard single-reverse-proxy deployment constraint (D-04)
 - [Phase 10]: Plan 03: rate-limit test-harness bypass-resistance and enumeration-parity proofs (RATE-01..05) all driven via executeOperation(), zero HTTP boot — Closes T-10-03a (enumeration oracle) and T-10-03b (operation-rename bypass) with dedicated tests
+- [Phase 11]: Plan 07 Task 1: Register.jsx removes useNavigate entirely and renders a check-your-email confirmation Alert instead of navigating (D-15) — closes the client-side half of the ADMIN-race elevation-of-privilege threat (T-11-07a)
+- [Phase 11]: Plan 07 Task 2: /verify-email is registered as a ProtectedRoute sibling (not nested inside it), reads ?token= via useSearchParams, and auto-calls verifyEmail(token) on mount — establishes the session and redirects to /dashboard on success, shows a recoverable error + Return to sign in link on failure or missing token (D-14)
 
 ### Pending Todos
 
@@ -101,6 +103,7 @@ None yet.
 - Phase 7's JWT fail-fast check must be gated exclusively on `NODE_ENV === 'production'` — an ungated check would crash the entire test/CI suite (env/test.env uses a deliberately weak shared secret).
 - Phase 9/11 column additions are invisible-safe in CI (globalSetup force-recreates tables) but will break any real, already-provisioned dev/prod database via `sequelize.sync()` not altering existing tables — each phase's plan must include the manual boot-and-verify step, not rely on green tests alone.
 - Phase 11 (email verification) breaks several v1.0 tests by design (`register.test.js` JWT-usability assertions, `Register.test.jsx` auto-navigate assertion, `createTestUser()` default) — these flips are expected TDD red steps, not regressions.
+- Plan 11-07 Task 3 (checkpoint:human-action, gate=blocking) is unresolved: human must apply backend/migrations/manual/011-add-email-verification-columns.sql to their real, pre-existing, non-force-synced local dev database and manually verify the 8-step register -> verify -> dashboard flow before Plan 11-07 / Phase 11 can be marked complete (ROADMAP SC-5).
 
 ## Deferred Items
 
@@ -116,9 +119,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T18:44:43.867Z
-Stopped at: Phase 11 context gathered
-Resume file: .planning/phases/11-email-verification-admin-race-fix/11-CONTEXT.md
+Last session: 2026-07-20T21:01:09.221Z
+Stopped at: 11-07 Tasks 1-2 complete (Register confirmation panel, VerifyEmail page/route); paused at Task 3 human-action checkpoint (apply Plan 11-03 migration + manual flow verification)
+Resume file: .planning/phases/11-email-verification-admin-race-fix/11-07-PLAN.md
 
 ## Operator Next Steps
 
