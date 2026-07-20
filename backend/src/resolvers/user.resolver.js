@@ -1,6 +1,16 @@
-import { createResetToken, hashResetToken, requireAdmin, requireAuth, resetTokenExpiry, signToken } from '../utils/auth.js';
+import {
+  createResetToken,
+  createVerificationToken,
+  hashResetToken,
+  hashVerificationToken,
+  requireAdmin,
+  requireAuth,
+  resetTokenExpiry,
+  signToken,
+  verificationTokenExpiry
+} from '../utils/auth.js';
 import { assertPasswordStrength } from '../utils/passwordPolicy.js';
-import { sendPasswordResetEmail } from '../services/mailer.js';
+import { sendPasswordResetEmail, sendVerificationEmail } from '../services/mailer.js';
 
 const RESET_REQUEST_MESSAGE = 'If the account exists, a password reset link has been sent.';
 
@@ -38,15 +48,20 @@ export const userResolvers = {
       const existingUser = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
       if (existingUser) throw new Error('A user with this email already exists.');
 
-      const userCount = await models.User.count();
+      const verificationToken = createVerificationToken();
       const user = await models.User.create({
         name,
         email,
         passwordHash: password,
-        role: userCount === 0 ? 'ADMIN' : 'USER'
+        emailVerificationToken: hashVerificationToken(verificationToken),
+        emailVerificationExpiresAt: verificationTokenExpiry()
       });
 
-      return { token: signToken(user), user };
+      sendVerificationEmail({ to: user.email, token: verificationToken }).catch((err) => {
+        console.error('Failed to send verification email:', err);
+      });
+
+      return { message: 'Registration successful. Please check your email to verify your account.' };
     },
     login: async (_parent, { email, password }, { models }) => {
       const user = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
