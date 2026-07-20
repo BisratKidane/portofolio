@@ -26,6 +26,8 @@ export async function getUserFromRequest(req, models) {
     if (payload.iat < changedAtSeconds) return null;
   }
 
+  if (!user.emailVerified) return null;
+
   return user;
 }
 
@@ -48,4 +50,16 @@ export function hashResetToken(token) {
 
 export function resetTokenExpiry() {
   return new Date(Date.now() + env.resetTokenExpiresMinutes * 60 * 1000);
+}
+
+export function createVerificationToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+export function hashVerificationToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+export function verificationTokenExpiry() {
+  return new Date(Date.now() + 24 * 60 * 60 * 1000);
 }
