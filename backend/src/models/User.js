@@ -46,7 +46,10 @@ export function initUser(sequelize) {
         type: DataTypes.DATE(3),
         allowNull: true,
         defaultValue: null
-      }
+      },
+      emailVerified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+      emailVerificationToken: { type: DataTypes.STRING, allowNull: true },
+      emailVerificationExpiresAt: { type: DataTypes.DATE, allowNull: true }
     },
     {
       sequelize,
