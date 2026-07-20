@@ -13,6 +13,7 @@ import { assertPasswordStrength } from '../utils/passwordPolicy.js';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../services/mailer.js';
 
 const RESET_REQUEST_MESSAGE = 'If the account exists, a password reset link has been sent.';
+const RESEND_VERIFICATION_MESSAGE = 'If an unverified account exists, a verification link has been sent.';
 
 export const MIN_RESET_RESPONSE_MS = 250;
 
@@ -157,6 +158,34 @@ export const userResolvers = {
 
       await user.reload();
       return { token: signToken(user), user };
+    },
+    resendVerificationEmail: async (_parent, { email }, { models }) => {
+      const startedAt = Date.now();
+
+      const issueVerificationToken = async () => {
+        const user = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
+        if (!user || user.emailVerified) return;
+
+        const verificationToken = createVerificationToken();
+        user.emailVerificationToken = hashVerificationToken(verificationToken);
+        user.emailVerificationExpiresAt = verificationTokenExpiry();
+        await user.save();
+
+        sendVerificationEmail({ to: user.email, token: verificationToken }).catch((err) => {
+          console.error('Failed to send verification email:', err);
+        });
+      };
+
+      try {
+        await issueVerificationToken();
+      } catch (err) {
+        console.error('Failed to issue verification token:', err);
+      }
+
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_RESET_RESPONSE_MS) await delay(MIN_RESET_RESPONSE_MS - elapsed);
+
+      return { message: RESEND_VERIFICATION_MESSAGE };
     }
   }
 };
