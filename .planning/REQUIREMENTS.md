@@ -17,7 +17,7 @@
 - [ ] **RESET-03**: `requestPasswordReset` returns the same generic message whether or not the account exists (anti-enumeration preserved).
 - [ ] **RESET-04**: Reset-token single-use and expiry (30 min) behavior is preserved — proven by test, not regressed.
 - [ ] **RESET-05**: The frontend `ForgotPassword` page no longer renders or links to a raw token; it shows a static "check your email" confirmation state.
-- [ ] **RESET-06**: The reset token is stored hashed at rest — `requestPasswordReset` persists `sha256(token)` and emails the raw token; `resetPassword` looks the user up by the hash. Closes the plaintext-at-rest exposure (Phase 8 review WR-08). Folded into Phase 9 because it reopens the same `resetPassword` resolver.
+- [x] **RESET-06**: The reset token is stored hashed at rest — `requestPasswordReset` persists `sha256(token)` and emails the raw token; `resetPassword` looks the user up by the hash. Closes the plaintext-at-rest exposure (Phase 8 review WR-08). Folded into Phase 9 because it reopens the same `resetPassword` resolver.
 
 ### Mailer Abstraction (MAIL)
 

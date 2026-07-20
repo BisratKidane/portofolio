@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Security Remediation
 status: executing
-stopped_at: Phase 9 context gathered
-last_updated: "2026-07-20T10:09:02.077Z"
-last_activity: 2026-07-20 -- Phase 09 planning complete
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-07-20T10:28:08.604Z"
+last_activity: 2026-07-20
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 40
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-12)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 9 — session revocation via passwordchangedat
+**Current focus:** Phase 09 — session-revocation-via-passwordchangedat
 
 ## Current Position
 
-Phase: 9
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-20 -- Phase 09 planning complete
+Phase: 09 (session-revocation-via-passwordchangedat) — EXECUTING
+Plan: 2 of 3
+Status: Executing Phase 09
+Last activity: 2026-07-20 -- Plan 09-02 (reset-token hash-at-rest) complete
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 09 P02 | 20min | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,7 @@ Recent decisions affecting current work:
 - Roadmap: Phases 7–11 sequenced dependency-first per research — (7) CORS + JWT fail-fast + password strength share one low-risk foundation phase; (8) mailer built once, consumed by reset-token fix; (9) passwordChangedAt sequenced right after Phase 8 since it touches the same resetPassword resolver; (10) rate limiting built after auth resolvers reach final v1.1 shape; (11) email verification last — largest blast radius, changes register's contract
 - Roadmap: Phases 9 and 11 each carry an explicit manual boot-and-verify acceptance criterion (non-force-synced dev DB) because sequelize.sync() won't alter existing tables and CI/test DB force-recreation can't catch missing columns
 - Roadmap: Phase 7 must stand up an HTTP-level (supertest) test harness — the existing in-process executeOperation() helper can't reach CORS/Express-layer code
+- [Phase 09]: RESET-06: password-reset tokens hashed at rest (sha256) — requestPasswordReset stores hashResetToken(resetToken) while still emailing the raw token; resetPassword looks up by hashResetToken(token), closing 08-REVIEW.md WR-08
 
 ### Pending Todos
 
@@ -101,9 +103,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T09:16:47.776Z
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-session-revocation-via-passwordchangedat/09-CONTEXT.md
+Last session: 2026-07-20T10:28:08.598Z
+Stopped at: Completed 09-02-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
