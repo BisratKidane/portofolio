@@ -145,9 +145,9 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 11-01-PLAN.md — User model email-verification columns + auth.js token helpers + central verified-gate (VERIFY-01/05/06)
-- [ ] 11-02-PLAN.md — Mailer sendVerificationEmail + GraphQL schema contracts + resendVerificationEmail rate limit (VERIFY-02/03/07 groundwork)
-- [ ] 11-06-PLAN.md — AuthContext message-only register + verifyEmail action (VERIFY-08 contract)
+- [x] 11-01-PLAN.md — User model email-verification columns + auth.js token helpers + central verified-gate (VERIFY-01/05/06)
+- [x] 11-02-PLAN.md — Mailer sendVerificationEmail + GraphQL schema contracts + resendVerificationEmail rate limit (VERIFY-02/03/07 groundwork)
+- [x] 11-06-PLAN.md — AuthContext message-only register + verifyEmail action (VERIFY-08 contract)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -178,4 +178,4 @@ Plans:
 | 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 3/3 | Complete   | 2026-07-13 |
 | 9. Session Revocation via passwordChangedAt | v1.1 | 3/3 | Complete   | 2026-07-20 |
 | 10. Rate Limiting on Auth Mutations | v1.1 | 3/3 | Complete    | 2026-07-20 |
-| 11. Email Verification & ADMIN Race Fix | v1.1 | 0/7 | Not started | - |
+| 11. Email Verification & ADMIN Race Fix | v1.1 | 3/7 | In Progress|  |
