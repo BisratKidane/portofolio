@@ -114,7 +114,19 @@ Plans:
   4. An interleaved `me`/`dashboard` query in the same window is unaffected by `login`'s rate limit — a burst of ordinary queries never triggers a 429.
   5. A breach returns a generic "too many requests" error, and the attempt-count that triggers a 429 is identical for a real account and a nonexistent one (no new enumeration oracle), proven by a dedicated test.
 
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+**Wave 1**
+
+- [ ] 10-01-PLAN.md — Rate-limit config map + TDD'd in-memory fixed-window store (RATE-04 foundation)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 10-02-PLAN.md — TDD'd enforceRateLimit + Apollo plugin (AST-based field extraction) + server.js trust-proxy/clientIp/plugin wiring (RATE-01/02/03/04/05)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 10-03-PLAN.md — test/helpers.js plugin wiring + global test isolation + mandatory RATE-01..05 proof suite (parity + bypass-resistance tests)
 
 ### Phase 11: Email Verification & ADMIN Race Fix
 
@@ -145,5 +157,5 @@ Plans:
 | 7. Foundation Hardening — CORS, JWT Fail-Fast & Password Strength | v1.1 | 2/2 | Complete   | 2026-07-12 |
 | 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 3/3 | Complete   | 2026-07-13 |
 | 9. Session Revocation via passwordChangedAt | v1.1 | 3/3 | Complete   | 2026-07-20 |
-| 10. Rate Limiting on Auth Mutations | v1.1 | 0/? | Not started | - |
+| 10. Rate Limiting on Auth Mutations | v1.1 | 0/3 | Not started | - |
 | 11. Email Verification & ADMIN Race Fix | v1.1 | 0/? | Not started | - |
