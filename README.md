@@ -141,6 +141,22 @@ If registration shows `Network Error`, the browser could not reach the GraphQL A
 5. Logout clears the token from local storage and calls the backend logout mutation.
 6. Password reset is email-based. `requestPasswordReset` never returns the reset token: it emails a single-use link to the account address and always responds with the same generic message, whether or not the account exists. The token is delivered only by email and expires after `RESET_TOKEN_EXPIRES_MINUTES`.
 
+## Rate Limiting
+
+The backend throttles brute-force and enumeration attempts against `login`, `register`, and `requestPasswordReset` on a per-client-IP basis:
+
+| Mutation | Limit |
+|---|---|
+| `login` | 5 attempts / 15 minutes |
+| `register` | 5 attempts / hour |
+| `requestPasswordReset` | 5 attempts / hour |
+
+`backend/src/config/rateLimits.js` is the single edit point for tuning these thresholds. A field left out of that map (e.g. `me`, `dashboard`, `logout`) is never throttled.
+
+Counters are held in an in-memory, per-process store — they reset on every backend restart and are not shared across multiple backend instances. This is an accepted trade-off for this milestone's single-instance deployment, not a bug.
+
+The backend sets `trust proxy = 1`, meaning it trusts exactly one reverse-proxy hop when deriving the client IP from `X-Forwarded-For`. It must only ever be deployed behind exactly one trusted reverse proxy (the Nginx/Caddy setup described above) — trusting more hops than actually exist would let a client forge its own apparent IP and evade the limiter entirely.
+
 ## Email configuration
 
 The mailer only sends real email when `NODE_ENV=production`. In development and test it uses a no-op transport, so no SMTP configuration is needed and no mail leaves the machine — the reset link is logged to the console instead.

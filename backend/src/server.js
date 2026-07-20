@@ -8,8 +8,11 @@ import { initializeDatabase, models } from './models/index.js';
 import { typeDefs } from './schemas/index.js';
 import { resolvers } from './resolvers/index.js';
 import { getUserFromRequest } from './utils/auth.js';
+import { rateLimitPlugin } from './plugins/rateLimitPlugin.js';
 
 const app = express();
+
+app.set('trust proxy', 1);
 
 export { app };
 
@@ -19,7 +22,7 @@ app.get('/health', (_req, res) => {
 
 app.use(cors(buildCorsOptions(env)));
 
-const apollo = new ApolloServer({ typeDefs, resolvers });
+const apollo = new ApolloServer({ typeDefs, resolvers, plugins: [rateLimitPlugin] });
 
 await apollo.start();
 await initializeDatabase();
@@ -30,7 +33,8 @@ app.use(
   expressMiddleware(apollo, {
     context: async ({ req }) => ({
       models,
-      user: await getUserFromRequest(req, models)
+      user: await getUserFromRequest(req, models),
+      clientIp: req.ip
     })
   })
 );
