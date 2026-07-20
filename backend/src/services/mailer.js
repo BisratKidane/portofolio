@@ -34,3 +34,11 @@ export async function sendPasswordResetEmail({ to, token }) {
 
   return sendMail({ to, subject, text });
 }
+
+export async function sendVerificationEmail({ to, token }) {
+  const link = `${env.clientUrl}/verify-email?token=${token}`;
+  const subject = 'Verify your email';
+  const text = `Welcome! Please verify your email address to activate your account.\n\nOpen this link to verify:\n${link}\n\nThis link expires in 24 hours. If you did not create this account, you can ignore this email.`;
+
+  return sendMail({ to, subject, text });
+}
