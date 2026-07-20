@@ -178,6 +178,27 @@ npm run docker:remote# Build and run the remote Docker stack in detached mode
    2. In the GitHub repo, go to Settings -> Branches -> add or edit a branch protection rule.
    3. Enable "Require status checks to pass before merging" and select the `test` job.
 
+## Manual Database Migrations
+
+This project has no migration framework. `sequelize.sync()` creates tables for brand-new databases, but it never alters an existing table's columns. Any phase that adds a column to an already-provisioned database ships a hand-written SQL file under `backend/migrations/manual/` plus a documented boot-and-verify procedure — run the SQL by hand once, then confirm the backend boots cleanly against that database.
+
+### Add passwordChangedAt to users (Phase 9 / SESS-01)
+
+1. Apply the migration against your database, using the `DB_USER`/`DB_PASSWORD`/`DB_NAME` values from the active env file:
+
+   ```bash
+   docker compose --env-file env/local.env exec -T mysql mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < backend/migrations/manual/009-add-password-changed-at.sql
+   ```
+
+   Or run the equivalent statement with any MySQL client pointed at your `DB_HOST`/`DB_PORT`/`DB_NAME`.
+
+2. Boot the backend against that same database (`npm run dev` or `npm start`) and confirm:
+   - No `Unknown column 'passwordChangedAt' in 'field list'` error appears anywhere in the startup/request logs.
+   - `curl http://localhost:4000/health` returns `{"status":"ok"}`.
+   - An existing, pre-migration user can still log in and query `me` — that user's `passwordChangedAt` is `NULL` (no backfill), so their existing token stays valid.
+
+3. Reset that same user's password through the app, then immediately log in again with the new password, and confirm the new session authenticates successfully.
+
 ## Project structure
 
 ```text
