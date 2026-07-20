@@ -151,8 +151,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 11-03-PLAN.md — Manual migration SQL + README documentation (VERIFY-01 / SC-5 groundwork)
-- [ ] 11-04-PLAN.md — register creates an unverified user + login rejects unverified accounts (VERIFY-02/05/06)
+- [x] 11-03-PLAN.md — Manual migration SQL + README documentation (VERIFY-01 / SC-5 groundwork)
+- [x] 11-04-PLAN.md — register creates an unverified user + login rejects unverified accounts (VERIFY-02/05/06)
 
 **Wave 3** *(blocked on Wave 2 completion — shares user.resolver.js with 11-04)*
 
@@ -178,4 +178,4 @@ Plans:
 | 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 3/3 | Complete   | 2026-07-13 |
 | 9. Session Revocation via passwordChangedAt | v1.1 | 3/3 | Complete   | 2026-07-20 |
 | 10. Rate Limiting on Auth Mutations | v1.1 | 3/3 | Complete    | 2026-07-20 |
-| 11. Email Verification & ADMIN Race Fix | v1.1 | 3/7 | In Progress|  |
+| 11. Email Verification & ADMIN Race Fix | v1.1 | 5/7 | In Progress|  |
