@@ -17,7 +17,13 @@ const LOGIN_MUTATION = `
 
 const REGISTER_MUTATION = `
   mutation Register($name: String!, $email: String!, $password: String!) {
-    register(name: $name, email: $email, password: $password) { token user { id name email role } }
+    register(name: $name, email: $email, password: $password) { message }
+  }
+`;
+
+const VERIFY_EMAIL_MUTATION = `
+  mutation VerifyEmail($token: String!) {
+    verifyEmail(token: $token) { token user { id name email role } }
   }
 `;
 
@@ -47,7 +53,7 @@ export function AuthProvider({ children }) {
 
   const authenticate = async (mutation, variables) => {
     const data = await graphqlRequest(mutation, variables);
-    const payload = data.login || data.register;
+    const payload = data.login || data.verifyEmail;
     localStorage.setItem('authToken', payload.token);
     setUser(payload.user);
     return payload.user;
@@ -58,7 +64,8 @@ export function AuthProvider({ children }) {
     loading,
     isAuthenticated: Boolean(user),
     login: (email, password) => authenticate(LOGIN_MUTATION, { email, password }),
-    register: (name, email, password) => authenticate(REGISTER_MUTATION, { name, email, password }),
+    register: (name, email, password) => graphqlRequest(REGISTER_MUTATION, { name, email, password }).then((data) => data.register),
+    verifyEmail: (token) => authenticate(VERIFY_EMAIL_MUTATION, { token }),
     logout: async () => {
       try {
         if (localStorage.getItem('authToken')) await graphqlRequest(LOGOUT_MUTATION);
