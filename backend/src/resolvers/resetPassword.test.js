@@ -168,6 +168,26 @@ describe('resetPassword', () => {
     expect(secondResponse.data).toBeNull();
   });
 
+  it('allows only one winner when two requests race on the same still-valid token (WR-02)', async () => {
+    await createTestUser({
+      email: 'concurrent-use@example.com',
+      resetPasswordToken: hashResetToken('concurrent-token'),
+      resetPasswordExpiresAt: new Date(Date.now() + 30 * 60 * 1000)
+    });
+
+    const [firstResponse, secondResponse] = await Promise.all([
+      graphql(RESET_PASSWORD_MUTATION, { token: 'concurrent-token', password: 'ValidPass123' }),
+      graphql(RESET_PASSWORD_MUTATION, { token: 'concurrent-token', password: 'AnotherValid456' })
+    ]);
+
+    const results = [firstResponse, secondResponse];
+    const successes = results.filter((r) => r.data && r.data.resetPassword === true);
+    const failures = results.filter((r) => r.errors && r.errors[0].message === 'The password reset token is invalid or has expired.');
+
+    expect(successes).toHaveLength(1);
+    expect(failures).toHaveLength(1);
+  });
+
   it('rejects an expired reset token', async () => {
     const user = await createTestUser({
       email: 'expired@example.com',

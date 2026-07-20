@@ -86,17 +86,22 @@ export const userResolvers = {
       return { message: RESET_REQUEST_MESSAGE };
     },
     resetPassword: async (_parent, { token, password }, { models }) => {
-      const user = await models.User.findOne({ where: { resetPasswordToken: hashResetToken(token) } });
+      const hashed = hashResetToken(token);
+      const user = await models.User.findOne({ where: { resetPasswordToken: hashed } });
       if (!user || !user.resetPasswordExpiresAt || user.resetPasswordExpiresAt < new Date()) {
         throw new Error('The password reset token is invalid or has expired.');
       }
 
       assertPasswordStrength(password);
 
-      user.passwordHash = password;
-      user.resetPasswordToken = null;
-      user.resetPasswordExpiresAt = null;
-      await user.save();
+      // Atomic conditional update: only succeeds if the token is still the one we just read.
+      // This closes the read-then-write race where two concurrent requests could both pass
+      // the findOne/expiry check and both save() successfully (WR-02).
+      const [affectedCount] = await models.User.update(
+        { passwordHash: password, resetPasswordToken: null, resetPasswordExpiresAt: null },
+        { where: { id: user.id, resetPasswordToken: hashed }, individualHooks: true }
+      );
+      if (affectedCount === 0) throw new Error('The password reset token is invalid or has expired.');
       return true;
     }
   }
