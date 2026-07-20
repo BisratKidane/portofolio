@@ -10,7 +10,7 @@ import { graphqlRequest } from '../api/graphqlClient.js';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
 
 function Probe() {
-  const { user, loading, isAuthenticated, login, logout } = useAuth();
+  const { user, loading, isAuthenticated, login, logout, register, verifyEmail } = useAuth();
   return (
     <div>
       <span>loading:{String(loading)}</span>
@@ -18,6 +18,8 @@ function Probe() {
       <span>user:{user ? user.name : 'none'}</span>
       <button onClick={() => login('ada@example.com', 'secret')}>login</button>
       <button onClick={() => logout()}>logout</button>
+      <button onClick={() => register('Ada', 'ada@example.com', 'secret123')}>register</button>
+      <button onClick={() => verifyEmail('sometoken')}>verifyEmail</button>
     </div>
   );
 }
@@ -78,6 +80,45 @@ describe('AuthContext', () => {
     expect(await screen.findByText('user:Ada')).toBeInTheDocument();
     expect(screen.getByText('authed:true')).toBeInTheDocument();
     expect(localStorage.getItem('authToken')).toBe('tok-123');
+  });
+
+  it('registers without establishing a session (message-only contract)', async () => {
+    graphqlRequest.mockResolvedValueOnce({
+      register: { message: 'Registration successful. Please check your email to verify your account.' }
+    });
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'register' }));
+
+    expect(localStorage.getItem('authToken')).toBeNull();
+    expect(screen.getByText('authed:false')).toBeInTheDocument();
+    expect(screen.getByText('user:none')).toBeInTheDocument();
+  });
+
+  it('stores the token and exposes the user after a successful verifyEmail', async () => {
+    graphqlRequest.mockResolvedValueOnce({
+      verifyEmail: {
+        token: 'tok-verify',
+        user: { id: 3, name: 'Ada', email: 'ada@example.com', role: 'USER' }
+      }
+    });
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'verifyEmail' }));
+
+    expect(await screen.findByText('user:Ada')).toBeInTheDocument();
+    expect(screen.getByText('authed:true')).toBeInTheDocument();
+    expect(localStorage.getItem('authToken')).toBe('tok-verify');
   });
 
   it('clears the user and the token after logout', async () => {
