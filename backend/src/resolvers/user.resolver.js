@@ -66,6 +66,7 @@ export const userResolvers = {
     login: async (_parent, { email, password }, { models }) => {
       const user = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
       if (!user || !(await user.validatePassword(password))) throw new Error('Invalid email or password.');
+      if (!user.emailVerified) throw new Error('Please verify your email before signing in.');
       return { token: signToken(user), user };
     },
     logout: (_parent, _args, { user }) => {
