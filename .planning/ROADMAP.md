@@ -94,7 +94,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 09-01-PLAN.md — User model: `passwordChangedAt` column + `beforeUpdate` hook stamp (SESS-01/SESS-02) + manual `ALTER TABLE` migration and human boot-verify (SC-4)
+- [x] 09-01-PLAN.md — User model: `passwordChangedAt` column + `beforeUpdate` hook stamp (SESS-01/SESS-02) + manual `ALTER TABLE` migration and human boot-verify (SC-4)
 - [x] 09-02-PLAN.md — Reset tokens hashed at rest across both resolvers (RESET-06, closes 08-REVIEW.md WR-08)
 
 **Wave 2** *(blocked on Wave 1 completion — shares `backend/src/utils/auth.js` with 09-02, and needs the `passwordChangedAt` column from 09-01)*
@@ -144,6 +144,6 @@ Plans:
 | 6. Root Orchestration & CI Pipeline | v1.0 | 2/2 | Complete | 2026-07-12 |
 | 7. Foundation Hardening — CORS, JWT Fail-Fast & Password Strength | v1.1 | 2/2 | Complete   | 2026-07-12 |
 | 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 3/3 | Complete   | 2026-07-13 |
-| 9. Session Revocation via passwordChangedAt | v1.1 | 1/3 | In Progress|  |
+| 9. Session Revocation via passwordChangedAt | v1.1 | 2/3 | In Progress|  |
 | 10. Rate Limiting on Auth Mutations | v1.1 | 0/? | Not started | - |
 | 11. Email Verification & ADMIN Race Fix | v1.1 | 0/? | Not started | - |

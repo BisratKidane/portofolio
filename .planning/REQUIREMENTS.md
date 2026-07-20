@@ -39,8 +39,8 @@
 
 ### Session Revocation (SESS) — Fix #4
 
-- [ ] **SESS-01**: The `User` model gains a `passwordChangedAt` timestamp column.
-- [ ] **SESS-02**: `resetPassword` sets `passwordChangedAt = now()` when the password changes.
+- [x] **SESS-01**: The `User` model gains a `passwordChangedAt` timestamp column.
+- [x] **SESS-02**: `resetPassword` sets `passwordChangedAt = now()` when the password changes.
 - [ ] **SESS-03**: A JWT whose `iat` predates the user's `passwordChangedAt` is treated as unauthenticated (`getUserFromRequest` returns `null`), invalidating tokens issued before a reset. Second-vs-millisecond precision is handled correctly and proven by a same-second boundary test.
 
 ### Password Strength (PWD) — Fix #5
