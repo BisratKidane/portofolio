@@ -28,7 +28,7 @@ Full detail archived in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **Phase 7: Foundation Hardening — CORS, JWT Fail-Fast & Password Strength** - Independent, low-risk fixes that prove the v1.1 TDD rhythm and stand up an HTTP-level test harness reused by later phases (completed 2026-07-12)
 - [x] **Phase 8: Mailer Abstraction & Reset-Token Remediation** - Reset tokens are delivered via a pluggable mailer and dropped from the API entirely (completed 2026-07-13)
 - [x] **Phase 9: Session Revocation via passwordChangedAt** - A password reset invalidates JWTs issued beforehand (completed 2026-07-20)
-- [ ] **Phase 10: Rate Limiting on Auth Mutations** - login/register/requestPasswordReset are throttled per-IP without affecting normal usage
+- [x] **Phase 10: Rate Limiting on Auth Mutations** - login/register/requestPasswordReset are throttled per-IP without affecting normal usage (completed 2026-07-20)
 - [ ] **Phase 11: Email Verification & ADMIN Race Fix** - Registration requires proven email ownership before a session or the ADMIN role is granted
 
 ## Phase Details
@@ -126,7 +126,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 10-03-PLAN.md — test/helpers.js plugin wiring + global test isolation + mandatory RATE-01..05 proof suite (parity + bypass-resistance tests)
+- [x] 10-03-PLAN.md — test/helpers.js plugin wiring + global test isolation + mandatory RATE-01..05 proof suite (parity + bypass-resistance tests)
 
 ### Phase 11: Email Verification & ADMIN Race Fix
 
@@ -157,5 +157,5 @@ Plans:
 | 7. Foundation Hardening — CORS, JWT Fail-Fast & Password Strength | v1.1 | 2/2 | Complete   | 2026-07-12 |
 | 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 3/3 | Complete   | 2026-07-13 |
 | 9. Session Revocation via passwordChangedAt | v1.1 | 3/3 | Complete   | 2026-07-20 |
-| 10. Rate Limiting on Auth Mutations | v1.1 | 2/3 | In Progress|  |
+| 10. Rate Limiting on Auth Mutations | v1.1 | 3/3 | Complete   | 2026-07-20 |
 | 11. Email Verification & ADMIN Race Fix | v1.1 | 0/? | Not started | - |
