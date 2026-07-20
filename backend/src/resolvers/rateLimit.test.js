@@ -20,6 +20,28 @@ const RENAMED_LOGIN_MUTATION = `
   }
 `;
 
+const INLINE_FRAGMENT_LOGIN_MUTATION = `
+  mutation InlineFragmentLogin($email: String!, $password: String!) {
+    ... on Mutation {
+      login(email: $email, password: $password) {
+        token
+      }
+    }
+  }
+`;
+
+const NAMED_FRAGMENT_LOGIN_MUTATION = `
+  mutation NamedFragmentLogin($email: String!, $password: String!) {
+    ...LoginFields
+  }
+
+  fragment LoginFields on Mutation {
+    login(email: $email, password: $password) {
+      token
+    }
+  }
+`;
+
 const REGISTER_MUTATION = `
   mutation Register($name: String!, $email: String!, $password: String!) {
     register(name: $name, email: $email, password: $password) {
@@ -102,6 +124,54 @@ describe('login rate limiting (RATE-01)', () => {
 
     const sixthResponse = await graphql(
       RENAMED_LOGIN_MUTATION,
+      { email: 'nobody@example.com', password: 'wrong' },
+      null,
+      clientIp
+    );
+    expect(sixthResponse.errors[0].message).toBe(TOO_MANY_REQUESTS_MESSAGE);
+    expect(sixthResponse.errors[0].extensions.code).toBe('TOO_MANY_REQUESTS');
+  });
+});
+
+describe('fragment bypass resistance (RATE-01 / CR-01)', () => {
+  it('throttles login wrapped in an inline fragment', async () => {
+    const clientIp = '10.10.12.1';
+
+    for (let i = 0; i < 5; i += 1) {
+      const response = await graphql(
+        INLINE_FRAGMENT_LOGIN_MUTATION,
+        { email: 'nobody@example.com', password: 'wrong' },
+        null,
+        clientIp
+      );
+      expect(response.errors[0].message).toBe('Invalid email or password.');
+    }
+
+    const sixthResponse = await graphql(
+      INLINE_FRAGMENT_LOGIN_MUTATION,
+      { email: 'nobody@example.com', password: 'wrong' },
+      null,
+      clientIp
+    );
+    expect(sixthResponse.errors[0].message).toBe(TOO_MANY_REQUESTS_MESSAGE);
+    expect(sixthResponse.errors[0].extensions.code).toBe('TOO_MANY_REQUESTS');
+  });
+
+  it('throttles login invoked through a named fragment spread', async () => {
+    const clientIp = '10.10.13.1';
+
+    for (let i = 0; i < 5; i += 1) {
+      const response = await graphql(
+        NAMED_FRAGMENT_LOGIN_MUTATION,
+        { email: 'nobody@example.com', password: 'wrong' },
+        null,
+        clientIp
+      );
+      expect(response.errors[0].message).toBe('Invalid email or password.');
+    }
+
+    const sixthResponse = await graphql(
+      NAMED_FRAGMENT_LOGIN_MUTATION,
       { email: 'nobody@example.com', password: 'wrong' },
       null,
       clientIp
