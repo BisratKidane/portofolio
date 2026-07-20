@@ -156,7 +156,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion — shares user.resolver.js with 11-04)*
 
-- [ ] 11-05-PLAN.md — verifyEmail (race-safe ADMIN assignment) + resendVerificationEmail (VERIFY-03/04/06/07)
+- [x] 11-05-PLAN.md — verifyEmail (race-safe ADMIN assignment) + resendVerificationEmail (VERIFY-03/04/06/07)
 
 **Wave 4** *(blocked on Waves 1-3 — runs last so the manual checkpoint proves the whole stack)*
 
@@ -178,4 +178,4 @@ Plans:
 | 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 3/3 | Complete   | 2026-07-13 |
 | 9. Session Revocation via passwordChangedAt | v1.1 | 3/3 | Complete   | 2026-07-20 |
 | 10. Rate Limiting on Auth Mutations | v1.1 | 3/3 | Complete    | 2026-07-20 |
-| 11. Email Verification & ADMIN Race Fix | v1.1 | 5/7 | In Progress|  |
+| 11. Email Verification & ADMIN Race Fix | v1.1 | 6/7 | In Progress|  |
