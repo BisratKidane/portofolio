@@ -45,8 +45,7 @@ const NAMED_FRAGMENT_LOGIN_MUTATION = `
 const REGISTER_MUTATION = `
   mutation Register($name: String!, $email: String!, $password: String!) {
     register(name: $name, email: $email, password: $password) {
-      token
-      user { id name email role }
+      message
     }
   }
 `;
