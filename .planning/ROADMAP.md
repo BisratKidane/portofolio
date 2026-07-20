@@ -118,7 +118,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 10-01-PLAN.md — Rate-limit config map + TDD'd in-memory fixed-window store (RATE-04 foundation)
+- [x] 10-01-PLAN.md — Rate-limit config map + TDD'd in-memory fixed-window store (RATE-04 foundation)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -157,5 +157,5 @@ Plans:
 | 7. Foundation Hardening — CORS, JWT Fail-Fast & Password Strength | v1.1 | 2/2 | Complete   | 2026-07-12 |
 | 8. Mailer Abstraction & Reset-Token Remediation | v1.1 | 3/3 | Complete   | 2026-07-13 |
 | 9. Session Revocation via passwordChangedAt | v1.1 | 3/3 | Complete   | 2026-07-20 |
-| 10. Rate Limiting on Auth Mutations | v1.1 | 0/3 | Not started | - |
+| 10. Rate Limiting on Auth Mutations | v1.1 | 1/3 | In Progress|  |
 | 11. Email Verification & ADMIN Race Fix | v1.1 | 0/? | Not started | - |
