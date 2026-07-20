@@ -77,6 +77,46 @@ describe('getUserFromRequest', () => {
   });
 });
 
+describe('getUserFromRequest — passwordChangedAt revocation (SESS-03)', () => {
+  it('accepts a token whose iat lands in the same whole second as passwordChangedAt', async () => {
+    const changedAt = new Date('2026-01-01T12:00:00.900Z');
+    const iatSameSecond = Math.floor(changedAt.getTime() / 1000);
+
+    // expiresIn is deliberately large (10y) — iat is a fixed historical instant used purely to pin
+    // the same-second boundary, and must not accidentally expire relative to the real wall clock.
+    const token = jwt.sign({ sub: 7, role: 'USER', iat: iatSameSecond }, env.jwtSecret, { expiresIn: '3650d' });
+    const req = { headers: { authorization: `Bearer ${token}` } };
+    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', passwordChangedAt: changedAt }) } };
+
+    const result = await getUserFromRequest(req, models);
+
+    expect(result).not.toBeNull();
+  });
+
+  it('revokes a token whose iat is in the second immediately before passwordChangedAt', async () => {
+    const changedAt = new Date('2026-01-01T12:00:01.100Z');
+    const iatPriorSecond = Math.floor(changedAt.getTime() / 1000) - 1;
+
+    const token = jwt.sign({ sub: 7, role: 'USER', iat: iatPriorSecond }, env.jwtSecret, { expiresIn: '3650d' });
+    const req = { headers: { authorization: `Bearer ${token}` } };
+    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', passwordChangedAt: changedAt }) } };
+
+    const result = await getUserFromRequest(req, models);
+
+    expect(result).toBeNull();
+  });
+
+  it('does not revoke when passwordChangedAt is NULL (D-05 — no backfill)', async () => {
+    const token = signToken({ id: 7, role: 'USER' });
+    const req = { headers: { authorization: `Bearer ${token}` } };
+    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', passwordChangedAt: null }) } };
+
+    const result = await getUserFromRequest(req, models);
+
+    expect(result).not.toBeNull();
+  });
+});
+
 describe('requireAuth', () => {
   it('does not throw for an authenticated user', () => {
     expect(() => requireAuth({ id: 1, role: 'USER' })).not.toThrow();
