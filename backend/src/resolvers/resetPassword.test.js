@@ -7,6 +7,7 @@ vi.mock('../services/mailer.js', () => ({
 
 import { sendPasswordResetEmail } from '../services/mailer.js';
 import { MIN_RESET_RESPONSE_MS } from './user.resolver.js';
+import { hashResetToken } from '../utils/auth.js';
 
 function median(values) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -56,9 +57,25 @@ describe('requestPasswordReset', () => {
     expect(user.resetPasswordToken).not.toBeNull();
     expect(user.resetPasswordExpiresAt).not.toBeNull();
 
-    await vi.waitFor(() =>
-      expect(sendPasswordResetEmail).toHaveBeenCalledWith({ to: user.email, token: user.resetPasswordToken })
-    );
+    await vi.waitFor(async () => {
+      expect(sendPasswordResetEmail).toHaveBeenCalled();
+      const rawToken = sendPasswordResetEmail.mock.calls[0][0].token;
+      await user.reload();
+      expect(hashResetToken(rawToken)).toBe(user.resetPasswordToken);
+    });
+  });
+
+  it('never persists the raw/emailed reset token — only its hash is stored (RESET-06)', async () => {
+    const user = await createTestUser({ email: 'hash-at-rest@example.com' });
+
+    const response = await graphql(REQUEST_RESET_MUTATION, { email: 'hash-at-rest@example.com' });
+    expect(response.errors).toBeUndefined();
+
+    await vi.waitFor(() => expect(sendPasswordResetEmail).toHaveBeenCalled());
+
+    await user.reload();
+    const rawToken = sendPasswordResetEmail.mock.calls[0][0].token;
+    expect(user.resetPasswordToken).not.toBe(rawToken);
   });
 
   it('returns the identical generic message and never calls the mailer for a non-existing email', async () => {
@@ -114,7 +131,7 @@ describe('resetPassword', () => {
   it('rejects a password shorter than 8 characters before persisting anything', async () => {
     const user = await createTestUser({
       email: 'reset-me@example.com',
-      resetPasswordToken: 'a-valid-reset-token',
+      resetPasswordToken: hashResetToken('a-valid-reset-token'),
       resetPasswordExpiresAt: new Date(Date.now() + 30 * 60 * 1000)
     });
 
@@ -127,13 +144,13 @@ describe('resetPassword', () => {
     expect(response.data).toBeNull();
 
     await user.reload();
-    expect(user.resetPasswordToken).toBe('a-valid-reset-token');
+    expect(user.resetPasswordToken).toBe(hashResetToken('a-valid-reset-token'));
   });
 
   it('rejects reusing an already-consumed reset token', async () => {
     await createTestUser({
       email: 'single-use@example.com',
-      resetPasswordToken: 'single-use-token',
+      resetPasswordToken: hashResetToken('single-use-token'),
       resetPasswordExpiresAt: new Date(Date.now() + 30 * 60 * 1000)
     });
 
@@ -154,7 +171,7 @@ describe('resetPassword', () => {
   it('rejects an expired reset token', async () => {
     const user = await createTestUser({
       email: 'expired@example.com',
-      resetPasswordToken: 'expired-token',
+      resetPasswordToken: hashResetToken('expired-token'),
       resetPasswordExpiresAt: new Date(Date.now() - 1000)
     });
     const passwordHashBefore = user.passwordHash;
