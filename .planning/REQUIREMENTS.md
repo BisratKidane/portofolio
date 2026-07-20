@@ -31,11 +31,11 @@
 
 ### Rate Limiting (RATE) — Fix #3
 
-- [ ] **RATE-01**: `login` is rate-limited per client IP (default: 5 attempts / 15 min); further attempts are rejected before credentials are checked.
-- [ ] **RATE-02**: `register` is rate-limited per client IP (default: 5 / hour).
-- [ ] **RATE-03**: `requestPasswordReset` is rate-limited per client IP (default: 5 / hour).
+- [x] **RATE-01**: `login` is rate-limited per client IP (default: 5 attempts / 15 min); further attempts are rejected before credentials are checked.
+- [x] **RATE-02**: `register` is rate-limited per client IP (default: 5 / hour).
+- [x] **RATE-03**: `requestPasswordReset` is rate-limited per client IP (default: 5 / hour).
 - [x] **RATE-04**: Rate limiting is enforced in a layer that the in-process Apollo `executeOperation()` test harness exercises (i.e. testable without HTTP), keyed by IP + GraphQL operation name so normal queries (`me`, `dashboard`) are unaffected.
-- [ ] **RATE-05**: A breach returns a clear "too many requests" error and does not leak whether the target account exists.
+- [x] **RATE-05**: A breach returns a clear "too many requests" error and does not leak whether the target account exists.
 
 ### Session Revocation (SESS) — Fix #4
 

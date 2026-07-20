@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Security Remediation
 status: executing
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-07-20T18:02:23.152Z"
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-07-20T18:07:58.472Z"
 last_activity: 2026-07-20
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 60
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 ## Current Position
 
 Phase: 10 (rate-limiting-on-auth-mutations) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-20
 
-Progress: [████████░░] 82%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [████████░░] 82%
 | Phase 09 P01 | 3min | 3 tasks | 4 files |
 | Phase 09 P03 | 49min | 2 tasks | 3 files |
 | Phase 10 P01 | 2min | 2 tasks | 3 files |
+| Phase 10 P02 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,8 @@ Recent decisions affecting current work:
 - [Phase 09]: Plan 1: SC-4 manually verified by a human against a real pre-existing dev database (migration applied cleanly, zero Unknown column errors, pre-migration token still valid, reset+relogin succeeded)
 - [Phase 09]: Phase 09 Plan 03: getUserFromRequest rejects JWTs whose iat predates passwordChangedAt's floored second; same-second boundary and NULL-never-revokes proven by direct unit test, full wiring proven end-to-end via httpClient() — Closes the phase's core threat (T-09-07): a stolen/leaked JWT must stop being honored after a legitimate password reset
 - [Phase 10]: Phase 10 Plan 01: fixed-window algorithm chosen for rateLimitStore (not sliding-window) — simplest option satisfying per-key isolation + correct expiry, left to Claude's Discretion in the plan
+- [Phase 10]: [Phase 10]: Plan 02: rate-limit field identification uses the parsed GraphQL operation AST (operation.selectionSet.selections), never the client-supplied operationName string — Closes an operation-renaming/anonymizing bypass vector; verified by a 0-match grep on 'operationName' in rateLimitPlugin.js
+- [Phase 10]: Plan 02: server.js sets trust proxy = 1 unconditionally and derives clientIp: req.ip onto contextValue; the rate-limit plugin never reads req directly — Matches the file's flat, always-on middleware style; keeps the plugin HTTP-free/testable; documented in README as a hard single-reverse-proxy deployment constraint (D-04)
 
 ### Pending Todos
 
@@ -111,8 +114,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T18:02:23.147Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-07-20T18:07:58.467Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
