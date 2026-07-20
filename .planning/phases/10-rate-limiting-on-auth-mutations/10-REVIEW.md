@@ -18,14 +18,22 @@ files_reviewed_list:
   - backend/src/resolvers/rateLimit.test.js
   - README.md
 findings:
-  critical: 1
+  critical: 0
   warning: 3
   info: 1
-  total: 5
+  total: 4
 status: issues_found
+resolved:
+  - CR-01 — fragment/inline-fragment rate-limit bypass, fixed in commit fix(10) with RED/GREEN regression tests
 ---
 
 # Phase 10: Code Review Report
+
+> **Update (post-review):** CR-01 (BLOCKER — fragment/inline-fragment bypass)
+> was confirmed empirically and **fixed** via a TDD red→green cycle
+> (`test(10)` RED + `fix(10)` GREEN). This also closes WR-03 (no fragment-vector
+> test). WR-01 (unbounded store), WR-02 (weak trust-proxy isolation test), and
+> IN-01 (`Date.now()` email collision) remain open for the maintainer's decision.
 
 **Reviewed:** 2026-07-20T00:00:00Z
 **Depth:** standard
