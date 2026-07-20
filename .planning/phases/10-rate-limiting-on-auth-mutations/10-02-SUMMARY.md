@@ -119,3 +119,7 @@ None - no external service configuration required.
 ---
 *Phase: 10-rate-limiting-on-auth-mutations*
 *Completed: 2026-07-20*
+
+## Self-Check: PASSED
+
+All created/modified files verified present on disk; all 4 commit hashes (`d158793`, `74b52fa`, `debe486`, `31ccb9e`) verified present in `git log`.
