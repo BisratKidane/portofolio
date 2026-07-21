@@ -22,6 +22,8 @@ export async function graphql(query, variables, user = null, clientIp = '127.0.0
 }
 
 export async function resetTables() {
+  await models.Spouse.destroy({ where: {}, truncate: true });
+  await models.FamilyMember.destroy({ where: {}, truncate: true });
   await models.User.destroy({ where: {}, truncate: true });
 }
 
