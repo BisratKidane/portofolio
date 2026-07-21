@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: Collaborative Family Tree
 status: executing
 stopped_at: Phase 12 context gathered
-last_updated: "2026-07-21T18:01:34.574Z"
-last_activity: 2026-07-21 -- Phase 12 planning complete
+last_updated: "2026-07-21T18:28:55.315Z"
+last_activity: 2026-07-21 -- Phase 12 execution started
 progress:
   total_phases: 6
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** v2.0 Collaborative Family Tree — roadmap created (Phases 12–17), ready to plan Phase 12
+**Current focus:** Phase 12 — family-data-model-foundation
 
 ## Current Position
 
-Phase: 12 of 17 (Family Data Model Foundation)
-Plan: — (not yet planned)
-Status: Ready to execute
-Last activity: 2026-07-21 -- Phase 12 planning complete
+Phase: 12 (family-data-model-foundation) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 12
+Last activity: 2026-07-21 -- Phase 12 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
