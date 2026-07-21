@@ -112,51 +112,59 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Which phase covers which requirement. Phase column populated during roadmap creation.
+Which phase covers which requirement.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MEM-01 | (pending roadmap) | Pending |
-| MEM-02 | (pending roadmap) | Pending |
-| MEM-03 | (pending roadmap) | Pending |
-| MEM-04 | (pending roadmap) | Pending |
-| MEM-05 | (pending roadmap) | Pending |
-| REL-01 | (pending roadmap) | Pending |
-| REL-02 | (pending roadmap) | Pending |
-| REL-03 | (pending roadmap) | Pending |
-| REL-04 | (pending roadmap) | Pending |
-| REL-05 | (pending roadmap) | Pending |
-| REL-06 | (pending roadmap) | Pending |
-| ACC-01 | (pending roadmap) | Pending |
-| ACC-02 | (pending roadmap) | Pending |
-| ACC-03 | (pending roadmap) | Pending |
-| ACC-04 | (pending roadmap) | Pending |
-| ACC-05 | (pending roadmap) | Pending |
-| PERM-01 | (pending roadmap) | Pending |
-| PERM-02 | (pending roadmap) | Pending |
-| PERM-03 | (pending roadmap) | Pending |
-| PERM-04 | (pending roadmap) | Pending |
-| PERM-05 | (pending roadmap) | Pending |
-| PHOTO-01 | (pending roadmap) | Pending |
-| PHOTO-02 | (pending roadmap) | Pending |
-| PHOTO-03 | (pending roadmap) | Pending |
-| MNG-01 | (pending roadmap) | Pending |
-| MNG-02 | (pending roadmap) | Pending |
-| MNG-03 | (pending roadmap) | Pending |
-| MNG-04 | (pending roadmap) | Pending |
-| TREE-01 | (pending roadmap) | Pending |
-| TREE-02 | (pending roadmap) | Pending |
-| TREE-03 | (pending roadmap) | Pending |
-| TREE-04 | (pending roadmap) | Pending |
-| QUAL-01 | (pending roadmap) | Pending |
-| QUAL-02 | (pending roadmap) | Pending |
-| QUAL-03 | (pending roadmap) | Pending |
+| MEM-01 | Phase 12 | Pending |
+| MEM-02 | Phase 12 | Pending |
+| MEM-03 | Phase 12 | Pending |
+| MEM-04 | Phase 14 | Pending |
+| MEM-05 | Phase 12 | Pending |
+| REL-01 | Phase 12 | Pending |
+| REL-02 | Phase 12 | Pending |
+| REL-03 | Phase 12 | Pending |
+| REL-04 | Phase 14 | Pending |
+| REL-05 | Phase 12 | Pending |
+| REL-06 | Phase 15 | Pending |
+| ACC-01 | Phase 13 | Pending |
+| ACC-02 | Phase 13 | Pending |
+| ACC-03 | Phase 13 | Pending |
+| ACC-04 | Phase 13 | Pending |
+| ACC-05 | Phase 13 | Pending |
+| PERM-01 | Phase 14 | Pending |
+| PERM-02 | Phase 14 | Pending |
+| PERM-03 | Phase 14 | Pending |
+| PERM-04 | Phase 14 | Pending |
+| PERM-05 | Phase 14 | Pending |
+| PHOTO-01 | Phase 16 | Pending |
+| PHOTO-02 | Phase 16 | Pending |
+| PHOTO-03 | Phase 16 | Pending |
+| MNG-01 | Phase 15 | Pending |
+| MNG-02 | Phase 15 | Pending |
+| MNG-03 | Phase 15 | Pending |
+| MNG-04 | Phase 15 | Pending |
+| TREE-01 | Phase 17 | Pending |
+| TREE-02 | Phase 17 | Pending |
+| TREE-03 | Phase 17 | Pending |
+| TREE-04 | Phase 17 | Pending |
+| QUAL-01 | Phase 16 | Pending |
+| QUAL-02 | Phase 17 | Pending |
+| QUAL-03 | Phase 17 | Pending |
 
 **Coverage:**
-- v1 requirements: 34 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 34 ⚠️ (resolved at roadmap creation)
+- v1 requirements: 35 total (corrected from the initial "34" header count during roadmap creation — the actual requirement list below contains 35 IDs across MEM×5, REL×6, ACC×5, PERM×5, PHOTO×3, MNG×4, TREE×4, QUAL×3)
+- Mapped to phases: 35/35 ✓
+- Unmapped: 0 ✓
+
+**Phase summary:**
+- Phase 12 (Family Data Model Foundation): 8 requirements — MEM-01, MEM-02, MEM-03, MEM-05, REL-01, REL-02, REL-03, REL-05
+- Phase 13 (Membership Gating & Account Linking): 5 requirements — ACC-01..05
+- Phase 14 (Relationship Resolvers, Permission Scoping & Query Safety): 7 requirements — MEM-04, REL-04, PERM-01..05
+- Phase 15 (Sibling Dedup Guard & /manage Self-Service UI): 5 requirements — REL-06, MNG-01..04
+- Phase 16 (Photo Upload): 4 requirements — PHOTO-01..03, QUAL-01
+- Phase 17 (/family Deep Tree Visualization): 6 requirements — TREE-01..04, QUAL-02, QUAL-03
 
 ---
 *Requirements defined: 2026-07-21*
-*Last updated: 2026-07-21 after initial definition*
+*Last updated: 2026-07-21 after roadmap creation (Phases 12–17), 100% traceability coverage confirmed*

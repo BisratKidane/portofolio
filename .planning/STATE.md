@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Collaborative Family Tree
 status: planning
-last_updated: "2026-07-21T14:02:09.145Z"
+last_updated: "2026-07-21T18:45:00.000Z"
 last_activity: 2026-07-21
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,80 +20,53 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** v1.1 shipped & archived — planning next milestone (`/gsd:new-milestone`)
+**Current focus:** v2.0 Collaborative Family Tree — roadmap created (Phases 12–17), ready to plan Phase 12
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-07-21 — Milestone v2.0 started
+Phase: 12 of 17 (Family Data Model Foundation)
+Plan: — (not yet planned)
+Status: Ready to plan
+Last activity: 2026-07-21 — ROADMAP.md created for v2.0 (6 phases: 12–17), REQUIREMENTS.md traceability updated to 100% coverage
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 24 (all v1.0)
+- Total plans completed: 24 (v1.0: 13, v1.1: 19) — none yet in v2.0
 - Average duration: - min
-- Total execution time: 0 hours (v1.1)
+- Total execution time: 0 hours (v2.0)
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01 | 2 | - | - |
-| 02 | 2 | - | - |
-| 03 | 3 | - | - |
-| 04 | 1 | - | - |
-| 05 | 3 | - | - |
-| 06 | 2 | - | - |
-| 07 | 2 | - | - |
-| 08 | 3 | - | - |
-| 09 | 3 | - | - |
-| 10 | 3 | - | - |
-| 11 | TBD | - | - |
+| 01–06 (v1.0) | 13 | - | - |
+| 07–11 (v1.1) | 19 | - | - |
+| 12–17 (v2.0) | TBD | - | - |
 
 **Recent Trend:**
 
-- Last 5 plans: -
+- Last 5 plans: - (v1.1 closed 2026-07-21; v2.0 not yet started)
 - Trend: -
 
 *Updated after each plan completion*
-| Phase 09 P02 | 20min | 1 tasks | 3 files |
-| Phase 09 P01 | 3min | 3 tasks | 4 files |
-| Phase 09 P03 | 49min | 2 tasks | 3 files |
-| Phase 10 P01 | 2min | 2 tasks | 3 files |
-| Phase 10 P02 | 2min | 2 tasks | 5 files |
-| Phase 10 P03 | 2min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecting current work:
 
-- v1.1: Remediate all 7 documented security issues, not just the flagship reset-token bug — v1.0's suite makes wholesale auth changes safe
-- v1.1: Reset token delivered via a pluggable mailer (console-logs in dev, wired for a provider in prod); same mailer backs email verification
-- v1.1: Each fix is TDD'd test-first; v1.0 tests documenting bugs are flipped to assert fixed behavior; CI must stay green throughout
-- Roadmap: Phases 7–11 sequenced dependency-first per research — (7) CORS + JWT fail-fast + password strength share one low-risk foundation phase; (8) mailer built once, consumed by reset-token fix; (9) passwordChangedAt sequenced right after Phase 8 since it touches the same resetPassword resolver; (10) rate limiting built after auth resolvers reach final v1.1 shape; (11) email verification last — largest blast radius, changes register's contract
-- Roadmap: Phases 9 and 11 each carry an explicit manual boot-and-verify acceptance criterion (non-force-synced dev DB) because sequelize.sync() won't alter existing tables and CI/test DB force-recreation can't catch missing columns
-- Roadmap: Phase 7 must stand up an HTTP-level (supertest) test harness — the existing in-process executeOperation() helper can't reach CORS/Express-layer code
-- [Phase 09]: RESET-06: password-reset tokens hashed at rest (sha256) — requestPasswordReset stores hashResetToken(resetToken) while still emailing the raw token; resetPassword looks up by hashResetToken(token), closing 08-REVIEW.md WR-08
-- [Phase 09]: Plan 1: passwordChangedAt uses DATE(3)/DATETIME(3) millisecond precision to avoid MySQL rounding fractional-second writes up into the next whole second
-- [Phase 09]: Plan 1: passwordChangedAt is nullable with no default and no backfill so no pre-existing session is force-evicted at deploy time
-- [Phase 09]: Plan 1: SC-4 manually verified by a human against a real pre-existing dev database (migration applied cleanly, zero Unknown column errors, pre-migration token still valid, reset+relogin succeeded)
-- [Phase 09]: Phase 09 Plan 03: getUserFromRequest rejects JWTs whose iat predates passwordChangedAt's floored second; same-second boundary and NULL-never-revokes proven by direct unit test, full wiring proven end-to-end via httpClient() — Closes the phase's core threat (T-09-07): a stolen/leaked JWT must stop being honored after a legitimate password reset
-- [Phase 10]: Phase 10 Plan 01: fixed-window algorithm chosen for rateLimitStore (not sliding-window) — simplest option satisfying per-key isolation + correct expiry, left to Claude's Discretion in the plan
-- [Phase 10]: [Phase 10]: Plan 02: rate-limit field identification uses the parsed GraphQL operation AST (operation.selectionSet.selections), never the client-supplied operationName string — Closes an operation-renaming/anonymizing bypass vector; verified by a 0-match grep on 'operationName' in rateLimitPlugin.js
-- [Phase 10]: Plan 02: server.js sets trust proxy = 1 unconditionally and derives clientIp: req.ip onto contextValue; the rate-limit plugin never reads req directly — Matches the file's flat, always-on middleware style; keeps the plugin HTTP-free/testable; documented in README as a hard single-reverse-proxy deployment constraint (D-04)
-- [Phase 10]: Plan 03: rate-limit test-harness bypass-resistance and enumeration-parity proofs (RATE-01..05) all driven via executeOperation(), zero HTTP boot — Closes T-10-03a (enumeration oracle) and T-10-03b (operation-rename bypass) with dedicated tests
-- [Phase 11]: Plan 07 Task 1: Register.jsx removes useNavigate entirely and renders a check-your-email confirmation Alert instead of navigating (D-15) — closes the client-side half of the ADMIN-race elevation-of-privilege threat (T-11-07a)
-- [Phase 11]: Plan 07 Task 2: /verify-email is registered as a ProtectedRoute sibling (not nested inside it), reads ?token= via useSearchParams, and auto-calls verifyEmail(token) on mount — establishes the session and redirects to /dashboard on success, shows a recoverable error + Return to sign in link on failure or missing token (D-14)
-- [Phase 11]: Plan 08 (VERIFY-04 gap closure, CR-01 Option B): verifyEmail now wraps token-consumption + admin-count check + ADMIN promotion in ONE sequelize.transaction; the admin-count read is a locking `SELECT COUNT(*) ... FOR UPDATE` so concurrent verifiers serialize on the single ADMIN slot structurally instead of relying on autocommit statement timing — replacing the prior two-statement UPDATE...JOIN that empirically deadlocked 28/30 under real MySQL 8.4 concurrency (11-VERIFICATION.md)
-- [Phase 11]: Plan 08: added retry-once-on-`ER_LOCK_DEADLOCK` around the transaction — a losing racer rolls back cleanly (single-use token NOT consumed) and re-runs once, so it still receives a valid AuthPayload instead of a burned token + raw SQL error; second deadlock or any non-deadlock error propagates unchanged
-- [Phase 11]: Plan 08: the ADMIN-race concurrency test was rewritten (WR-03) from a bare Promise.all (which passes regardless of fix status) into a deterministic two-connection harness — a raw mysql2 connection holds an exclusive lock on a shared non-admin anchor row to pin two real verifiers at their admin-count read, then releases so both promotions fire simultaneously; proven to FAIL against the pre-fix resolver (one racer hits ER_LOCK_DEADLOCK) and pass 5/5 against the fix
-- [Phase 11]: Plan 08: the plan's flake-check verify command used `npx vitest run --reporter=basic`, which is not a valid reporter in Vitest 4 (ERR_LOAD_URL); ran the 5x check with the default reporter instead — the reporter flag is a tooling incompatibility, not a test result
+- v2.0 roadmap: Phase order is data-model-first (12) → membership gating (13) → permission-scoping/relationship-resolvers (14) → dedup+/manage UI (15) → photo upload (16) → /family tree (17), per research's dependency-ordered build order (schema/cycle/cascade decisions are expensive to retrofit; gating must land before scoped edits; permission-scoping and relationship mutations are mutually dependent; tree view consumes everything prior).
+- v2.0 roadmap: Phase 13 (membership gating) explicitly carries the manual `ALTER TABLE users ADD COLUMN familyMemberId` + boot-verify step and the first-admin carve-out, mirroring the v1.1 Phase 9/11 manual-migration pattern — `sequelize.sync()` will not add a column to the existing `users` table.
+- v2.0 roadmap: Phase 14 (permission-scoping + relationship resolvers) is a dedicated phase with mandatory adversarial tests (privilege-escalation via relationship edits, exclusion fixtures for grandparent/cousin/sibling-of-sibling) — not folded into a feature phase as an afterthought, per PITFALLS.md Pitfalls 7–8.
+- v2.0 roadmap: Photo upload (Phase 16) is sequenced as architecturally independent of Phases 14/15 and may run in parallel once Phase 12 lands, per ARCHITECTURE.md's build order.
+- v2.0 roadmap: Phase 17 (/family) opens with a spike validating the React Flow (`@xyflow/react` + `dagre`) synthetic-union-node spouse-pairing pattern against a realistic-depth fixture before the full page is built — the library choice is a confirm-not-settled decision per STACK.md/SUMMARY.md.
+- v2.0 roadmap: QUAL-01/02/03 (cross-cutting TDD/CI constraints) are baked into every phase's success criteria rather than isolated as a standalone phase, per milestone instructions; for traceability purposes QUAL-01 is anchored to Phase 16 (last new backend surface) and QUAL-02/03 to Phase 17 (milestone-closing frontend + CI validation).
+- v2.0 roadmap note: REQUIREMENTS.md's stated "34 total" header undercounts by one — the actual v1 requirements list contains 35 IDs (MEM×5, REL×6, ACC×5, PERM×5, PHOTO×3, MNG×4, TREE×4, QUAL×3). All 35 are mapped 1:1 to phases 12–17 with 100% coverage; the header count was corrected to 35 during roadmap creation.
 
 ### Pending Todos
 
@@ -101,9 +74,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- None open — all v1.1 blockers resolved at milestone close (JWT fail-fast gated to production; Phases 9 & 11 manual migrations applied + SC-5 signed off 2026-07-21; the intended v1.0-test flips landed as TDD red steps).
-- Carry-forward note for any DB schema change in future milestones: `sequelize.sync()` does not alter existing tables, so a real pre-existing dev/prod DB needs a manual `ALTER TABLE` + human boot-verify — CI's force-recreate can't surface the gap. (Standing infra-debt: adopt Sequelize migrations.)
-- Carry-forward process note: this project runs on one long-lived `family` branch with a stale `origin/main`; decide the branch/merge/tag strategy at the *start* of the next milestone (the divergence grew 125→286 commits across v1.0→v1.1).
+- Carry-forward from v1.1: `sequelize.sync()` does not alter existing tables — any DB schema change touching an *existing* table (this milestone: `users.familyMemberId` in Phase 13) needs a manual `ALTER TABLE` + human boot-verify; CI's force-recreate can't surface the gap. (Standing infra-debt: adopt Sequelize migrations — still deferred.)
+- Carry-forward from v1.1: branch/merge/tag strategy for this milestone (one long-lived `family` branch vs. a stale `origin/main`) should be decided at milestone start, not ship time.
+- New for v2.0: the tree-visualization library choice (`@xyflow/react` + `@dagrejs/dagre` vs. `family-chart`) is flagged MEDIUM confidence in research — Phase 17 must spike the synthetic-union-node spouse-pairing pattern before committing to the full build; `family-chart` is the documented fallback if the spike fails.
+- New for v2.0: the sibling-dedup scope ("any one shared parent" vs. "both shared parents") was an open product question in research — resolved as "any one shared parent" per REL-06's wording ("shares **either** parent"); Phase 15 implementation must document this as a deliberate, known limitation (half-siblings sharing a firstname will be blocked).
+- New for v2.0: cross-subtree relationship-edit consent (Pitfall 8) — the roadmap resolves this as "require admin approval for any edge connecting two independently-linked accounts," to be enforced in Phase 14.
 
 ## Deferred Items
 
@@ -111,18 +86,22 @@ Items acknowledged and carried forward from previous milestone close:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
-| Quality | Coverage reporting/thresholds (QUAL-01), linter/formatter + CI gate (QUAL-02) | Deferred to v2 | Milestone init |
-| Testing | Full browser E2E tests (E2E-01) | Deferred to v2 | Milestone init |
-| Rate limiting | Coarse whole-`/graphql` `express-rate-limit` guard (RATE-F1), operation-aware graduated limits | Deferred to v2 | v1.1 requirements |
-| Admin bootstrap | Env-seeded initial admin `ADMIN_EMAIL` as belt-and-suspenders (VERIFY-F1) | Deferred to v2 | v1.1 requirements |
-| UX | Frontend-specific 429 message, password-strength meter (UX-F1) | Deferred to v2 | v1.1 requirements |
+| Quality | Coverage reporting/thresholds, linter/formatter + CI gate | Deferred to v2+ | v1.1 milestone init |
+| Testing | Full browser E2E tests (Playwright/Cypress) | Deferred (v2.0 REQUIREMENTS.md Out of Scope) | v2.0 requirements |
+| Rate limiting | Coarse whole-`/graphql` `express-rate-limit` guard, operation-aware graduated limits | Deferred to v2+ | v1.1 requirements |
+| Admin bootstrap | Env-seeded initial admin `ADMIN_EMAIL` as belt-and-suspenders | Deferred to v2+ | v1.1 requirements |
+| UX | Frontend-specific 429 message, password-strength meter | Deferred to v2+ | v1.1 requirements |
+| Invitations | Email/WhatsApp registration links, automated WhatsApp | Deferred to v2 (INV-01..03) | v2.0 requirements |
+| Removal flow | Member-initiated removal request/admin-approval flow | Deferred to v2 (RMV-01) | v2.0 requirements |
+| Genealogy | Multiple marriages, half-siblings, adoptions as first-class types | Deferred to v2 (GEN-01/02) | v2.0 requirements |
+| Tree curation | Inline tree-editing from `/family` nodes, duplicate-merge tooling | Deferred to v2 (CUR-01/02) | v2.0 requirements |
 
 ## Session Continuity
 
 Last session: 2026-07-21
-Stopped at: v1.1 Security Remediation milestone complete — Phases 7–11 verified, archived to milestones/v1.1-ROADMAP.md + milestones/v1.1-REQUIREMENTS.md, REQUIREMENTS.md removed for next milestone, tagged v1.1. PR #2 (family → main) open, awaiting merge.
-Resume file: (next) run /gsd:new-milestone to scope v2
+Stopped at: v2.0 ROADMAP.md created (Phases 12–17, 100% of 35 requirements mapped), REQUIREMENTS.md traceability updated, STATE.md refreshed.
+Resume file: None
 
 ## Operator Next Steps
 
-- Review and approve the v1.1 roadmap, then run `/gsd:plan-phase 7` to begin Foundation Hardening.
+- Review and approve the v2.0 roadmap, then run `/gsd:plan-phase 12` to begin Family Data Model Foundation.
