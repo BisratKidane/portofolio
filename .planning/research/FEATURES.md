@@ -1,201 +1,208 @@
 # Feature Research
 
-**Domain:** Security remediation for an existing email+password auth app (Express 4 + Apollo Server 4 GraphQL, Sequelize/MySQL, React/MUI)
-**Researched:** 2026-07-12
-**Confidence:** HIGH (OWASP-backed for the 5 well-established auth patterns) / MEDIUM (GraphQL-specific rate-limiting shape, which has no single dominant convention)
+**Domain:** Collaborative family-tree / genealogy web app (small, single-family, membership-gated — not a public "world tree")
+**Researched:** 2026-07-21
+**Confidence:** MEDIUM (visualization-library specifics HIGH via source docs; collaboration/permission patterns MEDIUM via WikiTree/Geni/FamilySearch documentation, which are much larger-scale products than this milestone's single-family scope — patterns are directionally correct but scaled down)
+
+## How This Maps to the Milestone's 6 Question Areas
+
+| # | Area | Table-stakes anchor | Biggest risk |
+|---|------|---------------------|--------------|
+| 1 | Member records + fields | firstname/lastname/gender required, derived fullname | Treating optional PII fields (address, phone) as required |
+| 2 | Relationship modeling | Directed parent↔child + undirected spouse, derived siblings | Modeling siblings as a stored edge instead of a derived query |
+| 3 | Deep tree visualization | Pan/zoom + spouse-adjacent rendering + search-to-locate | Picking an org-chart library (no native spouse concept) instead of a family-tree-native one |
+| 4 | Collaborative multi-user editing | Self-scoped "edit my immediate relatives" + admin whole-tree | Building real-time sync or approval workflows nobody asked for |
+| 5 | Membership-gated access | register → verify → **pending** → admin links to member node | Letting users self-claim a member node (identity-fraud risk) |
+| 6 | Duplicate prevention | Sibling-firstname-uniqueness as the *prevention* guard | Building WikiTree-style merge tooling as a *cure* — not requested, high cost |
+
+---
 
 ## Feature Landscape
 
-### Table Stakes (Must-Have For Each Fix To Be Real)
+### Table Stakes (Users Expect These)
 
-These are the minimum behaviors without which the fix doesn't actually close the vulnerability it targets. Cutting any of these means shipping a fix that looks done but isn't.
+| Feature | Category | Why Expected | Complexity | Auth/Existing-System Dependency |
+|---------|----------|--------------|------------|----------------------------------|
+| Required firstname/lastname/gender, derived fullname | 1. Member records | Every genealogy tool (GEDCOM, FamilySearch, WikiTree) treats name + sex as the minimum identifying record | LOW | New Sequelize model; no dependency on existing `User` model — this is a separate `Member` entity |
+| Optional biographical fields (mothersname, email, birthdate, deathdate, phone, address) | 1. Member records | Standard genealogy fields — birth/death dates and place are the baseline GEDCOM record beyond name/sex | LOW–MEDIUM | None; deathdate presence doubles as an implicit living/deceased flag, useful later for privacy rules (not required this milestone since app is membership-gated, not public) |
+| Profile photo per member | 1. Member records | Users expect faces in a tree; every genealogy product (Geni, MyHeritage, FamilySearch) supports a profile photo | MEDIUM | New backend file upload route + Docker volume mount (per PROJECT.md); reuse existing Express app, not existing auth per se, but the upload route must reuse `requireAuth`-style guard |
+| Directed parent→child link + undirected spouse link | 2. Relationships | Confirmed by genealogy-software data-model research: minimum viable family graph is (a) directed parent-child edges, (b) undirected spousal edges | MEDIUM | Bidirectional consistency required at write time (add-parent-to-child must add-child-to-parent in the same transaction) — new logic, no auth dependency |
+| Siblings **derived** from shared parent(s), never stored | 2. Relationships | Every genealogy data model treats siblings as computed, not authored, to avoid a second source of truth that can drift from the parent graph | LOW–MEDIUM | Query design only; because half-siblings/multiple-marriages are explicitly deferred, "any shared parent = sibling" is an acceptable simplification for this milestone |
+| Pan + zoom on the tree canvas | 3. Visualization | Baseline expectation once a tree exceeds ~10–15 nodes; every surveyed library (family-chart, react-d3-tree, js_family_tree) ships this out of the box | LOW–MEDIUM | Delegated to chosen library; no backend dependency |
+| Spouses rendered adjacent to their partner (not as another generation) | 3. Visualization | A *family* chart, unlike an *org* chart, must show couples side-by-side — this is the single biggest library-selection criterion | MEDIUM–HIGH (library-dependent) | None on auth; strongly constrains library choice (see Sources below) |
+| Search-to-locate a person by name | 3. Visualization | Table stakes once a tree is "deep" (explicitly required this milestone) — users cannot visually scan 50+ nodes | MEDIUM | Needs a name index endpoint + library API to center/highlight a node; no auth dependency beyond standard `requireAuth` on the query |
+| Self-service edit of **own immediate relatives** on `/manage` | 4. Collaboration | This is the stated core value prop of the milestone; comparable to Geni's "collaborators can edit profiles they're connected to" model | MEDIUM–HIGH | **New auth primitive needed.** Existing `requireAuth`/`requireAdmin` (`backend/src/utils/auth.js`) are binary role gates; this needs a *relationship-scoped* guard (e.g., "is the target member node the caller's own node, or a parent/spouse/child/sibling of it?") — extends, doesn't replace, existing utils |
+| Admin edits the **whole tree** | 4. Collaboration | Standard "root/admin can edit everything" pattern seen in every collaborative genealogy tool (WikiTree, Geni, FamilySearch group admins) | LOW–MEDIUM | Directly reuses existing `requireAdmin` — no new primitive needed |
+| Visible editable-members list | 4. Collaboration + 6. Dedup | Transparency into shared data is standard in collaborative tools (WikiTree shows "who else can edit this profile"); also doubles as the human backstop for spotting duplicates | LOW–MEDIUM | Simple authenticated query (`requireAuth`), no new primitive |
+| Register → email-verify → **inactive/pending** until admin links to a member node | 5. Membership gate | Matches FamilySearch's "family group" model: join requests must be approved by a group admin before participation | MEDIUM | Builds directly on v1.1's email-verification work; needs a **new account state** (`pending`) beyond today's binary verified/unverified, and a `memberId` FK on `User` |
+| Admin UI: link one unlinked user account to one unlinked member node | 5. Membership gate | Mirrors FamilySearch/FamilyTreeDNA admin-approval flows, scaled to a 1:1 person↔account link instead of a group join | MEDIUM | Reuses `requireAdmin`; needs new resolver + uniqueness constraint (one user ↔ one member, enforced at the DB layer) |
+| "Pending" gate page for unlinked-but-verified users | 5. Membership gate | Standard "your request is awaiting approval" UX pattern (FamilySearch shows this exact state for join requests) | LOW | Extends existing `ProtectedRoute.jsx` redirect pattern with a third state (authenticated-but-unlinked → `/pending`) instead of just two (authenticated/not) |
+| Sibling-firstname-uniqueness validation at write time | 6. Dedup | Explicit milestone requirement; functionally equivalent to a lightweight version of what WikiTree calls "duplicate checking before merge is needed" — prevention instead of cure | LOW–MEDIUM | Resolver-level check scoped to a specific parent-set (siblings sharing a parent), not global; no auth dependency beyond standard mutation guards |
 
-| Feature | Why Expected | Complexity | Notes |
-|---------|--------------|------------|-------|
-| **(1) `requestPasswordReset` returns generic message only, no `resetToken` field** | OWASP Forgot Password Cheat Sheet: same response for existent/non-existent accounts, and the token itself must never cross the network to the requester | LOW | Drop `resetToken` from `PasswordResetPayload` in `backend/src/schemas/user.schema.js:21-24`; stop setting it in `backend/src/resolvers/user.resolver.js:58-61`. Message stays identical for both branches (already true today). |
-| **(1) Pluggable mailer interface: `sendMail({ to, subject, text/html })`, dev impl logs to console** | Project decision: "same mailer backs email verification" — needs a single abstraction reused by fix #1 and fix #6 | LOW-MEDIUM | New module, e.g. `backend/src/utils/mailer.js`, exporting one function swapped by `NODE_ENV`/an explicit `MAIL_DRIVER` env var. Console-log driver for dev/test, a stub "not configured" driver for prod until a real provider is wired (out of scope this milestone). No new runtime dependency required — `console.log`/plain SMTP via Node's `nodemailer` are both viable; see Differentiators. |
-| **(1) Reset token single-use** | OWASP: token invalidated the instant it's consumed | LOW | Already implicit — `resetPassword` clears `resetPasswordToken`/`resetPasswordExpiresAt` on success (`user.resolver.js:70-71`). No new work, just don't regress it. |
-| **(1) Reset token expiry enforced** | OWASP: short-lived window (15–60 min) | LOW | Already implemented via `resetPasswordExpiresAt` + `resetTokenExpiry()` (`auth.js:35-37`, default 30 min via `RESET_TOKEN_EXPIRES_MINUTES`). Keep as-is; just confirm the check still fires (`user.resolver.js:65-67`). |
-| **(1) Frontend ForgotPassword no longer renders a token** | The whole point of the fix is removing the attacker-visible token from the UI | LOW | `frontend/src/pages/ForgotPassword.jsx` currently displays `result.resetToken` (lines 53-67, 82-86) and has a "Continue to reset" button gated on having the token. Replace with a static "check your email" success message; drop the `resetToken` field from the `REQUEST_RESET` GraphQL query string (line 9) since the schema no longer returns it. |
-| **(2) Fail-fast on missing/default `JWT_SECRET` in production** | A guessable, publicly-known fallback (`'change-me'`) lets anyone forge admin JWTs — this is the single highest-severity bug in the app | LOW | In `backend/src/config/env.js`, after building `env`, add: if `env.nodeEnv === 'production'` and (`!process.env.JWT_SECRET` or `process.env.JWT_SECRET === 'change-me'`) → `throw`/`process.exit(1)` before the server starts listening. Must NOT affect `development`/`test` env — the existing fallback stays for local dev and the test suite. |
-| **(3) Rate limit `login`, `register`, `requestPasswordReset`** | Without this, JWT-forging is closed but credential stuffing, account enumeration via timing/response, and reset-token guessing are all still open | MEDIUM | Single GraphQL endpoint (`/graphql`) makes route-based limiters (the default `express-rate-limit` pattern) insufficient — need to key off the GraphQL operation name, not the URL. See Architecture note below. |
-| **(3) 429 response on limit breach, not a silent GraphQL 200** | Correct HTTP semantics for "too many requests"; matches `express-rate-limit`'s default behavior and is simplest to implement/test | LOW-MEDIUM | Implement as Express middleware placed before `expressMiddleware(apollo, ...)` in `backend/src/server.js`, short-circuiting with `res.status(429)` before the request reaches Apollo. Frontend's `graphqlRequest` (`frontend/src/api/graphqlClient.js:23-36`) will surface this via the generic axios-error catch branch (axios throws on non-2xx); the message won't be pretty ("Request failed with status code 429") unless the frontend adds a specific case — treat that polish as a Differentiator, not required for the fix to be correct. |
-| **(3) Anti-enumeration: rate limit key is IP (not email/username)** | Keying solely by attempted email/username lets an attacker rotate the *target* to bypass the limiter while still hammering one IP; keying by IP (optionally +email as a secondary/combined key) is the standard mitigation | LOW | `express-rate-limit`'s default `keyGenerator` is IP-based already — just ensure custom logic doesn't accidentally key by request body email alone. |
-| **(4) `passwordChangedAt` column on `User`** | Needed as the timestamp JWTs are compared against | LOW | New Sequelize column, nullable or defaulting to `createdAt`. Migration path: this app uses `sequelize.sync()` (no migrations, per `CONCERNS.md`) so this is just a new field in `backend/src/models/User.js`, no migration tooling needed this milestone. |
-| **(4) `resetPassword` sets `passwordChangedAt = now()`** | This is the actual revocation trigger the fix is about | LOW | Add in `backend/src/resolvers/user.resolver.js` `resetPassword` mutation, alongside clearing the reset token fields. |
-| **(4) Token verification rejects JWTs issued before `passwordChangedAt`** | Without this check, setting the column does nothing — old tokens keep working | LOW-MEDIUM | In `backend/src/utils/auth.js`, `getUserFromRequest` needs the JWT's `iat` claim (jsonwebtoken sets this automatically in seconds) compared against `user.passwordChangedAt`. If `iat * 1000 < passwordChangedAt`, treat as unauthenticated — follow the existing pattern of swallowing to `null` rather than throwing (matches current error-handling convention: `try {...} catch { return null; }`). |
-| **(5) Server-side minimum length check on `register.password` and `resetPassword.password`** | Client-side-only validation (current state: HTML `required` only) is trivially bypassed via direct GraphQL calls — CONCERNS.md flags this explicitly | LOW | Add validation in the resolver before the value reaches `passwordHash` (both `register` at `user.resolver.js:25-37` and `resetPassword` at `:63-74`). Reasonable minimum for a portfolio app: **8 characters minimum**, no forced complexity rules (NIST 800-63B explicitly recommends length over complexity/rotation rules — see Password Strength section below). |
-| **(5) Validation error surfaces through the same `throw new Error(...)` + GraphQL-error convention** | Matches existing error-handling style (`user.resolver.js:27,41`), consumed by frontend's existing `Alert severity="error"` pattern with zero new frontend plumbing | LOW | No schema changes needed — password stays `String!`, validation is resolver-level, not schema-level. |
-| **(6) `emailVerified` boolean + verification token/expiry columns on `User`** | Needed to model the unverified→verified state transition | LOW-MEDIUM | New columns: `emailVerified` (boolean, default `false`), `emailVerificationToken` (string, nullable), `emailVerificationExpiresAt` (date, nullable) — mirrors the existing `resetPasswordToken`/`resetPasswordExpiresAt` pattern already in the model, so it's an established convention in this codebase, not a new one. |
-| **(6) `register` does NOT grant a usable session or ADMIN role until verified** | This is the actual fix for the land-grab race — if `register` still returns an `AuthPayload` with a working JWT immediately, the "verification" is theater; the real fix moves the ADMIN-assignment race to *verification order*, not *registration order*, which raises the bar from "fastest HTTP request" to "controls the target inbox" | MEDIUM | Recommended flow (see Architecture Decision below): `register` creates an unverified user (`role` not yet finalized or deferred), sends verification email, returns a message-only payload (no token). A new `verifyEmail(token: String!): AuthPayload!` mutation flips `emailVerified = true`, and — only at that point — assigns `role: 'ADMIN'` if this is the first *verified* user, then returns the JWT. This changes the `AuthPayload` contract for `register` (schema change) — flag as the highest-complexity item in this milestone. |
-| **(6) `login` rejects unverified accounts with a clear (non-enumerating-because-it's-their-own-email) error** | An unverified account must not be usable — otherwise verification is decorative | LOW | Add a check in `login` (`user.resolver.js:39-43`) after password validation succeeds: if `!user.emailVerified`, throw `'Please verify your email before logging in.'` This is safe to be specific (not a generic message) because the caller has already proven they know the correct password for that account — no new enumeration surface. |
-| **(6) Verification token is single-use, time-limited, and cryptographically random** | Same reasoning as the reset token — this is a bearer credential that grants role escalation for the first user | LOW | Reuse `createResetToken()`-style generation (`crypto.randomBytes(32).toString('hex')`) and a similar `*ExpiresAt` pattern; a reasonable expiry is longer than password reset (e.g. 24h, since it's lower time-sensitivity than a takeover token) — this is a judgment call for the requirements phase, not fixed by external standard. |
-| **(6) Frontend Register flow updated: no longer auto-navigates to `/dashboard`, shows "check your email" state** | `Register.jsx` currently calls `register()` then immediately `navigate('/dashboard')` (lines 19-20) — this breaks once `register` stops returning a token | MEDIUM | `frontend/src/context/AuthContext.jsx`'s `authenticate()` helper (lines 48-54) assumes `data.login \|\| data.register` always has `.token`/`.user` — needs a distinct code path for register (message-only response, no `localStorage.setItem`, no `setUser`). New verification landing page/route needed to call `verifyEmail` when the user clicks the emailed link — this is the single largest frontend surface in this milestone. |
-| **(7) CORS rejection returns a generic error, origin logged server-side only** | Minor info-disclosure fix but explicitly in scope | LOW | In `backend/src/server.js:17-23`, change `callback(new Error(\`Origin ${origin} is not allowed by CORS.\`))` to `console.error(...)` (or equivalent) server-side, then `callback(new Error('Not allowed by CORS.'))` (or `callback(null, false)`) to the client — no origin value in the message that reaches the browser. |
+### Differentiators (Competitive Advantage / Nice-to-Have Beyond MVP)
 
-### Differentiators (Nice-to-Have, Raises Quality But Not Required For The Fix To Be Correct)
+| Feature | Category | Value Proposition | Complexity | Notes |
+|---------|----------|--------------------|------------|-------|
+| Collapse/expand branches | 3. Visualization | Improves usability on very deep trees by letting a viewer hide distant branches; several libraries (react-d3-tree, js_family_tree, D3 pedigree examples) ship this natively | LOW–MEDIUM | Not explicitly requested this milestone but cheap if the chosen library supports it out of the box — recommend enabling if free, don't build custom if the library lacks it |
+| Re-root / "focus on this person" view | 3. Visualization | Lets a user see only their own line rather than the whole family; `react-family-tree` supports this cheaply via changing a `rootId` prop and re-deriving the visible subgraph | MEDIUM | Genuinely useful for large trees but adds a second navigation mode beyond the default full-tree view — good v1.x candidate, not MVP |
+| Per-field edit history / audit log ("who changed grandma's birthdate") | 4. Collaboration | Builds trust in a collaboratively-edited dataset; every large genealogy platform (WikiTree, FamilySearch) has this because disputes over facts are common | MEDIUM–HIGH | Valuable long-term but orthogonal to this milestone's core value prop (self-service immediate-relative editing); defer until real edit conflicts are observed |
+| Admin merge tool for accidental duplicates (union relationships/fields from two profiles into one) | 6. Dedup | Standard on WikiTree/Geni at their scale (millions of contributors, duplicates are inevitable) | HIGH | Explicitly not in this milestone's target features (only sibling-uniqueness prevention is scoped); the small, bounded, admin-curated tree here makes prevention sufficient — build only if duplicates are observed in practice |
 
-| Feature | Value Proposition | Complexity | Notes |
-|---------|-------------------|------------|-------|
-| **Operation-aware (not just IP-aware) rate limiting via GraphQL operation name parsing** | Blanket `/graphql` rate limiting either over-throttles legitimate `dashboard`/`me` polling or under-throttles auth mutations if limits are set loose enough to accommodate normal use | MEDIUM-HIGH | Requires inspecting `req.body.query`/`operationName` in Express middleware before Apollo executes, and running separate `express-rate-limit` instances (different windows) keyed per-operation. More correct, more moving parts — reasonable to defer if a single conservative `/graphql`-wide limiter is judged "good enough" for a portfolio app's threat model. |
-| **`resendVerificationEmail` mutation** | Handles the case where the verification email is lost/expired without forcing a full re-registration | LOW-MEDIUM | Natural follow-up to fix #6 but not required for the land-grab race to be closed — the base flow (verify once, from the original token) is sufficient for correctness. |
-| **Env-seeded initial admin (e.g. `ADMIN_EMAIL` matched at verification time, or a one-off seed script)** | Fully closes the land-grab race (no ambiguity about "first verified user" if concurrent verifications land near-simultaneously) and gives operators deterministic control over who the first admin is | LOW-MEDIUM | `CONCERNS.md` recommends this as an "and/or" alternative to verification. PROJECT.md's stated fix is verification-only, so treat this as an enhancement to flag for the requirements phase, not assume it's in scope. |
-| **`nodemailer` as the mailer implementation (vs. hand-rolled console-log module)** | Gives a real, swappable transport (SMTP/Stream/JSON transports) with a well-known interface, "wired for prod" is closer to literally true | LOW-MEDIUM | Adds a new dependency; a minimal hand-rolled `sendMail()` function achieves the same "pluggable, console-logs in dev" requirement with zero new dependencies. Either satisfies the table-stakes requirement — this is an implementation choice for the requirements/design phase. |
-| **Frontend-specific 429 error message** | Better UX than the raw axios "Request failed with status code 429" string | LOW | Small addition to `graphqlClient.js`'s existing error-branching (`frontend/src/api/graphqlClient.js:30-34`) mirroring the existing 'Network Error' special-case. |
-| **Password strength meter / live feedback in the UI** | Improves UX for the 8-character-minimum rule | LOW-MEDIUM | Pure frontend polish on `Register.jsx`/`ResetPassword.jsx`; PROJECT.md's "no UI redesign" constraint argues against spending milestone budget here beyond a plain error message. |
-| **Audit log of rate-limit hits / failed logins** | Useful operational signal for a "hardening" milestone | MEDIUM | No logging infrastructure exists yet (`CONCERNS.md`: "No logging/monitoring/error tracking"); building one is arguably a separate concern from the 7 targeted fixes. |
+### Anti-Features (Commonly Requested, Often Problematic — Avoid This Milestone)
 
-### Anti-Features (Explicitly Out Of Scope — Do Not Build)
+| Feature | Category | Why It Seems Appealing | Why Problematic Here | Alternative |
+|---------|----------|------------------------|------------------------|-------------|
+| Real-time collaborative editing (live multi-cursor sync, like Google Docs) | 4. Collaboration | "Collaborative" in the milestone name makes this feel implied | Requires websockets/OT/CRDT infrastructure disproportionate to a single small family's tree size; existing app has zero real-time infra (stateless JWT, plain axios request/response) | Keep the existing request/response GraphQL pattern; refetch on mutation. Scoped-write conflicts (two people editing the same parent link) are rare at family scale and can be handled with simple last-write-wins |
+| Approval workflow for a relative's edits before they apply (e.g., "your sibling proposed a change to your record, approve it?") | 4. Collaboration | Feels safer / more "correct" for shared data | Doesn't match the stated model — the design already scopes writes to "my immediate relatives," which is the safety mechanism. Layering an approval queue on top adds a second, redundant permission system | Enforce correctness via scoped write permissions (only touch nodes within one hop of your own), not a review queue |
+| Self-service "claim this member node" (search the tree, request to be linked to a specific pre-existing node without admin mediation) | 5. Membership gate | Reduces admin workload; feels more "self-service" and modern | Identity-fraud risk — anyone could claim to be "Uncle Robert" and gain edit rights over his relationships; the milestone explicitly specifies admin-mediated linking for this reason | Keep linking strictly admin-initiated; optionally let a user *request* a link (admin still approves) as a v1.x nicety, never auto-approve |
+| Auto-provisioning a member node on registration | 5. Membership gate | Simpler onboarding — no admin bottleneck | Bypasses the "admin curates a deduped, accurate genealogy" model entirely; would immediately create duplicate-member risk and defeat the sibling-uniqueness guard's purpose | Registration creates a `User` only; a member node is either pre-seeded by an admin or created by an admin as part of the linking step |
+| Global fuzzy-matching duplicate detection across the whole tree (WikiTree/Geni "world tree" style) | 6. Dedup | Sounds like the "proper" genealogy-software way to prevent duplicates | This app has one bounded, admin-curated family — not thousands of independently-contributed trees. Fuzzy matching solves a problem (independent strangers entering the same ancestor) this app doesn't have | Sibling-firstname-uniqueness (already scoped) plus the visible editable-members list is sufficient prevention at this scale |
+| Full non-binary/relationship-type generality (co-parents without marriage, adoptive vs. biological distinction, multiple concurrent spouses, half-sibling distinction) | 2. Relationships | "More inclusive/accurate modeling" is generally good practice per LGBTQ-genealogy-software critiques found in research | Explicitly deferred by PROJECT.md ("full genealogy... deferred to a later milestone"); building it now is scope creep against an explicit milestone boundary | Model gender as a required field but keep parent/spouse edges type-agnostic (don't hardcode "father"/"mother" labels — use generic "parent" edges) so this remains extensible without rework later |
+| GEDCOM import/export | 1/2/6 | "Standard" genealogy interop format, feels like it should be there from day one | Explicitly deferred by PROJECT.md; meaningful complexity (GEDCOM 5.5.1 parsing/serialization) for a feature with no current user demand | Defer; if ever needed, treat as an isolated import/export module that maps to/from the existing Member/Relationship schema |
 
-| Feature | Why It Seems Appealing | Why It's Out Of Scope Here | Alternative |
-|---------|------------------------|------------------------------|-------------|
-| **Refresh-token rotation / short-lived access token + refresh token pair** | "Real" session revocation (logout-everywhere, per-device sessions) | PROJECT.md Out of Scope: explicitly deferred; `passwordChangedAt` revocation is the chosen mechanism for this milestone | `passwordChangedAt` invalidates all tokens issued before a password reset; a leaked-but-not-reset token still lives until natural JWT expiry (`env.jwtExpiresIn`, default 1 day) — this is a documented, accepted limitation, not a gap to silently close |
-| **"Logout" that revokes the specific token server-side (denylist/blacklist)** | Matches user intuition that "logout" should invalidate that exact token everywhere | No token store/denylist infrastructure exists; adding one is architecturally equivalent to session-based auth, contradicts the stateless-JWT design decision already made | `logout` stays client-side-only (clears `localStorage`) exactly as it is today (`frontend/src/context/AuthContext.jsx:62-69`) — only a password change (via reset) invalidates tokens |
-| **MFA / TOTP / SMS 2FA** | Common "next step" after basic auth hardening | PROJECT.md Out of Scope: no new auth methods this milestone | None — not needed to close any of the 7 named vulnerabilities |
-| **OAuth / social login** | Common "modernization" ask | PROJECT.md Out of Scope | None |
-| **Live email provider integration (SES/SendGrid/Postmark account + API keys)** | Makes the mailer "actually work" in production today | PROJECT.md Out of Scope: "standing up an actual...account is a deployment concern, not this milestone" | Pluggable mailer interface with a dev console-log driver + a prod driver stub that's wired but not credentialed |
-| **CAPTCHA / bot-detection on register or login** | Common brute-force mitigation alongside rate limiting | Not named in the 7 target fixes; adds a new frontend dependency and UX friction beyond "no UI redesign" constraint | Rate limiting (fix #3) is the chosen brute-force mitigation for this milestone |
-| **Password complexity rules (must contain uppercase/number/symbol)** | Feels like "stronger" security | NIST 800-63B explicitly recommends against forced-composition rules — they push users toward predictable patterns (`Password1!`) without materially raising entropy, and add implementation/test surface for no security benefit | Length-only minimum (8 chars) plus optional "check against common-password list" as a possible differentiator, not composition rules |
-| **Full GraphQL query complexity/depth limiting** | Adjacent DoS-hardening concern, sometimes bundled with "rate limiting" work | Not one of the 7 named fixes; `CONCERNS.md` notes it as a separate, pre-existing architectural gap (no DataLoader, no depth limiting) unrelated to the auth-brute-force vectors this milestone targets | Leave as a documented, separate concern for a future infra-hardening milestone |
-| **Sequelize migrations for the new columns (`passwordChangedAt`, `emailVerified`, etc.)** | "Correct" way to evolve a production schema | PROJECT.md Out of Scope: migration tooling is explicitly deferred to a separate infra-hardening milestone; app currently relies on `sequelize.sync()` | New fields added directly to the model files; `sync()` picks them up automatically, consistent with how `resetPasswordToken`/`resetPasswordExpiresAt` were added previously |
+---
 
 ## Feature Dependencies
 
 ```
-(2) JWT secret fail-fast
-    └──independent── (no dependency on other fixes; pure startup guard)
+Member CRUD (fields, model)
+    └──requires──> nothing new (independent of existing User/auth model)
 
-(7) CORS generic error
-    └──independent── (isolated to server.js CORS middleware)
+Relationship modeling (parent/child/spouse)
+    └──requires──> Member CRUD (edges reference member ids)
 
-(5) Password strength validation
-    └──independent── (resolver-level guard, no schema/model changes)
+Derived siblings
+    └──requires──> Relationship modeling (computed from shared-parent query)
 
-(1) Reset-token exposure fix
-    └──requires──> Pluggable mailer interface
-                       └──shared-by──> (6) Email verification (same mailer, different template)
+Sibling-firstname-uniqueness guard (dedup)
+    └──requires──> Relationship modeling (must know the sibling set to validate against)
 
-(4) passwordChangedAt revocation
-    └──touches-same-resolver-as──> (1) resetPassword (both modify the resetPassword mutation body)
-    └──independent-of──> (6) email verification (different fields, different mutations)
+Tree visualization (/family)
+    └──requires──> Member CRUD + Relationship modeling (no data to render without both)
 
-(6) Email verification
-    └──requires──> Pluggable mailer interface (shared with #1)
-    └──changes-contract-of──> register mutation (AuthPayload → message-only response)
-                                   └──requires-frontend-update──> AuthContext.authenticate(), Register.jsx
-    └──changes-behavior-of──> login mutation (adds emailVerified gate)
-    └──adds-new-mutation──> verifyEmail(token) — new schema + resolver + frontend route
+Photo upload
+    └──enhances──> Member CRUD (optional field, not a hard dependency)
 
-(3) Rate limiting
-    └──wraps──> login, register, requestPasswordReset (adds Express-level middleware in front of all three; no resolver changes required)
+Membership-gated access (pending state)
+    └──requires──> existing email verification (v1.1)
+    └──requires──> Member CRUD (an admin needs member nodes to link accounts to)
+
+Self-service /manage (edit own immediate relatives)
+    └──requires──> Membership-gated access (must know "my" member node to scope edits)
+    └──requires──> Relationship modeling (the thing being edited)
+
+Admin whole-tree management + account linking
+    └──requires──> existing requireAdmin (backend/src/utils/auth.js)
+    └──requires──> Member CRUD + Membership-gated access
+
+Visible editable-members list
+    └──enhances──> Self-service /manage (lets a user orient themselves in the roster)
+    └──enhances──> Dedup (human backstop for spotting duplicates admin/uniqueness-guard missed)
+
+Collapse/expand, re-root (differentiators)
+    └──enhances──> Tree visualization (not required for it to function)
+
+Real-time collaborative editing ──conflicts──> existing stateless request/response architecture
+Self-service node-claiming ──conflicts──> admin-mediated linking (milestone's explicit design)
 ```
 
 ### Dependency Notes
 
-- **(1) and (6) share the mailer:** Build the pluggable mailer interface once; fix #1 (reset email) and fix #6 (verification email) are two call sites/templates against the same abstraction. Sequencing these together (or the mailer first, standalone) avoids building it twice.
-- **(6) is the only fix that changes an existing GraphQL contract** (`register`'s return shape) and therefore the only fix requiring frontend `AuthContext`/`Register.jsx` rework beyond a single page's display logic. This makes it the highest-complexity, highest-blast-radius item — plan it as its own phase, not bundled casually with smaller fixes.
-- **(4) and (1) touch the same resolver function** (`resetPassword`) — implementing them in the same pass avoids re-touching that function twice, but they are logically independent (revocation doesn't require the mailer, and the mailer doesn't require revocation).
-- **(3) rate limiting is purely additive** at the Express layer — it doesn't require changes to resolver logic for login/register/requestPasswordReset themselves, only middleware in `backend/src/server.js` in front of the `/graphql` route (or an operation-aware variant, see Differentiators).
-- **(2) and (7) are fully independent** of everything else and of each other — safe to implement/test in isolation, good low-risk starting points.
+- **Self-service `/manage` requires Membership-gated access:** the resolver scoping logic ("can this user edit this node?") needs to resolve "which member node is *me*?" first — that mapping only exists once an admin has linked the account. Build the account↔member link (and the `pending` gate) before wiring up self-service edit resolvers, or the scoping check has nothing to check against.
+- **Relationship modeling requires Member CRUD:** parent/spouse/child edges are foreign-key pairs between member records; the member table and its required fields must exist first.
+- **Derived siblings requires Relationship modeling, not the reverse:** siblings must never be a stored table — computing them from shared-parent edges is what keeps this milestone's simplification ("any shared parent = sibling," since half-siblings are deferred) internally consistent. If a stored `Sibling` join table is introduced later by mistake, it becomes a second source of truth that can drift from the parent graph.
+- **Real-time collaborative editing conflicts with the existing architecture:** the whole stack (stateless JWT, plain axios request/response, no websocket layer) is built around simple request/response GraphQL. Retrofitting live multi-user sync would touch server.js, the client, and add new infrastructure — disproportionate to a small family's collaboration needs.
+- **Self-service node-claiming conflicts with admin-mediated linking:** these are two different trust models for the same operation (who decides "this account = this person"). The milestone has already chosen admin-mediated; don't build both.
 
-## Account State Model for Email Verification (Fix #6) — Detailed
-
-This is the largest new flow this milestone introduces, so the state model matters more than the other 6 fixes.
-
-**States:**
-1. `UNVERIFIED` (new user, `emailVerified: false`) — created by `register`. Has a role placeholder but should NOT be treated as `ADMIN` for authorization purposes even if a role value is stored, until verified (see role-assignment timing below).
-2. `VERIFIED` (`emailVerified: true`) — reached via `verifyEmail(token)`. Only verified users can `login` or hold a meaningful `ADMIN` role.
-
-**What an unverified user can do:**
-- Nothing authenticated. `register` does not return a JWT (recommended — see below), so there is no session to exercise. If the design instead chooses to issue a JWT immediately at registration (alternative flow), then every resolver behind `requireAuth`/`requireAdmin` must additionally check `emailVerified` — this is strictly more places to enforce the same rule and is not recommended for a small codebase; blocking at `login` is a single choke point.
-- Can request a new email if the original was lost — only if the `resendVerificationEmail` differentiator is built; otherwise the token's expiry window is the only recovery path (re-register is blocked by the existing unique-email constraint, so an expired unverified account without resend is a dead end worth flagging to the requirements phase).
-
-**Verification link/token flow:**
-1. `register(name, email, password)` → creates `User` with `emailVerified: false`, generates `emailVerificationToken` + `emailVerificationExpiresAt`, sends verification email via the mailer (dev: logged to console, containing a URL like `${CLIENT_URL}/verify-email?token=...`), returns a message-only payload (no `token`, no `user`, or a minimal `{ message }` shape — schema change required).
-2. User clicks the link → frontend `/verify-email` route reads `token` from the query string, calls `verifyEmail(token)`.
-3. `verifyEmail(token)` resolver: looks up user by `emailVerificationToken`, checks not expired, sets `emailVerified: true`, clears the token/expiry fields (single-use, same pattern as password reset), determines role (`ADMIN` if this is the first verified user — count verified users, not all rows), returns `AuthPayload!` (token + user) so the user lands logged-in immediately after verifying.
-4. `login(email, password)`: after password validation succeeds, check `emailVerified`; if false, reject with a specific error (safe — see Table Stakes).
-
-**Interaction with "first user becomes ADMIN":**
-- **Recommended (matches PROJECT.md's stated fix):** Move the ADMIN-assignment check from registration time to verification time, and count against verified users only. This closes the *registration-speed* race (junk/unverified registrations can no longer camp the ADMIN slot) but does not fully eliminate a race if two people register and verify near-simultaneously — it raises the bar from "send one HTTP request first" to "control a real inbox and click first," which is the standard, proportionate mitigation for a portfolio-scale app.
-- **Stronger alternative (Differentiator, not assumed in scope):** Combine with an env-seeded admin (`ADMIN_EMAIL` env var checked at verification time, or a separate seed script) to fully deterministic-ize the first admin regardless of registration/verification races. Flag this for the requirements phase as an optional enhancement, since `CONCERNS.md` presents it as an "and/or," while PROJECT.md's Active requirements list only names verification.
-- **Not recommended:** Leaving role assignment at registration time while merely gating login on verification. This still lets an attacker's *unverified* registration permanently occupy the ADMIN role in the database (just unable to log in until they also verify) — it doesn't close the race, it only adds a login gate on top of an already-compromised role assignment.
-
-## Password Strength — Reasonable Minimum For A Portfolio App
-
-Per NIST SP 800-63B (current, widely-adopted guidance across the industry — favor length over composition rules):
-
-- **Minimum length: 8 characters.** This is NIST's floor recommendation and is achievable with a single resolver-level check on both `register` and `resetPassword`.
-- **No forced composition rules** (no mandatory uppercase/digit/symbol) — composition rules are explicitly discouraged by current guidance; they degrade usability without proportionally improving resistance to guessing, and adding them increases test surface for a portfolio-scope fix.
-- **No maximum-length-driven truncation surprises**: bcrypt (used here via `bcryptjs`) silently truncates inputs beyond 72 bytes — not a new concern introduced by this fix, but worth a one-line awareness note if the requirements phase wants to cap max length (e.g. 128 chars) to avoid relying on bcrypt's silent truncation behavior. Optional, not required for fix #5 to be correct.
-- **No password history / rotation requirements** — also discouraged by current guidance and unrelated to any of the 7 named fixes; do not add.
-
-## Rate Limiting — Sensible Limits (Judgment Call, No Single External Standard For GraphQL)
-
-There is no single authoritative "correct number" the way there is for token expiry (OWASP gives ranges) — these are reasonable, commonly-cited starting points for a small app, to be finalized in the requirements phase:
-
-| Mutation | Suggested Window | Suggested Limit | Reasoning |
-|----------|------------------|------------------|-----------|
-| `login` | 15 min | 5–10 attempts per IP | Standard brute-force mitigation range cited across OWASP Authentication Cheat Sheet-adjacent guidance and common `express-rate-limit` examples |
-| `register` | 1 hour | 5–10 per IP | Prevents mass account creation / spam registration abuse; looser than login since it's a lower-frequency legitimate action |
-| `requestPasswordReset` | 1 hour | 3–5 per IP (and reasonably, per email) | Tightest limit — this endpoint is both an enumeration vector and (pre-fix-#1) was the token-exposure vector; keeping it tight limits reset-token-guessing exposure even after fix #1 removes the token from the response |
-
-**Response contract:** HTTP 429 from Express middleware in front of Apollo (table stakes, see above) is simplest and is what `express-rate-limit` does natively. A GraphQL-error-shaped 200 response is a viable alternative some GraphQL-specific tooling (`graphql-rate-limit-directive`) produces instead, but is more implementation work for this single-endpoint app and isn't required by any external standard — flag as a requirements-phase decision, default recommendation is 429.
+---
 
 ## MVP Definition
 
-### Launch With (v1.1 — all 7 fixes, all Table Stakes rows above)
+### Launch With (this milestone, v2.0)
 
-Every fix in this milestone is itself already a minimum/must-have (these are all remediations of documented, tracked vulnerabilities in `KNOWN-ISSUES.md`/`CONCERNS.md` — none of the 7 are optional or gradually-rollout-able):
+- [ ] Member model: firstname*, lastname*, gender* (required), derived fullname, mothersname, email, birthdate, deathdate, phone, address, profilePicture — table stakes, no user trusts a family tree missing basic vitals
+- [ ] Parent↔child + spouse relationships, siblings derived from shared parents — the entire value of a "tree" is the graph, not the records
+- [ ] Sibling-firstname-uniqueness guard — the cheapest possible dedup prevention, must exist before any tree grows past a handful of members
+- [ ] `/manage`: self-service edit of own immediate relatives (parents, spouse, children, siblings) — the stated core value proposition of this milestone
+- [ ] Admin: whole-tree management + account↔member linking — required to bootstrap membership-gated access at all
+- [ ] Membership gate: register → verify (existing) → pending → admin-linked — this *is* the access model; nothing else in the milestone works without it
+- [ ] `/family`: pan/zoom deep tree, spouses shown adjacent, search-to-locate — explicitly named in the milestone goal
+- [ ] Visible editable-members list — cheap, doubles as dedup backstop and self-service orientation aid
+- [ ] Photo upload to Docker volume — explicitly named target field, moderate cost, high perceived value
 
-- [ ] Fix #1 — resetToken removed from API + frontend, pluggable mailer built
-- [ ] Fix #2 — JWT secret fail-fast in production
-- [ ] Fix #3 — rate limiting on login/register/requestPasswordReset, 429 response
-- [ ] Fix #4 — passwordChangedAt revocation wired into resetPassword + token verification
-- [ ] Fix #5 — 8-char minimum password validation on register + resetPassword
-- [ ] Fix #6 — email verification gating login + ADMIN assignment, register contract change, new verifyEmail mutation + frontend route
-- [ ] Fix #7 — CORS rejection stops echoing origin to client
+### Add After Validation (v2.x)
 
-### Add After Validation (Differentiators, candidate for a fast-follow inside v1.1 or immediately after)
+- [ ] Collapse/expand on the tree canvas — add once real trees are deep enough that full-expand becomes visually noisy
+- [ ] Re-root/focus-on-a-person view — add once users report wanting to see "just my branch"
+- [ ] Per-field edit history/audit log — add once multiple editors on the same node produce a real dispute or confusion
+- [ ] Self-service request-to-link (still admin-approved) — add if admin linking becomes a workflow bottleneck
 
-- [ ] Operation-aware rate limiting (if blanket `/graphql` limiting proves too coarse in practice)
-- [ ] `resendVerificationEmail` mutation
-- [ ] Frontend-specific 429 error message
-- [ ] Env-seeded initial admin (belt-and-suspenders on top of verification-gated role assignment)
+### Future Consideration (v3+, already flagged Out of Scope in PROJECT.md)
 
-### Future Consideration (Explicitly Deferred, Per PROJECT.md Out of Scope)
+- [ ] Invitation links (email + WhatsApp) — defer until the admin-bootstrapped membership base is established
+- [ ] Full genealogy generality (multiple marriages, half-siblings, adoption) — defer until the simplified "any shared parent = sibling" model demonstrably breaks down
+- [ ] GEDCOM import/export — defer until there's a concrete need to interoperate with another genealogy tool
+- [ ] Admin merge tooling for duplicates — defer unless the uniqueness guard proves insufficient in practice
+- [ ] Object-storage photos (S3-style) — defer; Docker volume is sufficient at this scale
+- [ ] Browser E2E tests for the family-tree flows — defer per existing project-wide E2E deferral
 
-- [ ] Refresh-token rotation / true multi-device logout
-- [ ] Live email provider account
-- [ ] MFA / OAuth
-- [ ] Sequelize migrations
-- [ ] GraphQL query complexity/depth limiting
-- [ ] CAPTCHA
+---
 
 ## Feature Prioritization Matrix
 
-| Fix | User/Security Value | Implementation Cost | Priority |
-|-----|---------------------|----------------------|----------|
-| (2) JWT secret fail-fast | HIGH (closes the single worst bug — forgeable admin tokens) | LOW | P1 |
-| (1) Reset-token exposure | HIGH (closes documented account-takeover vector) | MEDIUM (mailer + schema + frontend) | P1 |
-| (6) Email verification | HIGH (closes admin land-grab race) | HIGH (contract change, new flow, most frontend work) | P1 |
-| (4) passwordChangedAt revocation | MEDIUM-HIGH (limits blast radius of a leaked token after reset) | LOW-MEDIUM | P1 |
-| (3) Rate limiting | MEDIUM-HIGH (closes brute-force/enumeration) | MEDIUM (GraphQL-aware middleware) | P1 |
-| (5) Password strength | MEDIUM (baseline hygiene, low attacker cost saved but standard expectation) | LOW | P1 |
-| (7) CORS generic error | LOW (minor info disclosure only, per CONCERNS.md's own severity rating) | LOW | P1 (trivial, no reason to defer) |
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|----------------------|----------|
+| Member model + required fields | HIGH | LOW | P1 |
+| Parent/child + spouse relationships | HIGH | MEDIUM | P1 |
+| Derived siblings | HIGH | LOW–MEDIUM | P1 |
+| Sibling-firstname-uniqueness guard | MEDIUM | LOW–MEDIUM | P1 |
+| Membership gate (pending → admin-linked) | HIGH | MEDIUM | P1 |
+| `/manage` self-service immediate-relative editing | HIGH | MEDIUM–HIGH | P1 |
+| Admin whole-tree management + linking | HIGH | LOW–MEDIUM | P1 |
+| `/family` pan/zoom tree, spouse-adjacent rendering | HIGH | MEDIUM–HIGH | P1 |
+| Search-to-locate on tree | MEDIUM | MEDIUM | P1 |
+| Visible editable-members list | MEDIUM | LOW–MEDIUM | P1 |
+| Profile photo upload | MEDIUM | MEDIUM | P1 |
+| Collapse/expand | MEDIUM | LOW–MEDIUM | P2 |
+| Re-root/focus-on-person | MEDIUM | MEDIUM | P2 |
+| Edit history/audit log | MEDIUM | MEDIUM–HIGH | P3 |
+| Admin merge tooling | LOW (given prevention guard exists) | HIGH | P3 |
+| Invitations (email/WhatsApp) | HIGH (future) | MEDIUM–HIGH | P3 (deferred by PROJECT.md) |
+| GEDCOM import/export | LOW (no current demand) | HIGH | P3 |
 
-All 7 are P1 for this milestone — they were selected specifically because they're the previously-deferred, documented vulnerabilities; there's no P2/P3 tier within the named scope. The Differentiators table above is the actual P2/P3 tier for a requirements phase that wants to size a "stretch" list.
+**Priority key:**
+- P1: Must have for this milestone (v2.0)
+- P2: Should have, first candidate for v2.x
+- P3: Nice to have / explicitly deferred
+
+---
+
+## Competitor Feature Analysis
+
+| Feature | WikiTree (public, world-tree, wiki-style) | Geni (public/private, collaborative) | FamilySearch Family Groups (private, admin-approved) | Our Approach |
+|---------|---------------------------------------------|----------------------------------------|----------------------------------------------------------|--------------|
+| Who can edit a person | Any registered user can propose edits; disputes resolved via profile "managers" | Collaborators have full edit access to public profiles they're connected to in a project; private profiles need a "profile manager" | Members of the group edit shared/group data; personal tree stays private unless copied into the group tree | Self: own immediate relatives only. Admin: everyone. No public/wiki-style open editing — smaller trust surface fits a single-family app |
+| Joining/linking to the tree | Open registration, anyone can search/add themselves | Open registration; connecting to existing profiles is user-initiated | Invitation-only; admin approves join requests before participation | Registration open, but **account access is gated**: verified but unlinked accounts sit in `pending` until an admin links them to a member node — closer to FamilySearch's admin-approval model than WikiTree/Geni's open model |
+| Duplicate handling | Dedicated merge tooling; duplicates are expected at scale (millions of contributors) | Dedicated "Merge This Profile" tooling; same rationale | Not heavily documented (smaller, curated groups) | Prevention only (sibling-firstname-uniqueness) — no merge tooling this milestone, because the tree is small and admin-curated, not crowd-contributed |
+| Tree visualization | Standard pedigree/tree view, deep trees common (world tree) | Rich family-tree visualization with drag/explore | Standard Family Tree view (FamilySearch's global tree) | Purpose-built pan/zoom deep tree at `/family`, library chosen specifically for native spouse-adjacent rendering (see Sources) |
+| Non-traditional family structures | Documented critique: hetero-centric defaults ("father"/"mother" labels) are a known pain point | Similarly hetero-centric by default per general genealogy-software critique | Same category of critique applies broadly to genealogy software | Model relationships as generic "parent"/"spouse" edges (not "father"/"mother" fields) so the schema doesn't need rework when full genealogy generality is tackled later — cheap to do now, expensive to retrofit |
+
+---
 
 ## Sources
 
-- [OWASP Forgot Password Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html) — HIGH confidence: single-use tokens, 15–60 min expiry, generic anti-enumeration messaging (verified against current codebase behavior, which already implements expiry/single-use correctly and just needs the token removed from the response)
-- [OWASP Authentication Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html) — MEDIUM confidence (referenced via search summary, not directly fetched): rate-limiting and lockout guidance
-- [OWASP Testing for Weak Password Change or Reset Functionalities](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/04-Authentication_Testing/09-Testing_for_Weak_Password_Change_or_Reset_Functionalities) — MEDIUM confidence, supports token invalidation-on-use requirement
-- NIST SP 800-63B password guidance (length over composition, no forced rotation) — HIGH confidence, well-established industry consensus reflected across current OWASP and NIST-derived guidance; not independently re-fetched this session but consistent with prior verified knowledge and the OWASP cheat sheets surfaced above
-- [graphql-rate-limit-directive (npm)](https://www.npmjs.com/package/graphql-rate-limit-directive) / [graphql-rate-limit (GitHub, ravangen)](https://github.com/ravangen/graphql-rate-limit) — MEDIUM confidence: confirms there is no single dominant Express+Apollo rate-limiting convention for GraphQL; operation-name-aware limiting via custom middleware or a rate-limit directive library are both real, used patterns, not a niche approach — supports treating this milestone's choice (Express-layer middleware vs GraphQL-directive) as a requirements-phase decision rather than a fixed answer
-- [Nodemailer official docs — Stream Transport](https://nodemailer.com/transports/stream) — HIGH confidence: confirms a dev-mode transport that avoids sending real email exists as a standard, well-documented pattern if the requirements phase chooses `nodemailer` over a hand-rolled mailer module
-- Codebase: `.planning/PROJECT.md`, `.planning/codebase/CONCERNS.md`, `backend/src/resolvers/user.resolver.js`, `backend/src/schemas/user.schema.js`, `backend/src/models/User.js`, `backend/src/utils/auth.js`, `backend/src/server.js`, `backend/src/config/env.js`, `frontend/src/pages/ForgotPassword.jsx`, `frontend/src/pages/Register.jsx`, `frontend/src/context/AuthContext.jsx`, `frontend/src/api/graphqlClient.js`, `KNOWN-ISSUES.md` — HIGH confidence, directly read this session, ground-truth for all "existing behavior" and "files touched" claims
+- [Genealogy software — Wikipedia](https://en.wikipedia.org/wiki/Genealogy_software) — baseline data-model description (name/sex/relationships/dates), MEDIUM confidence
+- [The Family Tree Data Model — FamilySearch Developers](https://developers.familysearch.org/main/docs/the-family-tree-data-model) — couple relationships vs. child-and-parents relationships as the two core relationship types, HIGH confidence (official docs)
+- [GEDCOM: The Essential File Format for Genealogy Data](https://genomelink.io/blog/gedcom-the-essential-file-format-for-genealogy-data) — GEDCOM 5.5.1 as baseline interop standard, MEDIUM confidence
+- [family-chart (GitHub, donatso)](https://github.com/donatso/family-chart) and its [data-format.md](https://github.com/donatso/family-chart/blob/master/docs/data-format.md) — D3-based, framework-agnostic (React-compatible), native `parents`/`spouses`/`children` arrays per person, gender-aware layout, zoom/pan built in — HIGH confidence (read directly from source docs)
+- [react-family-tree (npm/GitHub, SanichKotikov)](https://www.npmjs.com/package/react-family-tree) — `rootId` prop enables cheap re-rooting/focus-on-person by re-deriving the visible subgraph — MEDIUM confidence (search-derived, not directly fetched)
+- [react-d3-tree (GitHub, bkrem)](https://github.com/bkrem/react-d3-tree) — collapsible hierarchical tree, but is an *org-chart*-style layout without a native spouse concept — MEDIUM confidence; flagged as a poorer fit than family-chart for this milestone's "show spouses" requirement
+- [WikiTree Help:Merging](https://www.wikitree.com/wiki/Help:Merging) and [Matching and Merging FAQ](https://www.wikitree.com/wiki/Help:Matching_and_Merging_FAQ) — merge-as-cure pattern at world-tree scale, MEDIUM confidence
+- [Geni: How do I merge duplicate profiles?](https://help.geni.com/hc/en-us/articles/229705547-How-do-I-merge-duplicate-profiles) and [How can a stranger edit my tree?](https://help.geni.com/hc/en-us/community/posts/222067587-How-can-a-stranger-edit-my-tree-And-can-I-stop-her-from-doing-it-again) — collaborative-editing trust model (collaborators can edit public profiles they're connected to), MEDIUM confidence
+- [FamilySearch: Approve join requests for a family group](https://www.familysearch.org/en/help/helpcenter/article/approve-join-requests-for-a-family-group) and [Invite people to join a family group](https://www.familysearch.org/en/help/helpcenter/article/invite-people-to-join-a-family-group) — admin-approval membership-gate pattern closest to this milestone's design, MEDIUM confidence
+- [sixgen.org — LGBTQ Genealogy & Software, Part 1](https://sixgen.org/lgbtq-genealogy-software-part-1/) and [Part 3](https://sixgen.org/lgbtq-genealogy-software-part-3/) — critique of hetero-centric "father"/"mother" data modeling, informs the "generic parent/spouse edges, not gendered role fields" recommendation — MEDIUM confidence (advocacy source, but directionally consistent with modern genealogy-software critiques)
+- Existing codebase: `backend/src/utils/auth.js` (`requireAuth`, `requireAdmin`), `frontend/src/components/ProtectedRoute.jsx` — read directly, HIGH confidence, basis for all "auth/existing-system dependency" notes above
 
 ---
-*Feature research for: security remediation on an existing email+password auth GraphQL app*
-*Researched: 2026-07-12*
+*Feature research for: Collaborative family-tree domain (v2.0 milestone)*
+*Researched: 2026-07-21*

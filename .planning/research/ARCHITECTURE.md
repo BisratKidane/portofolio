@@ -1,254 +1,322 @@
-# Architecture Research — v1.1 Security Remediation Integration
+# Architecture Research
 
-**Domain:** Integrating 7 security fixes into an existing Express 4 + Apollo Server 4 (expressMiddleware) + Sequelize/MySQL + React GraphQL app
-**Researched:** 2026-07-12
-**Confidence:** HIGH (Apollo Server 4 plugin lifecycle, rate-limiter-flexible API — verified against current docs/README); MEDIUM (specific design choices below are opinionated recommendations, not the only valid architecture)
+**Domain:** Collaborative family-tree domain grafted onto an existing Express + Apollo + Sequelize/MySQL + React app (v2.0 Collaborative Family Tree milestone)
+**Researched:** 2026-07-21
+**Confidence:** HIGH (grounded in the actual codebase files read below; MEDIUM/LOW flagged inline where training-data/websearch patterns are extrapolated)
 
-## Existing Architecture (unchanged, for reference)
+This is a **subsequent-milestone** research file. It does not re-derive the existing architecture (see `.planning/codebase/ARCHITECTURE.md` / `STRUCTURE.md`) — it maps exactly where the new family-tree domain plugs into it, what's new vs modified, and what the `sequelize.sync()`-no-migrations reality makes risky.
+
+## Standard Architecture
+
+### System Overview
 
 ```
-React SPA ──axios POST /graphql──▶ Express ──▶ expressMiddleware(apollo) ──▶ Apollo Server 4
-                                     │                                          │
-                                cors() middleware                     context: { models, user }
-                                                                                │
-                                                                     resolvers (user.resolver.js)
-                                                                                │
-                                                                      Sequelize models ──▶ MySQL
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Frontend (React SPA) — MODIFIED + NEW                                     │
+│  Pages: [EXISTING] Login/Register/Dashboard/...                          │
+│         [NEW] FamilyTree.jsx (/family)  ManageFamily.jsx (/manage)        │
+│         [NEW] Pending.jsx (/pending)                                      │
+│  Components: [EXISTING] ProtectedRoute → [MODIFIED] adds requireFamily    │
+│              [NEW] FamilyTreeCanvas (pan/zoom lib wrapper)                │
+│              [NEW] MemberForm, RelativePicker, PhotoUploader              │
+│  Context: [MODIFIED] AuthContext — user now carries familyMemberId/role   │
+└───────────────┬─────────────────────────────────┬─────────────────────────┘
+                │ POST /graphql (axios, existing)  │ POST /uploads/family-photo (NEW, multipart)
+                ▼                                  ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ Backend (Express + Apollo) — MODIFIED + NEW                               │
+│  server.js [MODIFIED]: context now also resolves familyMember;            │
+│            mounts NEW express.static('/uploads') + NEW multer upload route│
+│  schemas/  [NEW] familyMember.schema.js → merged into schemas/index.js    │
+│  resolvers/[NEW] familyMember.resolver.js → merged into resolvers/index.js│
+│  utils/auth.js [MODIFIED]: NEW requireFamilyAccess() guard                │
+│  utils/family.js [NEW]: computeEditableRelatives(), sibling lookup helper │
+└───────────────┬─────────────────────────────────┬─────────────────────────┘
+                │                                  │
+                ▼                                  ▼
+┌───────────────────────────────┐   ┌───────────────────────────────────────┐
+│ Data Layer — MODIFIED + NEW    │   │ Filesystem — NEW                      │
+│ models/FamilyMember.js  [NEW]  │   │ Docker named volume (family_photos)   │
+│ models/FamilySpouse.js  [NEW]  │   │ mounted into backend container,       │
+│  (self-ref M:N join table)     │   │ served at /uploads/*                  │
+│ models/User.js  [MODIFIED]     │   └───────────────────────────────────────┘
+│  (+familyMemberId FK — REQUIRES│
+│   manual ALTER, sync() will    │
+│   NOT add it — see Pitfalls)   │
+└───────────────┬─────────────────┘
+                ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│ MySQL 8.4 (Docker volume) — unchanged engine, new tables + 1 altered col  │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
-Single `POST /graphql` endpoint. Apollo `context()` runs `getUserFromRequest(req, models)` per request (JWT verify + `findByPk`). Resolvers call `requireAuth`/`requireAdmin` manually. `backend/test/helpers.js` bypasses HTTP entirely: it builds an `ApolloServer` instance directly and calls `server.executeOperation({ query, variables }, { contextValue })`. This matters a lot for every fix below — **anything implemented as Express middleware (before `expressMiddleware`) is invisible to `executeOperation()`-based tests; anything implemented as an Apollo plugin or inside `context()`/resolvers is not.**
+### Component Responsibilities
 
-## Fix-by-Fix Integration
+| Component | Responsibility | Status |
+|-----------|----------------|--------|
+| `backend/src/models/FamilyMember.js` | Sequelize model: person fields + self-referential `motherId`/`fatherId` FKs | NEW |
+| `backend/src/models/FamilySpouse.js` | Join table model for self-referential spouse many-to-many | NEW |
+| `backend/src/models/User.js` | Adds nullable, unique `familyMemberId` FK | MODIFIED |
+| `backend/src/models/index.js` | Registers new models, wires associations (`belongsTo`/`hasMany`/`belongsToMany`) | MODIFIED |
+| `backend/src/schemas/familyMember.schema.js` | SDL: `FamilyMember`, `FamilyTree`, CRUD + linking mutations | NEW |
+| `backend/src/schemas/index.js` | Appends `familyMemberTypeDefs` to the aggregator array | MODIFIED |
+| `backend/src/resolvers/familyMember.resolver.js` | CRUD, relationship mutations, `familyTree` flat-fetch query, linking mutations | NEW |
+| `backend/src/resolvers/index.js` | Appends `familyMemberResolvers` to the aggregator array | MODIFIED |
+| `backend/src/utils/auth.js` | Adds `requireFamilyAccess(user)` guard (linked-member-or-ADMIN) | MODIFIED |
+| `backend/src/utils/family.js` | `computeEditableRelatives(member, allMembers)` — parents/spouse/children/siblings set builder | NEW |
+| `backend/src/server.js` | Apollo `context` also resolves `familyMember`; mounts `express.static('/uploads')` + a small multer route | MODIFIED |
+| `backend/uploads/` (Docker volume) | Stores uploaded photo files on disk | NEW |
+| `frontend/src/pages/FamilyTree.jsx` (`/family`) | Fetches `familyTree`, hands adjacency list to a pan/zoom canvas library | NEW |
+| `frontend/src/pages/ManageFamily.jsx` (`/manage`) | CRUD form for own scoped relatives (or whole tree for ADMIN) + admin account-linking UI | NEW |
+| `frontend/src/pages/Pending.jsx` (`/pending`) | Shown to verified-but-unlinked non-admin users | NEW |
+| `frontend/src/components/ProtectedRoute.jsx` | Adds a `requireFamilyAccess` prop/variant redirecting unlinked users to `/pending` | MODIFIED |
+| `frontend/src/context/AuthContext.jsx` | `me` query extended to include `familyMemberId`; exposes it in `user` | MODIFIED |
 
-### 1. Rate limiting on `/graphql` (login, register, requestPasswordReset)
+## Recommended Project Structure
 
-**Where it lives:** An **Apollo Server plugin**, not Express middleware (e.g. `express-rate-limit`). Reasoning:
-
-- There is exactly one HTTP route (`/graphql`); Express-level middleware only sees "a POST arrived," not which GraphQL operation it carries. Distinguishing `login` from `register` from `me` in Express middleware means re-parsing `req.body.query`/`operationName` yourself — duplicate work Apollo already does.
-- Apollo Server's request pipeline runs identically whether entered via `expressMiddleware` (HTTP) or `server.executeOperation()` (in-process, used by `backend/test/helpers.js`). A plugin hook fires in both cases; Express middleware only fires for the HTTP path. Since the milestone's TDD strategy is built entirely on the in-process `graphql()` helper, **rate limiting must be a plugin to be testable at all** with the existing test harness — Express middleware would require a parallel supertest-based HTTP test just for this one fix, which is inconsistent with how everything else is tested.
-- The `didResolveOperation` lifecycle hook is the right one: it fires after Apollo has parsed and validated the operation, so `requestContext.operationName` and `requestContext.contextValue` are both available, and it fires *before* resolver execution — throwing a `GraphQLError` here aborts the request before any resolver runs, without needing per-resolver guard calls (avoids replicating the "forgot to call requireAuth" anti-pattern already flagged in `.planning/codebase/ARCHITECTURE.md`).
-
-**Keying:** `${clientIp}:${operationName}`, e.g. `1.2.3.4:login`. `clientIp` is **not** derived inside the plugin — it must arrive via `contextValue`, because the plugin has no access to `req` in the in-process test path. Concretely:
-- `backend/src/server.js`'s `context()` gains a `clientIp: req.ip` field (Express already provides `req.ip`; note the existing README calls for a reverse proxy in prod, so `app.set('trust proxy', 1)` is a small companion fix worth doing alongside this — flag for roadmap, not a new numbered fix).
-- `backend/test/helpers.js`'s `graphql()` helper gains an optional 4th/options argument, e.g. `graphql(query, variables, user, { clientIp })`, merged into `contextValue`. Default it to a stable value (e.g. `'127.0.0.1'`) so existing/unrelated tests are unaffected; dedicated rate-limit tests pass a unique synthetic IP per test (or per `describe` block) to avoid bucket collisions with each other and with the shared Apollo Server singleton in `helpers.js` (that server instance is created once for the whole Vitest run, so limiter state persists across test files unless explicitly isolated/reset).
-
-**Store implementation:** Recommend a small hand-rolled in-memory fixed-window counter (`Map<key, { count, resetAt }>`) rather than pulling in `express-rate-limit` (which is Express-request-shaped and doesn't fit a plugin hook) or a new heavyweight dependency. This codebase already leans lean-dependency (no rate-limiting lib today); a ~30-line module is trivial to reason about, and — critically — you control its testing surface directly: export `resetRateLimits()` for test teardown and a `configure(overrides)` for dedicated rate-limit tests to use tight thresholds without affecting the production config. `rate-limiter-flexible`'s `RateLimiterMemory` (`consume(key, points)`, verified current API) is a solid alternative if a more correct sliding-window/points algorithm is wanted later — mention as a fallback, not the primary recommendation, since the hand-rolled version keeps the dependency surface unchanged and the reset semantics simpler.
-
-**Cross-test isolation is the sharp edge.** Because `helpers.js` builds one `ApolloServer` (and therefore one rate-limit plugin instance) for the entire test run, and because unrelated resolver tests (login/register happy-path tests) will otherwise share the default `'127.0.0.1'` key, the limiter module must export a reset hook that a shared test setup calls between test files (e.g. `resetRateLimits()` alongside the existing `resetTables()` in each file's `beforeEach`), or dedicated rate-limit tests must use one-off synthetic IPs. Recommend both: reset in shared setup AND unique IPs in the dedicated rate-limit test file, so a forgotten reset doesn't silently make unrelated tests flaky.
-
-**New files:**
-- `backend/src/plugins/rateLimitPlugin.js` — limiter registry (per-operation config: `{ login: {...}, register: {...}, requestPasswordReset: {...} }`), the in-memory store, `resetRateLimits()`, and the Apollo plugin object (`{ async requestDidStart() { return { async didResolveOperation(ctx) { ... } } } }`).
-- `backend/src/plugins/rateLimitPlugin.test.js` — pure unit tests (no DB, no GraphQL — call the exported consume/limit function directly).
-
-**Modified files:**
-- `backend/src/server.js` — register plugin: `new ApolloServer({ typeDefs, resolvers, plugins: [rateLimitPlugin] })`; add `clientIp: req.ip` to `context()`.
-- `backend/test/helpers.js` — `graphql()` signature extended with `clientIp`/options; possibly a `resetRateLimits()` re-export for test files to call in `beforeEach`.
-- `backend/src/resolvers/user.resolver.test.js` (existing, per PROJECT.md v1.0 validation) — new rate-limit assertions for login/register/requestPasswordReset.
-
-Build this **after** the resolvers it wraps (login/register/requestPasswordReset) have reached their final v1.1 shape (password strength, mailer wiring) — see Build Order — so rate-limit tests aren't rewritten when those resolvers change underneath them. Design the operation-config map generically so the later email-verification fix's `resendVerification` mutation can be added as a one-line config entry, not a plugin rewrite.
-
-### 2. Mailer abstraction
-
-**Where it lives:** `backend/src/services/mailer.js` — a **new `services/` directory**. This is a deliberate, small deviation from the current flat `utils/` convention: `utils/auth.js` holds pure/internal helpers (JWT, crypto), whereas the mailer is an external-integration boundary with a swappable transport (console in dev/test, a real provider in prod). Introducing `services/` now also gives the codebase's "aggregator pattern anticipates more domains" note (`.planning/codebase/ARCHITECTURE.md`) a natural home for future non-`user` integrations, without overloading `utils/`.
-
-**Interface:**
-```js
-// backend/src/services/mailer.js
-export async function sendMail({ to, subject, text }) { /* transport switch */ }
-export async function sendPasswordResetEmail(user, token) { /* builds subject/body, calls sendMail */ }
-export async function sendVerificationEmail(user, token) { /* builds subject/body, calls sendMail */ }
 ```
-Transport selection is env-driven (`env.mailTransport`, default `'console'` outside `production`): the `'console'` transport `console.log`s the recipient/subject/token (this is what "delivered via a pluggable mailer (logs to console in dev...)" in PROJECT.md means concretely — dev/test never needs a real SMTP account). A `'smtp'`/provider branch is a documented no-op stub for now (out of scope per PROJECT.md: "Live email-provider account/credentials").
+backend/src/
+├── models/
+│   ├── User.js                 # MODIFIED: + familyMemberId FK (manual ALTER, see Pitfalls)
+│   ├── FamilyMember.js          # NEW: person fields + motherId/fatherId self-ref FKs
+│   ├── FamilySpouse.js          # NEW: self-referential belongsToMany join table
+│   └── index.js                 # MODIFIED: registers models + defines associations
+├── schemas/
+│   ├── user.schema.js           # MODIFIED: User type gains familyMemberId/familyMember
+│   ├── familyMember.schema.js   # NEW: FamilyMember, FamilyTree, CRUD/link mutations
+│   └── index.js                 # MODIFIED
+├── resolvers/
+│   ├── user.resolver.js         # MODIFIED: me/dashboard expose familyMemberId
+│   ├── familyMember.resolver.js # NEW: CRUD, relationships, familyTree, linking
+│   └── index.js                 # MODIFIED
+├── utils/
+│   ├── auth.js                  # MODIFIED: + requireFamilyAccess()
+│   └── family.js                # NEW: computeEditableRelatives(), sibling helpers
+├── uploads/                      # NEW: gitignored, Docker-volume-mounted photo storage
+└── server.js                     # MODIFIED: static route + upload route + context change
+frontend/src/
+├── pages/
+│   ├── FamilyTree.jsx            # NEW (/family)
+│   ├── ManageFamily.jsx          # NEW (/manage)
+│   └── Pending.jsx               # NEW (/pending)
+├── components/
+│   ├── FamilyTreeCanvas.jsx      # NEW: wraps chosen pan/zoom tree library
+│   ├── MemberForm.jsx            # NEW: create/edit FamilyMember form
+│   ├── RelativePicker.jsx        # NEW: select existing member as parent/spouse
+│   └── PhotoUploader.jsx         # NEW: multipart upload widget → /uploads/family-photo
+└── api/
+    └── graphqlClient.js          # unchanged; a second small helper for the upload POST
+```
 
-**Injection strategy — module import + `vi.mock`, not Apollo context.** Two options exist:
-- (a) Add `mailer` to the Apollo `context()` object (`{ models, user, mailer }`) so resolvers receive it as a dependency and tests inject a fake via `contextValue`.
-- (b) Resolvers `import { sendPasswordResetEmail } from '../services/mailer.js'` directly (matching how `signToken`/`createResetToken` are already imported from `utils/auth.js` into `user.resolver.js`), and tests use Vitest's `vi.mock('../services/mailer.js')` to intercept calls and assert `expect(sendPasswordResetEmail).toHaveBeenCalledWith(...)`.
+### Structure Rationale
 
-**Recommend (b).** It requires zero changes to the `context()` shape, zero changes to `backend/test/helpers.js`'s `graphql()` signature, and matches the existing "resolvers import utils directly" convention exactly — the least invasive option, and idiomatic Vitest (`vi.mock` + `vi.mocked()`) is the standard way this codebase's chosen test stack asserts "a side effect happened" without a real transport. Context-injection (a) is worth revisiting only if the app later needs per-request transport swapping (e.g. multi-tenant), which is out of scope here.
+- New backend domain files follow the **existing** `user.*` naming/aggregator convention exactly (`familyMember.schema.js`, `familyMember.resolver.js`, `FamilyMember.js`) — no new architectural pattern introduced, just a second domain filled into the barrels the codebase already anticipates (`STRUCTURE.md`: "the aggregator pattern anticipates multiple feature modules").
+- `utils/family.js` is new because the permission-scoping logic (immediate-relatives set) is reused by both the `myEditableRelatives` query and every mutation guard — it doesn't belong inside the resolver file (mirrors how `auth.js` already centralizes cross-cutting guard logic separately from `user.resolver.js`).
+- `backend/uploads/` sits outside `src/` (parallel to how `frontend/dist/` sits outside `src/`) because it's runtime-generated data, not source — must be gitignored and Docker-volume-mounted, never baked into the image.
 
-**New files:**
-- `backend/src/services/mailer.js`
-- `backend/src/services/mailer.test.js` (unit: console transport logs correctly; `sendPasswordResetEmail`/`sendVerificationEmail` build correct subject/body and call `sendMail`)
+## Architectural Patterns
 
-**Modified files:**
-- `backend/src/config/env.js` — add `mailTransport` (or similar) config field.
-- `backend/src/resolvers/user.resolver.js` — `requestPasswordReset` and (later) `verifyEmail`/registration flow import and call the mailer instead of returning tokens.
+### Pattern 1: Self-referential adjacency FKs for parent/child (not a join table)
 
-### 3. `passwordChangedAt` (token/session revocation)
+**What:** `FamilyMember` gets two nullable, self-referencing foreign keys — `motherId` and `fatherId` — both `belongsTo(FamilyMember)`. This is the standard adjacency-list pattern for trees where each node has a small, fixed number of parents (Percona/MySQL tutorials confirm this is the idiomatic MySQL 8 approach for hierarchical/genealogy data — MEDIUM confidence, WebSearch-verified against multiple independent sources).
+**When to use:** Every person has at most one mother and one father in this milestone's scope (full genealogy with multiple biological parent sets is explicitly deferred). A join table would be over-engineering for a 1-parent/1-parent relationship that never needs cardinality above 1 each.
+**Trade-offs:** Cheap to query (`WHERE motherId = ? OR fatherId = ?` for children, single indexed lookup for parents), sync()-friendly (new table, no existing-column ALTER), and matches the deferred-scope note about deferring "full genealogy (multiple marriages / half-siblings / adoptions)" — if that lands later, motherId/fatherId graduate to a join table without touching this milestone's schema.
 
-**Model column:** `backend/src/models/User.js` gains `passwordChangedAt: { type: DataTypes.DATE, allowNull: true }`. Set it in **both** `beforeCreate` and `beforeUpdate` hooks whenever `passwordHash` changes — i.e. add `user.passwordChangedAt = new Date()` next to the existing `bcrypt.hash(...)` calls in those hooks (same hook, same "changed('passwordHash')" guard already present for `beforeUpdate`). Setting it at creation too (not leaving it `null` for brand-new users) avoids null-handling branches at check time.
+**Example:**
+```javascript
+// backend/src/models/FamilyMember.js
+export function initFamilyMember(sequelize) {
+  FamilyMember.init({
+    firstname: { type: DataTypes.STRING, allowNull: false },
+    lastname: { type: DataTypes.STRING, allowNull: false },
+    gender: { type: DataTypes.ENUM('MALE', 'FEMALE'), allowNull: false },
+    mothersname: { type: DataTypes.STRING, allowNull: true }, // free-text, distinct from motherId FK
+    email: { type: DataTypes.STRING, allowNull: true, validate: { isEmail: true } },
+    birthdate: { type: DataTypes.DATEONLY, allowNull: true },
+    deathdate: { type: DataTypes.DATEONLY, allowNull: true },
+    phone: { type: DataTypes.STRING, allowNull: true },
+    address: { type: DataTypes.STRING, allowNull: true },
+    profilePicture: { type: DataTypes.STRING, allowNull: true } // stores '/uploads/<file>', not binary
+  }, { sequelize, modelName: 'FamilyMember', tableName: 'family_members',
+       hooks: { beforeSave(m) { m.fullname = `${m.firstname} ${m.lastname}`.trim(); } } });
+  return FamilyMember;
+}
 
-**Where the check runs:** `getUserFromRequest` in `backend/src/utils/auth.js` — the single existing choke point every authenticated request already passes through. After `jwt.verify` succeeds and the user row is loaded via `findByPk`, compare the JWT's `iat` claim (seconds since epoch, added automatically by `jsonwebtoken` — no signing changes needed) against `user.passwordChangedAt`:
+// backend/src/models/index.js — association wiring
+FamilyMember.belongsTo(FamilyMember, { as: 'mother', foreignKey: 'motherId' });
+FamilyMember.belongsTo(FamilyMember, { as: 'father', foreignKey: 'fatherId' });
+FamilyMember.hasMany(FamilyMember, { as: 'childrenAsMother', foreignKey: 'motherId' });
+FamilyMember.hasMany(FamilyMember, { as: 'childrenAsFather', foreignKey: 'fatherId' });
+```
+`fullname` is stored (derived-but-persisted via hook) rather than computed in every resolver, matching the existing `beforeCreate`/`beforeUpdate` hook convention in `User.js` — cheaper to sort/filter/search on in SQL than a GraphQL-layer computed field.
 
-```js
-if (user.passwordChangedAt && payload.iat < Math.floor(user.passwordChangedAt.getTime() / 1000)) {
-  return null; // token predates the last password change — treat as unauthenticated
+### Pattern 2: Self-referential many-to-many join table for spouse
+
+**What:** A `FamilySpouse` join model (`memberId`, `spouseId`) backing a self-referential `belongsToMany` on `FamilyMember`. Sequelize supports this pattern (`Person.belongsToMany(Person, { as: 'Spouses', through: 'FamilySpouse', foreignKey: 'memberId', otherKey: 'spouseId' })`) — MEDIUM confidence, verified against Sequelize's own advanced-associations docs and multiple community write-ups, though several GitHub issues note self-referential M:N through-table querying has historically had rough edges (explicit `foreignKey`/`otherKey` on both sides avoids most of them).
+**When to use:** Even though this milestone only needs "current spouse" (single, present-tense), use a join table now rather than a `spouseId` column on `FamilyMember`. A single-column FK can't represent a future second marriage without an ALTER — and this codebase's `sync()`-no-migrations reality (see Pitfalls) makes future ALTERs to an **existing** table exactly the kind of work you want to avoid triggering twice. Build the join table now; enforce "one active spouse" as an **application-level** rule in the resolver (reject `addSpouse` if the member already has a spouse row), not a schema constraint. When "multiple marriages" is unlocked in a later milestone, only the resolver rule changes — no data-model migration needed.
+**Trade-offs:** Slightly more query complexity than a column (two-row insert per pairing — insert `(A,B)` and `(B,A)` symmetric rows so either side's `belongsToMany` include resolves without an OR-query) but it's the only representation that survives the deferred multi-marriage feature without a future manual ALTER.
+
+### Pattern 3: Flat adjacency-list GraphQL response for the deep tree (not nested recursive resolvers)
+
+**What:** The `/family` deep pan/zoom tree does **not** ask GraphQL to resolve a recursively-nested `children { children { children ... } } }` shape. Instead, one query — `familyTree: FamilyTree!` returning `{ members: [FamilyMember!]! }` — fetches **every** `FamilyMember` row (plus every `FamilySpouse` pair) in a small, fixed number of SQL statements (2: one `SELECT * FROM family_members`, one `SELECT * FROM family_spouses`), regardless of tree depth. The frontend's pan/zoom library assembles the graph/tree layout client-side from this flat list (`id, motherId, fatherId` + a `spouseIds: [ID!]!` array attached in the resolver via one JS-side grouping pass over the spouse rows).
+**When to use:** Always, for this domain. This is the direct fix for the architecture's documented constraint — "no query complexity/depth limiting… no batching (no DataLoader), so N+1 risk exists once cross-entity resolvers are added" (`.planning/codebase/ARCHITECTURE.md`). A naive nested-resolver tree (`FamilyMember.mother` and `FamilyMember.children` each independently hitting the DB per node) would be exactly the N+1 this codebase has no DataLoader to absorb. A flat, whole-graph fetch sidesteps the problem entirely rather than solving it with batching machinery this project doesn't have.
+**Trade-offs:** This only works because a family tree is bounded in size (dozens–low hundreds of rows for a personal/portfolio app) — "fetch everything, assemble client-side" would be the wrong call at a scale where the tree itself is too large to ship in one response (see Scaling Considerations). MySQL 8's `WITH RECURSIVE` CTEs (confirmed available since 8.0, HIGH confidence — Percona/MySQL docs) are the right tool if a future milestone needs a scoped "ancestors of X" or "descendants of X" query instead of the whole tree, but they are **not needed** for rendering the full `/family` view, and are **not needed** for the permission-scoping "immediate relatives" set either (that's a 1-hop lookup, not a recursive one — see Pattern 4).
+
+**Example:**
+```javascript
+// backend/src/resolvers/familyMember.resolver.js
+familyTree: async (_parent, _args, { models, user }) => {
+  requireFamilyAccess(user);
+  const members = await models.FamilyMember.findAll({ raw: true }); // 1 query, whole tree
+  const spousePairs = await models.FamilySpouse.findAll({ raw: true }); // 1 query
+  const spouseMap = groupSpousesByMemberId(spousePairs); // in-memory grouping, no per-row query
+  return { members: members.map((m) => ({ ...m, spouseIds: spouseMap[m.id] ?? [] })) };
 }
 ```
 
-This follows the existing convention exactly: JWT verification failures are already swallowed and normalized to `null` in this function (not thrown), so a stale-password token degrading to "not logged in" is consistent with how expired/invalid tokens already behave — no new error-handling pattern introduced. `requireAuth`/`requireAdmin` need no changes; they already reject `null` users.
+### Pattern 4: Immediate-relatives permission scoping as a pure in-memory set builder
 
-**Modified files:**
-- `backend/src/models/User.js` — new column, hook updates.
-- `backend/src/utils/auth.js` — `getUserFromRequest` iat comparison.
-- `backend/src/resolvers/user.resolver.js` — no change needed (resetPassword already goes through the model's `save()`, which triggers the hook).
-- `backend/src/models/User.test.js`, `backend/src/utils/auth.test.js` (existing) — new assertions.
-- `backend/test/helpers.js` — `createTestUser` may want an explicit `passwordChangedAt` override for tests that need to simulate a stale token.
+**What:** `computeEditableRelatives(currentMember, allMembers)` in `backend/src/utils/family.js` takes the linked member row plus the **already-fetched** flat member list (same data `familyTree` uses — reuse the query, don't re-query) and returns a `Set` of member IDs: `{ motherId, fatherId, ...spouseIds, ...childIds, ...siblingIds }`. Mutation resolvers (`updateFamilyMember`, `deleteFamilyMember`, `setParents`, `addSpouse`, etc.) call `requireEditableRelative(user, targetId, allMembers)` — which is `requireFamilyAccess(user)` followed by an ADMIN bypass, else a `set.has(targetId)` check — before writing.
+**When to use:** Every family-domain mutation except account-linking (which is ADMIN-only via the existing `requireAdmin`).
+**Trade-offs:** Recomputing the set per-mutation via a fresh `findAll` is simplest to reason about and cheap at this data scale (see Pattern 3) — do not introduce caching/memoization here; it adds staleness risk (a relative added mid-session) for no measurable performance gain on a dataset this small.
 
-### 4. Email verification
+**Sibling derivation:** siblings = other members sharing the **same non-null `motherId` AND `fatherId`** as the current member (full-siblings only, matching the "half-siblings deferred" scope note). This is where the **sibling `firstname` uniqueness check** ("dedup guard") belongs too: when creating/updating a child under a given `(motherId, fatherId)` pair, the resolver (not a model hook — see below) queries existing children of that same parent pair and rejects a duplicate `firstname` (case-insensitive), mirroring the existing email-uniqueness check pattern already used in `register` (`backend/src/resolvers/user.resolver.js:49-50` — `findOne` before `create`, checked in the **resolver**, not a Sequelize hook). Keep it in the resolver, not a model hook, for two reasons: (1) it's the codebase's existing convention for uniqueness checks, and (2) the check needs the *parent pair*, which may be set in the same mutation call as the name — a `beforeValidate` hook would run before the parent association is necessarily resolved/attached in all mutation shapes (e.g. `setParents` called separately from `createFamilyMember`).
 
-**New columns** on `backend/src/models/User.js`: `isVerified` (`BOOLEAN`, `allowNull: false`, `defaultValue: false`), `verificationToken` (`STRING`, nullable), `verificationTokenExpiresAt` (`DATE`, nullable) — same shape as the existing `resetPasswordToken`/`resetPasswordExpiresAt` pair, so the token-generation helpers in `utils/auth.js` (`createResetToken`, a generalized expiry helper) can be reused rather than duplicated.
+## Data Flow
 
-**New mutations** in `backend/src/resolvers/user.resolver.js` + `backend/src/schemas/user.schema.js`: `verifyEmail(token: String!): Boolean!` and `resendVerification(email: String!): MessagePayload!` (see schema note below). Both follow the existing `requestPasswordReset`/`resetPassword` resolver shape (find by token/email, validate expiry, mutate, save).
+### Request Flow — `/family` deep tree view
 
-**Composing with first-user-ADMIN (the actual race fix):** Recommend moving the ADMIN-assignment decision from `register` to `verifyEmail`, not just gating login on `isVerified`. Today, `register` decides ADMIN based on `models.User.count()` at *registration* time — i.e. whoever calls `register` first wins, regardless of whether they ever prove ownership of that email. That's the literal "land-grab." Gating only `login`/`requireAuth` on `isVerified` does **not** close this race — an attacker can still register first (grabbing the row that will become ADMIN once verified) and then race to verify before the legitimate operator does.
-
-The architecturally correct fix: `register` always creates the row as `role: 'USER'`; the ADMIN decision moves into `verifyEmail`:
-```js
-// inside verifyEmail, after validating the token
-if (!user.isVerified) {
-  const verifiedAdminExists = await models.User.count({ where: { isVerified: true, role: 'ADMIN' } });
-  user.role = verifiedAdminExists === 0 ? 'ADMIN' : 'USER';
-  user.isVerified = true;
-  // clear verificationToken/verificationTokenExpiresAt
-  await user.save();
-}
 ```
-This makes "first to *verify*" (proving real email ownership), not "first to *register*", the actual admin-grant condition — this is the concrete mechanism PROJECT.md's "closing the first-user-becomes-ADMIN land-grab race" implies, but it isn't fully specified there; flag this as a design decision for roadmap sign-off, not a settled fact.
-
-**Login gate:** `login` resolver, after password validation succeeds and before `signToken`, add `if (!user.isVerified) throw new Error('Please verify your email before logging in.')` — gives a clear, resolver-specific message. Additionally (defense in depth, DRY with the existing single-choke-point pattern used for `passwordChangedAt`), add the same check inside `requireAuth` in `utils/auth.js`, so every other protected resolver (`dashboard`, `users`, `logout`) is covered without per-resolver edits — consistent with strengthening `requireAuth` rather than scattering ad hoc checks (the existing anti-pattern already flagged in `.planning/codebase/ARCHITECTURE.md`).
-
-**`register`'s return value — a decision to flag for roadmap sizing, not just code:** Today `register` returns `AuthPayload!` (`{ token, user }`) and `AuthContext.jsx` auto-logs the user in immediately. If `login`/`requireAuth` now reject unverified users, an auto-issued token from `register` would 401 on the very next protected call — a confusing half-authenticated state. Recommend changing `register`'s return type to a new `RegisterPayload { message: String! }` (no token), and updating `AuthContext.jsx` so `register()` no longer auto-authenticates — the UI instead shows a "check your email to verify" message and routes to `/login` after verification. This is the more correct UX and avoids storing a token that immediately fails, but it's a bigger frontend change (splitting `AuthContext`'s shared `authenticate()` helper, which today serves both `login` and `register`) than simply adding a `login` gate — size this fix accordingly in the roadmap.
-
-**Frontend routing:** new `frontend/src/pages/VerifyEmail.jsx` (mirrors `ResetPassword.jsx`'s pattern: read a token from the URL, e.g. `/verify-email/:token`, call the `verifyEmail` mutation via `graphqlClient` on mount, show success/failure via `AuthShell`, link to `/login`). Register `/verify-email/:token` in `frontend/src/App.jsx`. `Register.jsx` copy changes from "redirecting to dashboard" to "check your email." Optionally a lightweight resend-verification affordance (could live inline on `Login.jsx`'s error state when login fails specifically due to `isVerified`, rather than a whole new page — smaller frontend footprint, worth flagging as the cheaper option).
-
-**Schema:** Rename/generalize `PasswordResetPayload { message, resetToken }` → drop `resetToken` per fix #1 and reuse the resulting `{ message: String! }` shape as a shared `MessagePayload` type for both `requestPasswordReset` and `resendVerification` (avoids two near-identical types).
-
-**New files:**
-- `frontend/src/pages/VerifyEmail.jsx`, `frontend/src/pages/VerifyEmail.test.jsx` (matching existing colocated-test convention, e.g. `Login.test.jsx`).
-
-**Modified files:**
-- `backend/src/models/User.js` (columns)
-- `backend/src/schemas/user.schema.js` (new mutations, `MessagePayload`, `register` return type)
-- `backend/src/resolvers/user.resolver.js` (register role logic, login gate, verifyEmail, resendVerification)
-- `backend/src/utils/auth.js` (requireAuth isVerified check)
-- `backend/src/services/mailer.js` consumer (sendVerificationEmail called from register)
-- `frontend/src/context/AuthContext.jsx` (split register from auto-login; optionally add `verifyEmail`/`resendVerification` helpers)
-- `frontend/src/pages/Register.jsx` (post-register copy/flow)
-- `frontend/src/App.jsx` (new route)
-- `backend/test/helpers.js` — `createTestUser` should default `isVerified: true` (a "normal, already set up" test user for unrelated tests), with dedicated verification tests overriding `createTestUser({ isVerified: false })`. **This is a required, easy-to-miss step**: once `isVerified` defaults to `false` at the model level and `login`/`requireAuth` enforce it, every existing v1.0 integration test that calls `createTestUser()` then attempts to log in or hit a protected resolver will start failing unless the helper's default is updated in lockstep with the resolver change.
-
-### 5. JWT secret fail-fast
-
-**Where:** `backend/src/config/env.js` is the single import that every other backend module transitively depends on (`server.js` imports it first), so a fail-fast throw here halts boot before Apollo/Express/Sequelize ever initialize — no changes needed to `server.js` itself.
-
-**Testability:** Don't inline the check as a bare `if`/`throw` mixed into the `dotenv.config()`-driven module (that module has side effects at import time — hard to unit test cheaply, would require Vitest module-reset gymnastics). Instead extract a **pure, exported function** taking plain arguments:
-```js
-// new: backend/src/config/assertProductionSecrets.js
-export function assertProductionSecrets({ nodeEnv, jwtSecret }) {
-  if (nodeEnv === 'production' && (!jwtSecret || jwtSecret === 'change-me')) {
-    throw new Error('JWT_SECRET must be set to a non-default value in production.');
-  }
-}
+User navigates to /family
+    ↓
+ProtectedRoute (requireFamilyAccess variant) checks user.familyMemberId || user.role === 'ADMIN'
+    ↓ (pass)
+FamilyTree.jsx fires graphqlRequest(FAMILY_TREE_QUERY) on mount
+    ↓
+axios → /graphql → Apollo context: { models, user, familyMember, clientIp }
+    ↓
+familyTree resolver: requireFamilyAccess(user) → 2 flat SQL queries (members, spouse pairs) → in-memory group
+    ↓
+Response: { members: [{ id, motherId, fatherId, spouseIds, ... }, ...] }  (flat adjacency list)
+    ↓
+FamilyTreeCanvas (pan/zoom library) builds the graph layout client-side from the flat list
 ```
-`env.js` calls `assertProductionSecrets({ nodeEnv: env.nodeEnv, jwtSecret: env.jwtSecret })` at the bottom of the file, after building the `env` object. The pure function is trivially unit-tested with plain object arguments (red/green with zero mocking), independent of `dotenv`/`process.env` module state — matches the "each piece TDD'd independently" requirement directly.
 
-**New files:** `backend/src/config/assertProductionSecrets.js`, `backend/src/config/assertProductionSecrets.test.js`.
-**Modified files:** `backend/src/config/env.js` (call the assertion at the end of the module).
+### Request Flow — `/manage` scoped edit
 
-### 6. CORS rejection message
-
-**Where:** `backend/src/server.js:17-23` — the origin-validator callback currently interpolates the rejected origin directly into the thrown `Error` message (`` `Origin ${origin} is not allowed by CORS.` ``), which `cors` surfaces to the client. Fix: `console.warn`/log the origin server-side, throw/callback a generic message (e.g. `'Origin not allowed by CORS.'`) to the client.
-
-**Testability:** Extract the origin-validator into a small **exported, pure function** so it can be unit tested without booting Express/HTTP at all (mirrors the `assertProductionSecrets` extraction above):
-```js
-// new: backend/src/config/corsOptions.js
-export function corsOriginValidator(origin, callback, { clientOrigins }) {
-  if (!origin || clientOrigins.includes(origin)) return callback(null, true);
-  console.warn(`CORS rejected origin: ${origin}`);
-  return callback(new Error('Origin not allowed by CORS.'));
-}
-export function buildCorsOptions(env) { return { origin: (o, cb) => corsOriginValidator(o, cb, env), credentials: true }; }
 ```
-Test calls `corsOriginValidator('https://evil.example', spyCallback, { clientOrigins: [...] })` and asserts the callback receives a generic-message `Error` (no `origin` substring), with zero HTTP/Express dependency — a pure function unit test, consistent with how `utils/auth.js` functions are already tested directly.
-
-**New files:** `backend/src/config/corsOptions.js`, `backend/src/config/corsOptions.test.js`.
-**Modified files:** `backend/src/server.js` (`app.use(cors(buildCorsOptions(env)))`).
-
-### 7. Server-side password strength validation
-
-**Where:** `backend/src/utils/passwordPolicy.js` (fits the existing flat `utils/` convention — a pure validator, not an external-integration boundary like the mailer). Interface:
-```js
-export function validatePasswordStrength(password) {
-  // throws Error with a user-facing message, OR returns { valid, reason } — recommend throwing
-  // to match the existing "resolvers throw plain Error" convention (user.resolver.js:27,41).
-}
+ManageFamily.jsx fires myEditableRelatives query
+    ↓
+Resolver: requireFamilyAccess(user) → findAll (same flat query as familyTree, cached per-request only)
+    ↓ computeEditableRelatives(user.familyMember, allMembers) → filtered FamilyMember[] returned
+    ↓
+UI renders editable-members list; user submits updateFamilyMember(id, input)
+    ↓
+Resolver: requireFamilyAccess(user) → requireEditableRelative(user, id, allMembers) → ADMIN bypass or set.has(id) check
+    ↓ (pass) Sequelize update, sibling-firstname-uniqueness re-checked if motherId/fatherId/firstname changed
 ```
-Minimum bar for a portfolio app: length ≥ 8, not purely numeric/all-same-char — avoid over-engineering complexity rules (composition-class requirements are widely considered bad practice by current NIST guidance) beyond what's easy to test and explain.
 
-**Wiring:** called at the top of `register` (before `models.User.create`) and `resetPassword` (before `user.passwordHash = password`) in `backend/src/resolvers/user.resolver.js` — two call sites, one shared module, zero duplication.
+### Request Flow — photo upload (deliberately NOT through GraphQL)
 
-**New files:** `backend/src/utils/passwordPolicy.js`, `backend/src/utils/passwordPolicy.test.js` (pure unit tests, no DB).
-**Modified files:** `backend/src/resolvers/user.resolver.js` (two call sites); existing `register`/`resetPassword` integration tests gain weak-password rejection cases.
+```
+PhotoUploader.jsx: <input type="file"> → POST multipart/form-data to /uploads/family-photo (NOT /graphql)
+    ↓
+Express route (multer middleware, mounted before the Apollo /graphql middleware, same auth-guard logic
+  reused from getUserFromRequest since this route sits outside Apollo's context function)
+    ↓
+File written to the Docker-volume-mounted uploads/ dir with a generated filename (avoid using user input in the path)
+    ↓
+Route responds { profilePicture: '/uploads/<generated-name>.jpg' }
+    ↓
+Frontend then calls the existing updateFamilyMember(id, { profilePicture }) GraphQL mutation to persist the
+  reference — GraphQL/Sequelize stays the single source of truth for the DB row; the REST route only does file I/O.
+```
+This intentionally breaks the "single GraphQL endpoint" characteristic already documented in `.planning/codebase/ARCHITECTURE.md` ("no REST endpoints besides `/health`") — see Anti-Patterns below for why that's the correct call here, not scope creep.
 
-## The `sequelize.sync()` Constraint (applies to fixes #3 and #4)
+### State Management
 
-`backend/src/models/index.js:12` calls **plain `sequelize.sync()`** (no `alter`/`force`) in `initializeDatabase()`, which runs on every real backend boot (`server.js:28`). Plain `sync()` only issues `CREATE TABLE IF NOT EXISTS` — it does **not** alter an already-existing table to add new columns. This has two very different consequences depending on environment:
+- Frontend: no new state library. `AuthContext`'s `user` object gains `familyMemberId` (and optionally an embedded `familyMember` summary) — same "re-derived via `me` query on load" pattern already in place (`frontend/src/context/AuthContext.jsx:30-46`), no new global store needed for the tree itself: `FamilyTree.jsx` and `ManageFamily.jsx` hold their fetched member list in local component state, matching `Dashboard.jsx`'s existing pattern.
+- Backend: still stateless. The only new "state" is filesystem-resident photo files, which live outside the request/response cycle entirely (served by `express.static`, not re-fetched through Apollo context).
 
-- **Test database:** `backend/test/globalSetup.js` calls `sequelize.sync({ force: true, match: /_test$/ })`, which **drops and recreates** all tables at the start of every test run. New columns (`passwordChangedAt`, `isVerified`, `verificationToken`, `verificationTokenExpiresAt`) will always be present correctly in tests — this constraint is **invisible to the test suite** and will not surface as a test failure.
-- **Any real, already-provisioned database** (a developer's existing local MySQL, or a `docker-compose` volume that already has a `users` table from a prior boot): plain `sync()` will silently **not** add the new columns. The app will boot without error, then fail at runtime the first time a resolver reads/writes `passwordChangedAt` or `isVerified` (Sequelize will emit `Unknown column` errors from MySQL).
+## Scaling Considerations
 
-This is out of scope to fully solve this milestone (Sequelize migrations are explicitly deferred to a future "Infra hardening" milestone per PROJECT.md), but it must be **flagged, not silently shipped**: recommend one of — (a) document a manual `ALTER TABLE` step in `README.md`/`KNOWN-ISSUES.md` for anyone with an existing local/deployed DB, or (b) change `initializeDatabase()`'s call to `sequelize.sync({ alter: true })` for non-production environments only (dev convenience, still risky enough in prod to leave prod on the manual-step path). Either way, this belongs in the roadmap as an explicit small task attached to whichever phase adds the new columns (fix #3, and again for fix #4) — not assumed to be "handled" because tests pass.
+| Scale | Architecture Adjustments |
+|-------|--------------------------|
+| Single family, dozens–low hundreds of members (this milestone's realistic ceiling) | Flat whole-tree fetch (Pattern 3) is correct and simplest; no CTE, no DataLoader needed |
+| Thousands of members / multiple large extended families sharing one app instance | Flat `familyTree` payload becomes too large to ship on every `/family` load; switch to a scoped "descendants/ancestors of root X" query using MySQL `WITH RECURSIVE` CTEs, with the frontend requesting a bounded subgraph instead of everything |
+| Many concurrent editors on `/manage` | `computeEditableRelatives` recomputed per-mutation (Pattern 4) avoids stale-cache correctness bugs; if write contention becomes real, consider optimistic-locking (a `version`/`updatedAt` check) on `updateFamilyMember`, not a bigger architectural change |
 
-## Build Order (dependency-respecting, TDD-independent per step)
+### Scaling Priorities
 
-1. **CORS message fix** — zero dependencies on anything else; smallest possible red/green cycle; extract `corsOriginValidator` first as a pure-function warm-up for the pattern reused in step 5.
-2. **JWT secret fail-fast** — zero dependencies; foundational (an insecure secret undermines every other fix); pure-function extraction (`assertProductionSecrets`) TDD'd in isolation.
-3. **Password strength validator** — pure module, no schema/DB coupling; build+test the validator standalone, then wire into `register`/`resetPassword` (existing integration tests gain new red cases first).
-4. **Mailer abstraction** — new module, no DB coupling; unit-test the console transport and the two domain helpers directly; not yet wired into any resolver.
-5. **Reset-token exposure fix** (consumes mailer from step 4) — wire `sendPasswordResetEmail` into `requestPasswordReset`, drop `resetToken` from the schema/response, flip the existing v1.0 "documents the bug" test to assert the fixed behavior, update `ForgotPassword.jsx` to stop rendering the token.
-6. **`passwordChangedAt`** — schema/model change, independent of mailer/rate-limiting; wire the `getUserFromRequest` iat check; establishes the "central choke-point check" pattern reused by step 8's `isVerified` check in `requireAuth`.
-7. **Rate limiting** — build the generic plugin + operation-config registry; wire into `login`/`register`/`requestPasswordReset` only after their resolver bodies are in final v1.1 shape (post steps 3 and 5), so rate-limit tests aren't rewritten when those resolvers change underneath them; design the config map so step 8's `resendVerification` is a one-line addition later.
-8. **Email verification** — largest and most invasive; depends on the mailer (step 4) to send the verification email, benefits from the rate-limit infra (step 7) for `resendVerification`, and reuses the `requireAuth` central-check pattern established in step 6. Sequence: model columns → `verifyEmail`/`resendVerification` resolvers + schema → register/login behavior changes (including the `createTestUser` default-`isVerified` update in `backend/test/helpers.js`, which must land in the same change or every unrelated existing integration test breaks) → frontend routing/UX. Do this last so it composes on top of already-stable resolver behavior rather than being rebased repeatedly.
+1. **First bottleneck:** shipping the entire `family_members` table on every `/family` page load. Bounded and fine at personal/portfolio scale; the fix when it stops being fine is a CTE-scoped subgraph query, not DataLoader (DataLoader solves repeated-key N+1 across many small requests in one GraphQL operation — it doesn't help a single "give me everyone" query, which is already O(1) queries).
+2. **Second bottleneck:** photo storage on a single Docker named volume tied to one host. Deferred per milestone scope ("object-storage photos" is explicitly out of scope) — flag as the next infra item if the app ever needs multi-host deployment.
 
-Each step above is independently TDD-able: steps 1–4 and 7's plugin core have zero DB/resolver coupling (pure-function or module-level unit tests only); steps 5, 6, 8 layer resolver-level integration tests (via the existing `graphql()` helper) on top of already-tested building blocks.
+## Anti-Patterns
 
-## Integration Points Summary
+### Anti-Pattern 1: Nested recursive GraphQL resolvers for the tree
 
-| Fix | Primary Integration Point | New Module | Testable Via |
-|-----|---------------------------|------------|---------------|
-| Rate limiting | Apollo plugin (`didResolveOperation`), keyed via `contextValue.clientIp` | `backend/src/plugins/rateLimitPlugin.js` | `graphql()` helper (extended with `clientIp` option) — works because plugins fire identically for `executeOperation()` and HTTP |
-| Mailer | Direct module import into resolvers (not Apollo context) | `backend/src/services/mailer.js` | `vi.mock('../services/mailer.js')` in resolver tests |
-| `passwordChangedAt` | `getUserFromRequest` (existing per-request choke point) | none (model column + auth.js change) | `graphql()` helper with a stale-`iat` token / pre-set `passwordChangedAt` |
-| Email verification | `requireAuth` (central check) + `login`/`register`/`verifyEmail` resolvers | `frontend/src/pages/VerifyEmail.jsx` | `graphql()` helper; `createTestUser({ isVerified: false })` |
-| JWT secret fail-fast | `env.js` module load (throws before Express/Apollo boot) | `backend/src/config/assertProductionSecrets.js` | Pure function, plain-argument unit test |
-| CORS message | `server.js` `cors()` options | `backend/src/config/corsOptions.js` | Pure function, plain-argument unit test |
-| Password strength | `register`/`resetPassword` resolver bodies | `backend/src/utils/passwordPolicy.js` | Pure function unit test + resolver integration test |
+**What people do:** Model `FamilyMember.children` and `FamilyMember.mother` as GraphQL fields with their own resolvers, then let the client query a deeply nested tree shape (`children { children { children } } }`).
+**Why it's wrong:** With no DataLoader in this codebase (explicitly documented as an existing architectural constraint), every nested level re-triggers a resolver-per-node DB call — classic N+1, and it gets worse the deeper the tree/pan-zoom view goes, exactly inverse to what a "deep tree" feature needs.
+**Do this instead:** Pattern 3 — one flat `familyTree` query, whole graph, assembled client-side.
 
-## Anti-Patterns to Avoid
+### Anti-Pattern 2: Uploading photo binaries through a GraphQL mutation
 
-### Rate limiting as Express middleware
-**What people do:** Reach for `express-rate-limit` mounted before `expressMiddleware`, since it's the most-searched answer for "rate limit Express."
-**Why it's wrong here:** It's invisible to `server.executeOperation()`, which is how this codebase's entire TDD strategy is built (`backend/test/helpers.js`). It also can't cleanly distinguish `login` from `register` from `me` without re-parsing the GraphQL body itself.
-**Do this instead:** An Apollo plugin (`didResolveOperation`), keyed via a `contextValue` field the `context()` function and the test helper both populate.
+**What people do:** Add a GraphQL `Upload` scalar (via `graphql-upload`) and accept the file as a mutation argument.
+**Why it's wrong:** Apollo's own guidance advises against multipart file uploads through GraphQL mutations in favor of a dedicated upload path (MEDIUM confidence — Apollo community guidance, WebSearch-verified); it also fights this specific server's `expressMiddleware(apollo)` + `express.json()` pipeline, which isn't multipart-aware, and would require inserting upload-parsing middleware ahead of Apollo just to special-case one mutation.
+**Do this instead:** A small, explicit REST-style route (`POST /uploads/family-photo`, multer-backed) that does only file I/O and hands back a path string for a normal GraphQL mutation to persist — Pattern in Data Flow above. This is a deliberate, narrow, documented exception to "single GraphQL endpoint," not scope creep.
 
-### Injecting the mailer via Apollo context "for testability"
-**What people do:** Add `mailer` to `context()` so it can be swapped per-request, assuming that's "the DI way" in this codebase.
-**Why it's wrong here:** It's unnecessary ceremony — this app has one mailer, selected by env var, not per-request. It would require changing the `graphql()` test helper's signature for every resolver test, not just mailer-related ones. `vi.mock` on a directly-imported module achieves the same test isolation with zero signature changes, and matches the existing "resolvers import utils directly" convention.
+### Anti-Pattern 3: Relying on `sequelize.sync()` to add `familyMemberId` to the existing `users` table
 
-### Assuming `sync()` + passing tests means the schema change is "done"
-**What people do:** Add a model column, see tests green (because `globalSetup.js` force-drops and recreates tables every run), and consider the change complete.
-**Why it's wrong here:** Plain `sequelize.sync()` (used at real boot, not in tests) does not alter existing tables. A schema change that only "works" because the test DB is rebuilt from scratch every run will break on any already-provisioned database.
-**Do this instead:** Explicitly flag the manual `ALTER TABLE` step (or scope `sync({ alter: true })` to non-production) any time fixes #3 or #4 land.
+**What people do:** Add `familyMemberId: { type: DataTypes.INTEGER, allowNull: true }` to `User.init(...)` and assume the next `sync()` on boot picks it up in dev/prod alike.
+**Why it's wrong:** `sequelize.sync()` without `{ alter: true }` only creates tables that don't yet exist — it does **not** add columns to tables that already exist (HIGH confidence, confirmed against Sequelize's own docs/GitHub issue discussion). `family_members` and `family_spouses` are brand-new tables, so `sync()` handles those fine. `users` already exists, so the new `familyMemberId` column will silently **not appear** on any environment whose DB already has a `users` table — including any existing dev/CI/prod database — until a human runs a manual `ALTER TABLE users ADD COLUMN familyMemberId ...` (this project's documented, accepted infra debt: "schema changes need manual ALTER + human boot-verify on real DBs").
+**Do this instead:** Treat the `User.familyMemberId` FK as the one schema change in this milestone that needs an explicit, tracked manual migration step + boot-verify (same category of manual step this project already used for the v1.1 `passwordChangedAt`/email-verification columns). New tables (`FamilyMember`, `FamilySpouse`) need no such step — flag this clearly to the roadmap so it isn't missed as "just another new model."
+
+## Integration Points
+
+### External Services
+
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Docker named volume for photos | `docker-compose.yml`: new volume (e.g. `family_photos:/app/uploads`) mounted into the `backend` service, alongside the existing `mysql_data` volume | Mirrors the existing `mysql_data` volume pattern already in `docker-compose.yml`; no new service, no new image |
+| Pan/zoom tree rendering library | Frontend-only dependency, wrapped in a single `FamilyTreeCanvas.jsx` component | Library selection is a **STACK-research** concern (not covered here); this file only fixes the *data shape* it must consume — a flat member list, not a GraphQL-nested tree |
+
+### Internal Boundaries
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `familyMember.resolver.js` ↔ `models.User` | Direct Sequelize query (`User.findByPk(userId)`, `User.update({ familyMemberId })`) inside `linkAccountToMember`/`unlinkAccountFromMember` mutations, ADMIN-only via existing `requireAdmin` | No new cross-domain abstraction needed — same "resolver touches whatever models it needs via `{ models }` context" pattern already used everywhere |
+| Apollo `context` fn ↔ `getUserFromRequest` | `server.js`'s context function grows a second lookup: after resolving `user`, also resolve `familyMember: user?.familyMemberId ? await models.FamilyMember.findByPk(user.familyMemberId) : null` | Keeps the existing "resolve everything the resolvers need up front, once per request" convention (`.planning/codebase/ARCHITECTURE.md`'s "GraphQL context object `{ models, user }`" abstraction, now `{ models, user, familyMember }`) |
+| `express.static('/uploads')` / multer route ↔ Apollo `/graphql` middleware | Both mounted on the same Express `app`, in sequence, ahead of or alongside `expressMiddleware(apollo)` | The multer route needs its **own** lightweight JWT check (reusing `getUserFromRequest`'s token-parsing logic) since it lives outside Apollo's `context` function entirely — do not assume Apollo's auth guard covers it |
+| First-admin bootstrap ↔ `requireFamilyAccess` | The v1.1 atomic "first verified user becomes ADMIN" transaction (`verifyEmail` resolver) is untouched; `requireFamilyAccess(user)` bypasses the "must be linked" check whenever `user.role === 'ADMIN'`, so the freshly-promoted first ADMIN can immediately create the root `FamilyMember` node and self-link via the same ADMIN-only `linkAccountToMember(userId: <self>, familyMemberId: <new node>)` mutation — no separate "self-link" mutation or special-cased bootstrap code path needed | This is the cleanest integration: reuse the existing role check, don't invent a second gate |
+
+## Build Order (dependency-ordered)
+
+1. **`FamilyMember` + `FamilySpouse` Sequelize models**, registered in `models/index.js` with associations (Pattern 1 + 2). New tables — `sync()` handles creation with no manual step.
+2. **`User.familyMemberId` FK** added to the `User` model + **manual `ALTER TABLE users ADD COLUMN`** step + boot-verify against a real dev DB (Anti-Pattern 3). Must land before anything that reads/writes `user.familyMemberId`.
+3. **Auth/context extension**: `getUserFromRequest`/Apollo `context` also resolves `familyMember`; new `requireFamilyAccess()` guard in `utils/auth.js`. Depends on (2).
+4. **GraphQL schema + CRUD resolvers** for `FamilyMember` (create/update/delete, parent/spouse relationship mutations). Depends on (1).
+5. **Permission-scoping** (`utils/family.js` — `computeEditableRelatives`, `requireEditableRelative`) wired into every mutation from (4). Depends on (4).
+6. **Sibling-firstname-uniqueness check** in the create/update resolvers (resolver-level, not a hook — see Pattern 4). Depends on (4).
+7. **Account↔member linking mutations** (`linkAccountToMember`, `unlinkAccountFromMember`, ADMIN-only) + bootstrap path validated. Depends on (2), (3).
+8. **Photo upload**: Docker volume mount, `express.static` route, multer upload route, `profilePicture` referenced by `updateFamilyMember`. Depends on (1); independent of (4)–(7), can parallelize.
+9. **`familyTree` flat query** (Pattern 3) + `myEditableRelatives` query. Depends on (4), (5).
+10. **Frontend auth wiring**: `AuthContext`/`me` query exposes `familyMemberId`; `ProtectedRoute` gains the `requireFamilyAccess` variant; new `/pending` route + `Pending.jsx`. Depends on (3), (7).
+11. **`/manage` page**: relative-scoped CRUD form, photo uploader, admin account-linking UI. Depends on (5), (6), (8), (9), (10).
+12. **`/family` page**: pan/zoom canvas consuming the flat `familyTree` payload. Depends on (9), (10).
+
+Steps 8 and steps 4–7 can run in parallel once (1) lands; everything downstream of (10) (the two new pages) needs the auth/gating wiring finished first, since both routes are gated on `requireFamilyAccess`.
 
 ## Sources
 
-- [Apollo Server Plugin Event Reference](https://www.apollographql.com/docs/apollo-server/integrations/plugins-event-reference) — `didResolveOperation` fires post-parse/pre-execution with `operationName` and `contextValue` available; confirms plugin hooks fire identically for `executeOperation()` and HTTP transport. HIGH confidence.
-- [Creating Apollo Server Plugins](https://www.apollographql.com/docs/apollo-server/integrations/plugins) — plugin lifecycle shape (`requestDidStart` returning a listener object). HIGH confidence.
-- [rate-limiter-flexible (GitHub)](https://github.com/animir/node-rate-limiter-flexible) / [npm](https://www.npmjs.com/package/rate-limiter-flexible) — `RateLimiterMemory.consume(key, points)` API, confirmed as the alternative to a hand-rolled limiter if needed later. MEDIUM confidence (not adopted as primary recommendation, verified only as a fallback option).
-- `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/CONCERNS.md`, `.planning/PROJECT.md` — existing-system facts (component responsibilities, known issues, milestone scope). HIGH confidence (direct repo inspection).
-- `backend/src/server.js`, `backend/src/utils/auth.js`, `backend/src/resolvers/user.resolver.js`, `backend/src/models/User.js`, `backend/src/models/index.js`, `backend/src/config/env.js`, `backend/src/schemas/user.schema.js`, `backend/test/helpers.js`, `backend/test/globalSetup.js` — direct code inspection, current as of 2026-07-12. HIGH confidence.
+- [Sequelize Advanced Many-to-Many Associations](https://sequelize.org/docs/v6/advanced-association-concepts/advanced-many-to-many/) — self-referential `belongsToMany` through table pattern (MEDIUM confidence, cross-referenced with community write-ups)
+- [Sequelize self-referential M:N GitHub issue #1724](https://github.com/sequelize/sequelize/issues/1724) — confirms pattern and known query rough edges
+- [Sequelize Model Basics — sync/alter](https://sequelize.org/docs/v6/core-concepts/model-basics/) and [GitHub issue #9731](https://github.com/sequelize/sequelize/issues/9731) — confirms `sync()` without `alter: true` does not add columns to existing tables (HIGH confidence)
+- [Percona: Introduction to MySQL 8.0 Recursive CTE (Part 2)](https://www.percona.com/blog/introduction-to-mysql-8-0-recursive-common-table-expression-part-2/) — recursive CTE availability/use cases including genealogy trees (HIGH confidence)
+- [MySQL Tutorial: Adjacency List Model](https://www.mysqltutorial.org/mysql-basics/mysql-adjacency-list-tree/) — adjacency-list pattern for hierarchical data
+- [Apollo GraphOS: Handling the N+1 Problem](https://www.apollographql.com/docs/graphos/schema-design/guides/handling-n-plus-one) — confirms batching/DataLoader is the standard fix for repeated-key N+1, and that a single bulk fetch is the correct alternative when there's no repeated-key pattern (MEDIUM confidence)
+- [Apollo Server file uploads discussion](https://github.com/apollographql/apollo-server/issues/301) and community write-ups on `graphql-upload` vs REST upload routes — informs the recommendation against GraphQL-mutation file uploads (MEDIUM confidence)
+- Direct reads of this repository: `backend/src/server.js`, `backend/src/models/{index.js,User.js}`, `backend/src/resolvers/user.resolver.js`, `backend/src/schemas/user.schema.js`, `backend/src/utils/auth.js`, `backend/src/config/database.js`, `docker-compose.yml`, `frontend/src/App.jsx`, `.planning/PROJECT.md`, `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/STRUCTURE.md` (HIGH confidence — ground truth)
 
 ---
-*Architecture research for: v1.1 Security Remediation — integration into existing Express/Apollo/Sequelize architecture*
-*Researched: 2026-07-12*
+*Architecture research for: v2.0 Collaborative Family Tree (subsequent milestone integration)*
+*Researched: 2026-07-21*

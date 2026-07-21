@@ -1,359 +1,395 @@
 # Pitfalls Research
 
-**Domain:** Security remediation (7 fixes) on an existing Express 4 + Apollo Server 4 + Sequelize/MySQL + JWT auth stack, under strict TDD with a v1.0 CI-enforced test suite that must stay green
-**Researched:** 2026-07-12
-**Confidence:** HIGH (codebase-verified: all pitfalls below are grounded in direct reads of `backend/src/resolvers/user.resolver.js`, `backend/src/models/User.js`, `backend/src/config/env.js`, `backend/src/server.js`, `backend/test/helpers.js`, `backend/test/globalSetup.js`, `backend/vitest.config.js`, and every existing `*.test.js`/`*.test.jsx` file) with MEDIUM-confidence external verification (Sequelize docs, express-rate-limit docs/wiki) for the two claims that needed it.
+**Domain:** Collaborative family-tree domain (self-referencing graph data, permission-scoped CRUD, file upload) added to an existing Express + Apollo Server 4 + Sequelize 6/MySQL 8 + React 18 stack
+**Researched:** 2026-07-21
+**Confidence:** HIGH for GraphQL N+1/DataLoader, MySQL recursive-CTE, and file-upload-security patterns (official docs + multiple corroborating sources); MEDIUM for family-tree-specific dedup/permission edge cases (reasoned from the stack + domain logic, less directly documented in external sources); LOW flagged inline where a claim rests on a single source.
 
 ## Critical Pitfalls
 
-### Pitfall 1: The existing `graphql()` test helper bypasses Express entirely — CORS and rate-limit fixes are untestable with it
+### Pitfall 1: Recursive self-referencing resolvers cause exponential N+1 fan-out on a deep tree
 
 **What goes wrong:**
-`backend/test/helpers.js` calls `server.executeOperation({ query, variables }, { contextValue: { models, user } })` directly against the Apollo `ApolloServer` instance. It never goes through `backend/src/server.js`'s Express app — no `cors()` middleware, no `express.json()`, no future rate-limit middleware, no `expressMiddleware(apollo, { context })`. Every existing integration test (`login.test.js`, `register.test.js`, `resetPassword.test.js`, `dashboard.test.js`) is written against this helper. If rate limiting or the CORS-origin-leak fix is implemented as Express middleware (the natural place for both), **the current test harness cannot exercise either fix at all** — you could write a "red" test that calls `graphql()` and it will never fail, because the code path under test isn't reachable through that helper.
+`FamilyMember` fields (`parents`, `children`, `spouse`, derived `siblings`) are naturally recursive GraphQL types. If each field resolver just calls `member.getParents()` / `member.getChildren()` independently per node (the natural first implementation), a single `/family` query that asks for a few generations up and down fans out to hundreds or thousands of individual `SELECT ... WHERE parentId = ?` queries — one N+1 problem nested inside another. At 10-23 generations this isn't a minor slowdown, it can time out the request or exhaust the default 5-connection Sequelize pool (`backend/src/config/database.js` has no `pool` tuning today).
 
 **Why it happens:**
-The v1.0 test suite deliberately tested resolvers in isolation for speed and simplicity (no HTTP layer, no Express boot). That was the right call for auth-logic tests, but rate limiting and CORS are HTTP-layer concerns by nature — the mismatch is only exposed once you need to test them.
+GraphQL resolvers are field-scoped and stateless by default — nothing forces batching unless you deliberately add it. Sequelize associations (`getParents()`, `getChildren()`) look like "just call the ORM method" and work fine in a two-level test fixture, hiding the problem until someone tests with a real deep tree.
 
 **How to avoid:**
-Before writing any red test for rate limiting or CORS, add a second, HTTP-level test harness — e.g. `supertest` boot of the real Express `app` (this requires extracting `app` from `backend/src/server.js` so it can be imported without calling `app.listen()`/`apollo.start()` twice; currently `server.js` runs top-level side effects on import). Alternatively, if rate limiting is implemented as an Apollo plugin (`requestDidStart`) rather than Express middleware, it *can* be exercised through `executeOperation` — but CORS categorically cannot, since CORS is inherently about the HTTP `Origin` header/response, which `executeOperation` has no concept of. Budget a dedicated "test harness" step before the CORS and rate-limit fixes.
+- Add a `DataLoader` per relationship type (`parentsLoader`, `childrenLoader`, `spouseLoader`), each batching by `FamilyMember.id` and instantiated **fresh per request** inside the same `context()` function that already computes `user`/`models` in `backend/src/server.js` — never a module-level singleton loader (that would leak/cache across requests and silently return stale data to different users).
+- For the `/family` deep-tree read path specifically, don't resolve field-by-field at all: fetch the whole subtree in one shot using a MySQL 8 `WITH RECURSIVE` CTE (or, more simply given `sequelize.sync()` and no migrations, fetch **all** `FamilyMember` rows + a flat relationships table in 1-2 queries and assemble the tree in JS) rather than letting GraphQL's naive per-field resolution walk the graph node-by-node.
 
 **Warning signs:**
-A "red" test for rate limiting or CORS that passes on the very first run without any implementation change — that's proof the test isn't touching the real code path.
+- A fixture with 4+ generations and >2 children per generation makes the `/family` query visibly slow in local dev.
+- Enabling Sequelize's dev query logger (`backend/src/config/database.js:8`, already conditional on `NODE_ENV`) and eyeballing the log shows dozens/hundreds of near-identical `SELECT` statements for one GraphQL request.
 
 **Phase to address:**
-A small harness/refactor step must land before (or as the first task of) the rate-limiting and CORS phases — likely bundled into whichever phase implements rate limiting first, since it needs the harness too. Extracting `app` from `server.js` as an importable, non-side-effecting export is the concrete unlock.
+Data-model & resolver phase (when `FamilyMember` relationships and resolvers are first built) — DataLoader wiring should ship with the relationship resolvers, not be retrofitted after `/family` is slow.
 
 ---
 
-### Pitfall 2: Rate limiting keyed by path throttles the whole `/graphql` endpoint, not just sensitive mutations
+### Pitfall 2: Unbounded recursive GraphQL query depth becomes a new DoS surface
 
 **What goes wrong:**
-There is a single `POST /graphql` route (`backend/src/server.js:30-39`) handling every operation — `me`, `dashboard`, `login`, `register`, `requestPasswordReset`, `resetPassword`, `users`. Standard `express-rate-limit` usage (`app.use('/graphql', rateLimiter)`) keys on the route path, which is identical for all of these. A naive implementation throttles legitimate `me`/`dashboard` polling and admin `users` queries at the same rate as brute-force login attempts — either the limit is set generously (useless against brute force) or tightly (breaks normal app usage, e.g. a dashboard auto-refresh).
+The existing app has **no query depth/complexity limiting** (documented as an architectural constraint in the codebase map — "Single GraphQL endpoint, no query complexity/depth limiting"). Today that's low-risk because the schema is flat (`User`, `Dashboard`). Once `FamilyMember { parents { parents { parents { ... spouse { children { ... } } } } } }` exists as a real recursive type, a single crafted query can request unbounded depth/breadth, turning an oversight that was harmless into an actual DoS vector against the same server that also handles login/auth traffic.
 
 **Why it happens:**
-`express-rate-limit`'s out-of-the-box model assumes one route = one operation. GraphQL collapses many operations onto one route, so path-based middleware can't distinguish them without inspecting the request body.
+Recursive types are added for a legitimate feature (the tree), but nobody revisits the "no depth limiting" gap until it's exploited or a test with a large fixture times out the whole server (not just one request), because the connection pool gets starved.
 
 **How to avoid:**
-Rate-limit by *operation*, not by path: inspect `req.body.query`/`operationName` (or `req.body.operationName` if the client sends it) before invoking the limiter, and only apply the limiter's `.consume()`/count logic for `login`, `register`, and `requestPasswordReset`. This can be done either as Express middleware that parses the body and conditionally calls the rate-limit check, or — cleaner given Apollo 4 — as an Apollo Server plugin (`requestDidStart` → `didResolveOperation`) that has `operationName`/`document` already parsed and can key the limiter per-mutation. Do not rate-limit `me`, `dashboard`, `users`, or `logout`.
+Add `graphql-depth-limit` (or Apollo's complexity plugin) as a validation rule the same milestone the recursive `FamilyMember` type ships — cap depth to something a bit deeper than the deepest legitimate `/manage` query needs (immediate relatives ≈ depth 2-3), and let `/family`'s deep-tree read use a dedicated non-recursive query (`familyTree(rootId, maxDepth)`) instead of relying on arbitrarily deep field nesting.
 
 **Warning signs:**
-A test where a burst of `me` queries returns 429s, or where 6 failed `login` attempts followed by a legitimate `dashboard` query also gets throttled.
+- No `validationRules`/depth-limit plugin present in `backend/src/server.js` after the recursive type ships.
+- A manually-crafted 15-level-deep GraphQL query string is accepted without error in dev.
 
 **Phase to address:**
-Rate-limiting phase. Write the red test as: "N+1 failed `login` attempts trigger a 429/GraphQL error; an interleaved `me` query in the same window still succeeds."
+Same phase as Pitfall 1 (relationship resolvers) — add the depth-limit plugin alongside DataLoader, before `/family` is exposed publicly-reachable-by-JWT.
 
 ---
 
-### Pitfall 3: In-memory rate-limit store carries state across test cases (flaky/order-dependent tests) and is process-local (breaks under multiple workers/replicas)
+### Pitfall 3: Parent/child edges allow cycles — a person becomes their own ancestor
 
 **What goes wrong:**
-Two related failure modes:
-1. **Test flakiness:** `express-rate-limit`'s default `MemoryStore` persists hit counts for the lifetime of the process. `backend/vitest.config.js` already sets `pool: 'forks'` and `fileParallelism: false` — meaning **all backend test files run sequentially in a single process** during a given `vitest run`. That's good news for determinism (no cross-process races) but bad news for state bleed: if `login.test.js` exhausts the rate limit for `test@example.com` / a shared IP key, a *later* test file (or a later `it()` in the same file) hitting the same key inherits the exhausted count and fails for the wrong reason — a red test that's red for state-bleed, not for a missing feature.
-2. **Multi-instance correctness:** `MemoryStore` state is per-process. If the app is ever deployed with more than one Node process/replica (mentioned as a known future concern — `sequelize.sync()` race risk in `CONCERNS.md` already flags multi-replica boot), each replica has its own independent counter, so the *effective* rate limit is `perInstanceLimit × replicaCount` — silently weaker than configured. This is out of scope to fix in v1.1 (single-instance deployment today) but should be documented as a known limitation, not silently assumed away.
+Sequelize (and MySQL FK constraints) will happily let you set `memberA.parentId = memberB.id` and, separately, `memberB.parentId = memberA.id` (or a longer chain back to itself) — nothing in the ORM or a plain FK enforces "this graph must stay a DAG." Once a cycle exists, any recursive read (tree render, ancestor lookup, the cycle-check itself) either infinite-loops or blows past MySQL's recursion cap (`WITH RECURSIVE` fails past 1000 levels by default via `cte_max_recursion_depth`), and a naive JS-side recursive walk will stack-overflow or hang.
 
 **Why it happens:**
-`express-rate-limit`'s default store is deliberately simple (no external dependency). Nobody wires a reset between tests because the library doesn't auto-reset, and nobody notices the multi-instance gap until a second replica is added.
+Member-scoped editing (any linked member can add/edit their *immediate* relatives) plus a permissive schema means the mutation `setParent(childId, parentId)` has no reason, on its own, to know that `parentId` is already a descendant of `childId` several generations down — that check requires walking the graph, which is easy to forget when the happy-path (adding a real, non-cyclic relative) never triggers it.
 
 **How to avoid:**
-- In tests: call the store's `resetKey(key)` or `resetAll()` between test cases. Either import the limiter instance in `backend/test/helpers.js` and add a `resetTables`-style `resetRateLimits()` helper called in `beforeEach` alongside `resetTables`, or construct a fresh limiter per test file. `express-rate-limit` (v7+) exposes both `resetKey()` and `resetAll()` on the store for exactly this purpose. [MEDIUM confidence — confirmed via express-rate-limit GitHub wiki/docs, not yet run against this codebase's version]
-- In the app itself: use a rate-limit key that includes both IP and the targeted mutation/email so unrelated tests/users don't collide, and document (in code comment + `KNOWN-ISSUES.md`-style note, or the new `CONCERNS.md`) that the in-memory store is single-instance-only; a shared store (Redis) is future work if the app scales to multiple replicas — do not attempt to build that in this milestone, it's explicitly out of scope per `PROJECT.md`.
+Before committing any parent/child edge (create or update), run an ancestor-check: does `parentId` already appear in `childId`'s descendant set (or vice versa for the mirrored check)? Implement as a bounded recursive query (either `WITH RECURSIVE` with a depth cap, or an app-level BFS/DFS capped at, e.g., 30 levels — deeper than the deepest legitimate tree) and reject the mutation with a clear error if a cycle would result. This check belongs in the resolver/service layer, not just "trust the client" — write it test-first: a test that attempts `setParent(grandparentId, grandchildId)` where grandchild is already a descendant of grandparent must fail.
 
 **Warning signs:**
-A rate-limit test that passes in isolation (`vitest run login.test.js`) but fails when the full suite runs (`vitest run`), or passes/fails depending on test file order.
+- No explicit "would this create a cycle?" check anywhere near the parent/child mutation resolvers.
+- A test suite that only covers adding relatives in the "obvious" direction (parent before child exists) and never attempts the reverse/cyclic case.
 
 **Phase to address:**
-Rate-limiting phase. The reset helper must be added to `backend/test/helpers.js` in the same task that adds the limiter, and every rate-limit test must call it in `beforeEach`.
+Data-model & relationship-mutation phase — this is a correctness invariant of the graph itself, not an edge case to defer; it must ship with the first parent/child mutation, TDD'd red-green per the milestone's hard constraint.
 
 ---
 
-### Pitfall 4: Rate-limit responses become a new enumeration/timing oracle
+### Pitfall 4: Spouse relationship modeled as an asymmetric FK goes out of sync
 
 **What goes wrong:**
-The whole point of the generic `"If the account exists, a password reset token has been generated."` message (already correctly implemented in `requestPasswordReset`, `backend/src/resolvers/user.resolver.js:50`) is to prevent an attacker from distinguishing "account exists" from "account doesn't exist." A naive rate limiter can reintroduce exactly this leak: if the limiter is keyed by email/username and only increments its counter on an existing account (e.g. because the resolver returns early before the limiter middleware runs, or because the limiter is applied inside the resolver after the `User.findOne` lookup), then hitting the same email repeatedly will start returning 429s sooner for real accounts than for fake ones — the attacker enumerates accounts by timing/count-to-429 instead of by response content.
+If `spouse` is implemented as a single nullable `spouseId` column on `FamilyMember` (the "obvious" self-FK design), it's easy to write `memberA.spouseId = memberB.id` without also setting `memberB.spouseId = memberA.id`. The relationship then reads correctly from one side and not the other — A shows B as a spouse, but B's tree shows no spouse (or worse, a stale different spouse from a previous edit). This corrupts the derived-siblings logic too, since spouse pairing can matter for scoping "immediate relatives."
 
 **Why it happens:**
-Rate limiting is naturally tempting to key by the *identity being attacked* (email) rather than the *attacker* (IP), because per-account limiting feels more surgical. But per-account keying only makes sense if the counter increments identically regardless of whether the account exists — which requires the limiter to run *before* any DB lookup, at the Express/Apollo-plugin layer, not inside the resolver.
+A single-column self-FK is the fastest thing to model in Sequelize and passes every test that only checks "from the side I just edited." The asymmetry only surfaces when someone reads from the *other* member's perspective, which single-direction tests won't naturally cover.
 
 **How to avoid:**
-Key the limiter primarily by IP (or IP + coarse bucket), not by email/username, for `login` and `requestPasswordReset`. If email-based limiting is added as a secondary layer, increment the counter unconditionally before the resolver's `User.findOne` call runs (i.e., in middleware/plugin, not resolver body) so existing and non-existing accounts consume the same budget at the same rate. Verify with a test: N attempts against a real email and N attempts against a fake email hit the 429 threshold at the *same* attempt count.
+Model spouse (and arguably parent/child too) as rows in a dedicated `FamilyRelationship` join table (`memberAId`, `memberBId`, `type: 'SPOUSE'|'PARENT_CHILD'`) rather than a same-table self-FK column, and always write/read symmetric relationships as a single row queried from either direction (`WHERE memberAId = ? OR memberBId = ?`) instead of two mirrored writes that can drift. If a same-table FK is kept for parent/child (directional, so asymmetry is inherent and fine), spouse specifically should not be — enforce the symmetric-write (or join-table) design and add a test that asserts querying from *either* member of a spouse pair returns the same relationship.
 
 **Warning signs:**
-A test (or manual curl loop) where a real account's requests start 429-ing at a different count than a fake account's requests.
+- `spouseId` exists as a plain column with no transactional "set both sides" logic around every write path (create, update, unlink).
+- No test reads the relationship from the "other" member's side after an edit.
 
 **Phase to address:**
-Rate-limiting phase — this must be an explicit acceptance criterion, not an afterthought, since it directly undoes the enumeration protection the reset-token fix is trying to add.
+Data-model design phase (before the first migration/`sync()` of the relationship schema ships) — this is a schema-design decision, expensive to change after real data exists.
 
 ---
 
-### Pitfall 5: The mailer fix leaves a code path (or GraphQL field) that still returns the token
+### Pitfall 5: Removing a member cascades further than intended (or not far enough)
 
 **What goes wrong:**
-`requestPasswordReset` currently returns `{ message, resetToken }` and the GraphQL schema explicitly types `resetToken: String` as nullable-but-present (`backend/src/schemas/user.schema.js:21-24`). "Drop it from the API" is easy to under-implement: a common half-fix is to stop *populating* `resetToken` in dev (return `null` always) while leaving the field in the schema, or to gate it behind `NODE_ENV !== 'production'` so it still leaks in a misconfigured/staging deployment. Both leave the account-takeover vector reachable — the schema field itself is the attack surface, not just its current value.
+`sequelize.sync()` (no migrations, per this project's existing constraint) will create FK constraints based on whatever `onDelete` behavior the association definitions specify — and Sequelize's per-association defaults are easy to get wrong for a self-referencing model. Two failure modes are both plausible and both bad: (a) deleting one ancestor member accidentally `CASCADE`s and wipes out an entire descendant subtree because a `belongsTo`/`hasMany` pair was left at a default that cascades; or (b) deleting a member leaves dangling `parentId`/`spouseId`/`childId` references pointing at a now-nonexistent row (if no `onDelete` is specified and the FK constraint doesn't enforce integrity the way you assumed), silently corrupting tree renders later.
 
 **Why it happens:**
-Removing a GraphQL schema field feels "breaking" (frontend/query concerns), so it's tempting to just stop populating it and call the resolver-level change sufficient.
+Nobody explicitly decided "what should happen to X's children/spouse when X is deleted" as a product requirement before writing the model — it's easy to let the ORM/DB default decide, and self-referencing FK cascade semantics are genuinely confusing (MySQL and Sequelize disagree in places, and behavior can differ between `sync()`-created schema and what a hand-written migration would specify).
 
 **How to avoid:**
-Remove `resetToken` from the `PasswordResetPayload` type in `backend/src/schemas/user.schema.js` entirely (schema-level removal, not just resolver-level nulling) so the field is gone from introspection and cannot be requested even if some client still asks for it. The red test should assert the GraphQL response for `requestPasswordReset { message resetToken }` (querying the now-removed field) returns a schema validation error, or that the field is simply absent from `graphql-schema` introspection — not merely that its value is `null`. The mailer must be the only place the raw token is observable (console log in dev via a `sendMail`/`Mailer.send()` call that tests can spy on).
+Decide explicitly, as a requirement, before modeling: member deletion should almost certainly `SET NULL` on dependent parent/spouse/child references (orphaning the edge, not cascading the delete) — a family tree should not vanish downstream because one ancestor node was removed. Set `onDelete: 'SET NULL'` explicitly on every self-referencing association (don't rely on the Sequelize default), and write an integration test that creates a 3-generation branch, deletes the middle-generation member, and asserts the grandchildren still exist with their `parentId` nulled (or reassigned per whatever the actual product rule is) rather than being cascade-deleted.
 
 **Warning signs:**
-`grep -rn resetToken backend/src` returning any hits in `schemas/` or `resolvers/` after the fix is supposedly done.
+- Association definitions with no explicit `onDelete` option.
+- No test exercises "delete a member who has children/spouse/parents and assert what survives."
 
 **Phase to address:**
-Mailer phase. Include a schema-introspection assertion as part of the red step, not just a resolver-response assertion.
+Data-model design phase, same as Pitfall 4 — cascade behavior is schema-level and must be decided and tested before `/manage` delete/remove functionality ships to any non-admin user.
 
 ---
 
-### Pitfall 6: Mailer tests pass because they mock the mailer itself, never proving the token reaches it
+### Pitfall 6: Sibling-firstname dedup rule breaks down for half-siblings, remarriage, and independently-added shared parents
 
 **What goes wrong:**
-The natural implementation is a `sendResetEmail(user, token)` function that's easy to `vi.mock()` in tests. A shallow test asserts `sendResetEmail` was called once — but doesn't assert it was called *with the correct token* (matching what got persisted to `user.resetPasswordToken`), or asserts against a stale/hardcoded token value that happens to match by coincidence. This "mocks too much" failure mode makes the suite green while the actual delivery path is unverified — e.g. a bug where the mailer is called with `user.id` instead of the reset token would still show the mock as "called."
+The dedup guard ("block a new child if their firstname matches an existing sibling") is ambiguous the moment "sibling" isn't simply "full sibling with two shared parents," which is exactly the situation this milestone's own scope creates: half-siblings, blended/remarried families, and partial parentage are explicitly named as real scenarios (full multi-marriage genealogy is deferred, but the dedup rule as specified operates on *any* shared parent, so half-siblings will hit it whether or not "half-sibling" is a modeled concept). Concretely:
+- Two children who share only one parent (father remarries, has a child with the same firstname as a child from his first marriage) get incorrectly blocked as "duplicates" even though they're different people through different mothers.
+- A member with only one parent recorded (or none) can't have siblings derived at all — the check silently doesn't fire, which is *correct* until that member is later linked to a parent, at which point a firstname collision that should have been caught at creation time is only discoverable retroactively.
+- Case/whitespace aren't automatically normalized — `"John"`, `"john"`, and `" John "` are three different strings to a naive `WHERE firstname = ?` comparison, so the "uniqueness" guard silently fails to catch real duplicates typed inconsistently by different family members.
+- Most importantly: two different (unlinked) relatives adding "the same" parent independently — e.g., two siblings, each editing their own immediate relatives on `/manage`, both add a new "Dad" record with his real name because neither knew the other had already added him — produces **two separate `FamilyMember` rows for the same real person**. The sibling-firstname check operates per shared-parent-*row*, so it never catches this: the children now "share a parent" only in the real world, not in the DB, so no duplicate-firstname block fires, and the tree silently forks into two disconnected trees rooted at two different "Dad" nodes.
 
 **Why it happens:**
-Mocking the transport (SMTP/provider) is correct and necessary (you don't want tests sending real email), but it's easy to over-mock and stop asserting on the mock's call arguments, especially under TDD time pressure to get to green.
+The rule as specified is a proxy for a much harder problem (canonical person identity / record linkage) using the cheapest signal available (firstname + literal shared-parent-row). It works for the common case (one nuclear family, one person per parent, everyone spelled consistently) and breaks exactly at the boundaries this milestone's feature list calls out as real (remarriage, partial parentage) but explicitly defers full support for (multiple marriages/half-siblings as *modeled concepts*).
 
 **How to avoid:**
-Assert on the mock's call arguments, not just call count: `expect(mailerSpy).toHaveBeenCalledWith(expect.objectContaining({ to: user.email, token: expect.any(String) }))`, and cross-check that the token passed to the mailer equals `user.resetPasswordToken` after `user.reload()` (the same pattern the existing `resetPassword.test.js` already uses at line 29-31 — reuse it). Keep the "logs to console in dev" mailer implementation as a thin, directly testable function (`export function sendResetEmail(...)`) separate from any future real-provider adapter, so unit tests can import and spy on it without mocking Express/HTTP.
+- Normalize firstname comparison (trim + case-fold, e.g., lowercase + Unicode normalize) before any uniqueness check, at the resolver layer, and cover it with an explicit mixed-case/whitespace test.
+- Scope the dedup check precisely and document the scope as a product decision, not an implementation accident: decide (and write down) whether the rule applies to "shares any one parent" or "shares both parents," and accept — explicitly, as a known limitation, consistent with "full genealogy deferred" — that legitimate half-siblings sharing a firstname will be blocked; give the blocking error message enough detail (e.g., "a child named X already exists under this parent") that a human can recognize the false-positive and route around it (rename, or flag for admin override) rather than silently failing.
+- For independently-added duplicate parents: this is the highest-value prevention target. Before letting a member create a brand-new parent record, require a "search existing members first" step in the `/manage` UI (search by name/birthdate) and make creating a *new* parent record a deliberate, distinct action from *linking* to an existing one. This doesn't eliminate the possibility (names still won't always match), but it removes the accidental case. Additionally, give admins a manual "merge two member records" tool (even a minimal one) as a recovery path, since some duplication will still slip through.
+- Re-run the dedup check at parent-*linking* time (not only at member-creation time), so a member discovered to share a parent after the fact still gets validated.
 
 **Warning signs:**
-A mailer test with `expect(mailerSpy).toHaveBeenCalled()` and no argument assertion.
+- Dedup check does a raw string `=` comparison with no `TRIM`/`LOWER` normalization.
+- No UI affordance to search/select an existing member before creating a new parent node.
+- No admin merge/dedup tool exists at all once real (non-test) family data starts accumulating.
 
 **Phase to address:**
-Mailer phase.
+Dedup-rule + `/manage` UI phase — the normalization fix is cheap and should ship with the first version of the rule; the "search before create" UX and admin merge tool should be scoped explicitly as separate roadmap items (the merge tool can be minimal/manual for v2.0, but its absence should be a documented, deliberate scope decision, not an oversight).
 
 ---
 
-### Pitfall 7: The frontend `ForgotPassword` page still renders `result.resetToken` after the backend stops returning it
+### Pitfall 7: "Immediate relatives" permission scope computed once/statically instead of freshly per mutation
 
 **What goes wrong:**
-`frontend/src/pages/ForgotPassword.jsx:9,53-67,82-86` queries `requestPasswordReset(email: $email) { message resetToken }` and conditionally renders a monospace token box + a "Continue to reset" button whenever `result.resetToken` is truthy. Once the backend fix removes `resetToken` from the schema (Pitfall 5), this GraphQL query becomes invalid (`Cannot query field "resetToken"`) and the page will error on every submission — a full functional break of the forgot-password UI. **There is no existing frontend test for `ForgotPassword.jsx` or `ResetPassword.jsx`** (confirmed: only `ProtectedRoute`, `AuthContext`, `Login`, `Register` have test files), so CI will stay green while this page is silently broken in the browser — a classic "tests didn't catch it because nothing tested it" gap.
-Additionally, the "Continue to reset" button (`ForgotPassword.jsx:82-86`) is only rendered `if (result?.resetToken)` — once the field is gone, that button *disappears entirely*, breaking the only in-app navigation path to `/reset-password` in dev/testing.
+A member is permitted to edit parents, spouse, children, and siblings — a set that changes as the graph changes (unlink a parent, gain a new sibling, etc.). If the permission check computes this set once (e.g., cached on login, or read from a client-supplied claim) rather than recomputing it fresh from the current DB state at the time of each mutation, a member can retain edit rights over relatives they're no longer connected to, or — more dangerously — a stale/incorrect computation can under- or over-scope the set silently. The over-scope direction is the security bug: any bug that accidentally includes siblings-of-siblings, grandparents, or arbitrary other members in the "editable" set grants privilege beyond "immediate."
 
 **Why it happens:**
-The backend and frontend fixes are easy to sequence wrong — fixing the resolver first without a coordinated frontend PR leaves a broken UI with no test to catch it (mailer fix is backend-only in the fix list, but its frontend blast radius is real).
+"Immediate relatives" for a self-referencing graph with 4 relationship directions (I am parent of X / X is parent of me / I am spouse of X / X and I share a parent) is genuinely easy to compute incorrectly — union queries in the wrong direction, or reusing a "siblings" computation that was written for the *tree display* (which may deliberately show more than the *editable* scope) for permission checks instead.
 
 **How to avoid:**
-Update the frontend query and UI in the same phase as the mailer backend fix: drop `resetToken` from the `REQUEST_RESET` query string, remove the token-rendering block, and change the success message/flow to something like "Check your email for a reset link" with a static, always-visible link to `/reset-password` (since there's no token to gate it on anymore). Add a new component test for `ForgotPassword.jsx` (there is none today) asserting the page renders `message` only and never attempts to read a token field — this closes the "no coverage" gap the mailer fix would otherwise walk into blind.
+Write one single, well-tested utility function (e.g., `getEditableMemberIds(actingMemberId)`) that is the *only* source of truth for permission scope, used by every family-domain mutation resolver — never inline a scope check per-resolver. Test it explicitly with fixtures that include grandparents, cousins, and siblings-of-siblings, asserting they are *excluded*, alongside fixtures for parents/spouse/children/derived-siblings asserting they *are* included. Recompute this set fresh inside the resolver on every mutation call (never trust a cached/client-supplied scope), and treat every mutation that touches a `targetMemberId` as needing `targetMemberId ∈ getEditableMemberIds(callingMemberId)` before doing anything else — mirroring the existing `requireAuth`/`requireAdmin` guard-clause pattern already used in `backend/src/utils/auth.js`.
 
 **Warning signs:**
-Manually loading `/forgot-password` in the browser after the backend change ships and seeing a GraphQL error alert instead of the success message.
+- More than one place in the resolver code independently computes "who can this member edit."
+- No test fixture includes a grandparent or a sibling's spouse and asserts they're rejected.
 
 **Phase to address:**
-Mailer phase — must include a frontend task, not just backend. Do not treat this as "someone else's phase."
+Permission-scoping phase (before any member-facing `/manage` mutation ships) — this utility function is a hard dependency for every subsequent mutation resolver and should be built and fully tested first.
 
 ---
 
-### Pitfall 8: `passwordChangedAt` timing precision — JWT `iat` is seconds, DB timestamps are milliseconds
+### Pitfall 8: Relationship edits become a privilege-escalation vector
 
 **What goes wrong:**
-`jsonwebtoken`'s `sign()` embeds `iat` (issued-at) as **whole seconds** since epoch (`Math.floor(Date.now() / 1000)`), while Sequelize `DataTypes.DATE` columns store **millisecond** precision. A naive revocation check — `if (tokenIat < user.passwordChangedAt) reject` — done by comparing `payload.iat` (seconds) directly against `user.passwordChangedAt.getTime()` (milliseconds) is comparing numbers on different scales and will reject essentially every token (since a seconds-value like `1799999999` is always less than a milliseconds-value like `1799999999000`). The precision mismatch can also bite the *other* direction even with correct unit conversion: `resetPassword`/`register` sets `passwordChangedAt` and *then* `signToken()` is called in the same request — if the token's `iat` (truncated down to the second) lands in the same second as `passwordChangedAt` but sub-second *after* it in wall-clock time, a strict `<` vs `<=` comparison choice determines whether the just-issued token is immediately rejected as "stale." This is a classic off-by-one/off-by-precision bug that only shows up under fast test execution (multiple operations completing within the same second) — exactly the conditions of a Vitest integration test.
+Because editing relationships *is itself* how "immediate relatives" gets computed, a member creating a relationship edge is also — indirectly — expanding their own future editable scope. Concretely: if Member A can set `spouseId = adminMemberId` (or any other real member's id) on their own record without the other party's consent, and the permission-scope check (Pitfall 7) recomputes "immediate relatives" from current graph state, Member A has just fabricated a claim of being married to the admin's member record and, on the next request, may be treated as having edit rights over the admin's other immediate relatives too. The same logic applies to parent/child edges — falsely claiming to be someone's child/parent extends editable reach into a whole new subtree.
 
 **Why it happens:**
-JWT spec (`iat`) mandates NumericDate (seconds); JS `Date`/Sequelize/MySQL `DATETIME` default to milliseconds. Developers convert once (e.g. `passwordChangedAt.getTime() / 1000`) but forget to floor/round consistently, or use `<` where `<=` (or a small grace-second buffer) is needed for same-second issuance.
+Relationship-creation mutations are naturally one-sided (the acting member submits the edit), but the *effect* of that edit (expanding their own permission scope) is a second-order consequence nobody reviews for abuse the way they'd review, say, a `promoteToAdmin` mutation.
 
 **How to avoid:**
-1. Always compare in the same unit: `Math.floor(user.passwordChangedAt.getTime() / 1000) > payload.iat` → reject. Floor (not round) the DB side to match `iat`'s floor-based truncation.
-2. Use `<=`-safe logic or explicitly allow same-second tokens: since `resetPassword`/`register` set `passwordChangedAt` and sign the token in the same request handler, either (a) sign the token *after* persisting `passwordChangedAt`, and treat tokens with `iat` equal to the floored `passwordChangedAt` second as valid (`payload.iat >= flooredChangedAt`, not `>`), or (b) set `passwordChangedAt` to `new Date(Date.now() - 1000)` (one second in the past) before signing, guaranteeing the new token's `iat` is always strictly after it. Option (a) is cleaner and avoids a magic offset.
-3. Write the red test explicitly around the boundary: reset password, immediately sign in with the new password, assert the returned token is valid against `getUserFromRequest`/`requireAuth` in the *same second* (don't rely on test execution being slow enough to naturally cross a second boundary — that would hide the bug).
+Any relationship edge that links two **different, already-linked-to-an-account** members (spouse, or a parent/child edge where both ends already have their own user account) should require the target member's own account to have created the record, or the acting member's account to be the one who originally created *that specific member node* (i.e., they're linking a node they own/created, not grafting onto someone else's pre-existing subtree), or (simplest, safest for v2.0) require admin approval for any edge that connects two independently-linked accounts. Unlinked `FamilyMember` nodes (no account attached yet) are safe to edit freely within scope since there's no second account to protect. Write a test: Member A (linked, with their own subtree) attempts to set themselves as spouse/parent/child of Member B (linked, unrelated subtree) without B's consent or admin approval — must be rejected.
 
 **Warning signs:**
-Integration tests that pass locally (slower machine, crosses a second boundary naturally) but fail in CI (faster, stays within one second) or vice versa — a classic "works on my machine" timing bug.
+- Relationship-creation mutations only check "is the acting member within scope of the edge they're creating *today*" without considering that the edge itself changes tomorrow's scope.
+- No distinction in the permission model between editing a node you already have standing over vs. creating a *new* edge to a node you don't yet have standing over.
 
 **Phase to address:**
-`passwordChangedAt`/revocation phase. Include the same-second boundary test as a mandatory red-step case, not an edge case added later.
+Permission-scoping phase, immediately following Pitfall 7 — this is the adversarial-thinking pass on the same permission model, and should be reviewed/tested before `/manage` is exposed to non-admin users in any environment beyond local dev.
 
 ---
 
-### Pitfall 9: `passwordChangedAt` set on every profile update vs. only on password reset — and interaction with the existing `beforeUpdate` hook
+### Pitfall 9: File upload trusts client-supplied filename/content-type, enabling path traversal and content-sniffing XSS
 
 **What goes wrong:**
-`backend/src/models/User.js:57-59` already has a `beforeUpdate` hook that re-hashes `passwordHash` whenever `user.changed('passwordHash')` is true. The natural, minimal-diff place to add `passwordChangedAt` is inside that same hook (`if (user.changed('passwordHash')) { user.passwordHash = await bcrypt.hash(...); user.passwordChangedAt = new Date(); }`), which is actually **correct today** because the only two write paths that touch `passwordHash` are `register` (a `create`, not `update` — hits `beforeCreate`) and `resetPassword` (an `update` — hits `beforeUpdate`). The pitfall is *scope creep*: if a future "update profile" resolver is added that calls `user.save()` for name/email changes and happens to also re-save an unchanged `passwordHash` (e.g. a bulk `Object.assign(user, formData); await user.save()` pattern), Sequelize's `changed('passwordHash')` correctly returns `false` for an unchanged value — so this is actually safe *as implemented via `changed()`*. The real risk is a developer who, instead of relying on `changed('passwordHash')`, sets `passwordChangedAt` unconditionally in a generic `beforeUpdate` that fires on *any* save (including a `role` change by an admin, or `resetPasswordToken` clearing) — that would revoke all of a user's sessions on unrelated updates.
-
-**How to avoid:**
-Set `passwordChangedAt` **inside the existing `if (user.changed('passwordHash'))` branch only** — never as an unconditional `beforeUpdate` side effect. Do not set it in `register`'s `beforeCreate` hook (a brand-new user has no prior tokens to revoke; setting it there is harmless but unnecessary — the revocation check only matters for tokens issued *before* a change, and nothing was issued before account creation). Add a unit test (extending the existing `backend/src/models/User.test.js` pattern) asserting: (a) `passwordChangedAt` is set when `passwordHash` changes via `beforeUpdate`, (b) `passwordChangedAt` is untouched when only `role` or `name` changes via `beforeUpdate`.
-
-**Phase to address:**
-`passwordChangedAt`/revocation phase. This is a model-hook-level unit test, cheap to add, and directly guards the exact fragile-hook pattern `CONCERNS.md` already flags ("Password hashing depends on Sequelize lifecycle hooks").
-
----
-
-### Pitfall 10: Adding `passwordChangedAt` revocation breaks the existing `login`/`getUserFromRequest`/`auth.test.js` tests if the check isn't additive
-
-**What goes wrong:**
-`getUserFromRequest` (`backend/src/utils/auth.js:9-20`) currently does `jwt.verify` → `findByPk(payload.sub)` with no timestamp comparison. `auth.test.js` stubs `models.User.findByPk` to return a plain object (`{ id, role: 'USER' }`) with **no `passwordChangedAt` field at all** (`backend/src/utils/auth.test.js:28`). If the revocation check is implemented as `if (payload.iat < user.passwordChangedAt) return null` without guarding for `user.passwordChangedAt` being `undefined`/`null`, then `undefined` on the right side of `<` produces `NaN` comparisons (always `false` in JS) — which *happens* to not break these particular stub-based tests (comparison silently no-ops), but is fragile and would behave differently against a real Sequelize instance where a freshly-created user's `passwordChangedAt` might legitimately be `null` (never changed). Explicitly handle `passwordChangedAt == null` as "never revoked, always valid."
-
-**How to avoid:**
-Guard clause: `if (user.passwordChangedAt && flooredIat < flooredChangedAtSeconds) return null`. Add this as a new `auth.test.js` case using a stub with `passwordChangedAt: null` (must still authenticate) and one with `passwordChangedAt` set to a future-relative-to-iat date (must return `null`).
-
-**Phase to address:**
-`passwordChangedAt`/revocation phase.
-
----
-
-### Pitfall 11: Email verification breaks the register→auto-login flow and its v1.0 tests, and the first-user-ADMIN race isn't automatically fixed by adding verification
-
-**What goes wrong:**
-Today, `register` immediately returns `{ token, user }` (`backend/src/resolvers/user.resolver.js:37`) and the frontend `AuthContext.authenticate()` stores that token and sets `user` synchronously (`frontend/src/context/AuthContext.jsx:48-53`), and `Register.jsx` navigates straight to `/dashboard`. Naively "adding email verification" by inserting a check somewhere *after* token issuance (e.g. gating `dashboard`/`me` on `user.isEmailVerified`) still leaves the JWT itself fully valid and usable for anything not explicitly gated — an unverified user can call `login` again, or any future resolver that doesn't check verification, with a working token. This is the "unverified users still getting a usable JWT" failure mode named in the milestone brief: verification-as-an-afterthought doesn't actually close the account-takeover/spam-registration surface, it just adds a UI speed bump.
-Separately, the first-user-becomes-ADMIN logic (`userCount === 0 ? 'ADMIN' : 'USER'`, line 34) counts *all* rows in `users`, including unverified ones. If verification is added by inserting an "unverified" placeholder row at registration time and only flipping a flag on verification, the race is **unchanged** — whoever's `register` mutation executes first (verified or not) still claims `userCount === 0` and gets ADMIN. Naive verification does not fix the race unless the ADMIN assignment is explicitly deferred to verification time (i.e., count only *verified* users, or assign role at verification-completion, not at registration).
+A naive photo-upload implementation stores the file using the client-supplied filename (or trusts the `Content-Type` header/extension to decide it's really an image), which opens two separate holes: (1) a filename like `../../../etc/somewhere/evil` used to construct a filesystem path causes path traversal outside the intended upload directory; (2) a file whose *extension* says `.jpg` but whose *content* is actually HTML/SVG-with-`<script>` can, depending on how the file is served, be sniffed and executed by a browser as HTML/SVG (stored XSS via "image" upload) if served without a strict `Content-Type`/`X-Content-Type-Options: nosniff` header.
 
 **Why it happens:**
-Verification is conceptually "send an email, wait for a click" — but the codebase's auth model is 100% JWT-stateless with no session/blocklist, so "wait" has no natural enforcement point unless every protected resolver explicitly re-checks verification status, or the token itself withholds full privileges until verified.
+"Accept a file and save it" is treated as a solved problem borrowed from generic tutorials that skip the security review, and it's easy to test the happy path (upload a real `.jpg`) without ever testing the adversarial path (upload something that lies about what it is).
 
 **How to avoid:**
-1. Decide and document the design explicitly before implementing: either (a) `register` no longer returns a usable `token` at all — it returns `{ message }` only (pending verification), and `login` itself refuses unverified accounts with a clear error until the email-verify mutation runs; or (b) `register` still returns a token, but a claim (`emailVerified: false` in the payload, checked by `requireAuth`/`requireAdmin` for privileged operations) is embedded and every resolver that should be gated explicitly checks it. Option (a) is simpler to reason about and closes the JWT-usability gap completely — recommended given "unverified users still getting a usable JWT" is called out as the specific pitfall to avoid.
-2. Fix the ADMIN race by computing `userCount` (or equivalently, `ADMIN` role assignment) at the point verification completes, not at registration — e.g. count only verified users, or assign `role: 'USER'` unconditionally at registration and promote the first *verified* user to `ADMIN` inside the verify-email resolver (still needs its own race guard — e.g. a transaction/`SELECT ... FOR UPDATE`-style check, or accept "first to verify" as the intended tie-break and test it explicitly).
-3. **This breaks the following existing v1.0 tests and requires them to be flipped as the TDD red step** (see Pitfall 13 below for the full enumerated list) — most notably `register.test.js`'s `jwt.verify(data.register.token, ...)` assertion, and `Register.test.jsx`'s `navigateSpy toHaveBeenCalledWith('/dashboard')` assertion (the frontend mock will need to change to reflect option (a) or (b)'s actual response shape, and the component needs a "check your email" branch instead of immediate navigation).
+- Never use the client-supplied filename to build a filesystem path. Generate a server-side unique name (UUID or member-id + timestamp) for the stored file; keep the original filename only as display metadata in the DB, never interpolated into a path.
+- Validate the actual file content (magic-number/content sniffing, e.g. via the `file-type` package), not just the extension or `Content-Type` header, and reject anything that isn't a real, allow-listed image format. Explicitly disallow SVG (SVG can contain executable script) unless it's run through a sanitizer.
+- Enforce a max file size at the multipart-parsing layer (multer/busboy `limits.fileSize`), not only in frontend JS, since a request can always bypass the browser.
+- Serve uploaded photos from a dedicated route with `X-Content-Type-Options: nosniff` and an explicit, allow-listed `Content-Type` derived from the validated file type — never "whatever the browser guesses."
 
 **Warning signs:**
-A "verified" flag exists in the schema but no resolver (including `login`) ever reads it — `grep -rn emailVerified backend/src/resolvers` returning nothing outside the `register` mutation itself is the tell.
+- Any code path that does `path.join(uploadDir, req.file.originalname)` or similar without sanitization/replacement.
+- No content-sniffing library in `backend/package.json` after the upload feature ships — only extension/mimetype string checks.
 
 **Phase to address:**
-Email-verification phase — should be sequenced *after* the mailer phase (it reuses the same `sendResetEmail`-style mailer abstraction for verification emails) and is likely the most invasive fix; plan it last or near-last among the 7, since it touches the register/login contract that most other tests depend on.
+File-upload phase — this is the core security surface of that phase and should be TDD'd with adversarial fixtures (a `.jpg`-named HTML file, a path-traversal filename, an oversized file) as the first red tests, before the happy-path test.
 
 ---
 
-### Pitfall 12: JWT-secret fail-fast crashes the test/dev environment if not scoped tightly to `NODE_ENV === 'production'`
+### Pitfall 10: Upload volume not durably mounted, or GraphQL-multipart approach introduces avoidable CSRF complexity
 
 **What goes wrong:**
-`backend/src/config/env.js:21` currently falls back to `'change-me'` when `JWT_SECRET` is unset. `backend/vitest.config.js:6-7` explicitly forces `process.env.ENV_FILE = env/test.env` and `process.env.NODE_ENV = 'test'` before any test runs, and `backend/test/guard.js` (`assertTestDatabase`) already relies on `env.nodeEnv === 'test'` being reliably set this way. If `test.env` does not set a strong `JWT_SECRET` (plausible — dev/test secrets are conventionally weak/shared on purpose) and the fail-fast check is written as `if (jwtSecret === 'change-me' || !jwtSecret) process.exit(1)` **without** the `NODE_ENV === 'production'` guard, every `vitest run` invocation crashes at import time (since `env.js` runs its checks at module load, and `models/index.js`/`server.js`/every resolver test transitively imports it) — the entire CI pipeline goes red for a reason that has nothing to do with the actual fix being tested. This is the single easiest way to accidentally break *all* 39+ existing backend tests in one commit.
+Two related but distinct traps: (a) if the Docker volume for uploaded photos isn't declared as a **named** volume in `docker-compose.yml` from the very first version that ships file upload, files written during development/staging live inside the container's writable layer and are silently lost on the next `docker compose up --build` (or any container recreate) — this is easy to miss because it "works" until the first rebuild; (b) implementing uploads via GraphQL multipart (`graphql-upload`) — the seemingly natural choice given the existing single-`/graphql`-endpoint architecture — inherits a documented CSRF weakness (multipart/form-data requests are "simple" requests under CORS and don't trigger a preflight, so if auth ever relied on cookies this would be exploitable; even with this app's existing Bearer-token-in-header auth pattern, `graphql-upload` still requires deliberately enabling Apollo's `csrfPrevention` and carries real complexity — ESM/version-compatibility friction has also historically been an issue with `graphql-upload`).
 
 **Why it happens:**
-"Fail fast on insecure secrets" is correct security advice in the abstract, but applied uniformly across all environments it conflicts with the deliberately-weak, deliberately-shared secrets used in `env/test.env` and local dev, both of which are legitimate and shouldn't require a "real" secret.
+(a) Volume mounting is invisible until a rebuild happens, and dev environments that never rebuild the container hide the bug for weeks. (b) "We already have one GraphQL endpoint, uploads should go through it too" feels architecturally consistent even though the existing app's Bearer-token pattern (not cookies) already sidesteps the main reason people reach for GraphQL multipart, and a plain REST route is simpler and better-trodden.
 
 **How to avoid:**
-Gate the fail-fast exclusively on `env.nodeEnv === 'production'` (matching the exact language already used in `PROJECT.md`: "refuse to boot in production"). Do **not** check `NODE_ENV !== 'development'` or invert the condition — it must be an explicit allowlist-of-one (`=== 'production'`), so `test`, `development`, and any other value all pass through unchanged. Write the red test as two cases: `NODE_ENV=production` + `JWT_SECRET=change-me` (or unset) → throws/exits; `NODE_ENV=test` + same weak secret → does not throw. Since `env.js` currently performs its config assembly at module-evaluation time (top-level code, not inside an exported function — see `backend/src/config/env.js:16-31`), the fail-fast logic needs to be tested by re-importing the module with different `process.env` state (via `vi.resetModules()` + dynamic `import()`) or refactored into an exported, independently-callable `assertProductionSecrets()` function (mirroring the existing `assertTestDatabase()` pattern in `backend/test/guard.js`) so it can be unit-tested without mutating global `process.env` before every other test file's imports run.
+- Add the upload directory as a named volume (e.g., `family_photos:/app/uploads`) in `docker-compose.yml` the same commit the upload feature ships, and add a manual/CI check step: "stop and restart the backend container, confirm a previously-uploaded test photo is still servable" before considering the phase done.
+- Prefer a **dedicated REST endpoint** (`POST /uploads/photo`, protected by the same JWT-bearer `requireAuth`/permission-scope check used elsewhere) over GraphQL multipart — it avoids the CSRF-preflight gap entirely, keeps the existing Axios-based `graphqlClient.js` pattern simple (one extra Axios call, not a new GraphQL upload scalar), and sidesteps `graphql-upload`'s dependency/version friction. This is a deliberate deviation from "everything goes through `/graphql`" and should be recorded as a Key Decision, not left implicit.
 
 **Warning signs:**
-Any test run failure whose stack trace points at `config/env.js` import, affecting unrelated test files (a sign the crash happens at module load, not inside a specific test).
+- `docker-compose.yml`'s backend service has no `volumes:` entry for the upload path, or uses an anonymous/bind-to-container-layer path.
+- `graphql-upload` (or equivalent) appears in `backend/package.json` without `csrfPrevention: true` also being set on the Apollo Server config.
 
 **Phase to address:**
-JWT-secret-fail-fast phase — should be one of the *first* fixes implemented (it's structurally simple and low-risk), but its test must be written and run against the full existing suite immediately to prove zero collateral breakage before moving on.
+File-upload phase — both the volume declaration and the REST-vs-GraphQL-multipart decision must be made at the start of that phase, not discovered after the feature seems "done" in local dev (where rebuild-persistence never gets exercised).
 
 ---
 
-### Pitfall 13: `sequelize.sync()` (no options) will NOT add new columns to the existing `users` table — dev DB silently breaks while tests stay green
+### Pitfall 11: Membership gate checked only at the frontend route level, leaving the GraphQL API itself open to unlinked-but-verified users
 
 **What goes wrong:**
-`backend/src/models/index.js:10-13` calls plain `sequelize.sync()` with no arguments. Per Sequelize's own documented behavior, **`sync()` with no options creates a table only if it doesn't already exist, and does nothing if it already exists — it never adds missing columns to an existing table.** [HIGH confidence, verified against Sequelize v6 docs] This milestone adds at least three new `User` model attributes: `passwordChangedAt`, and (depending on email-verification design) `emailVerified`/`isEmailVerified` + a verification token/expiry pair. On a **fresh** test run this is invisible, because `backend/test/globalSetup.js:11` explicitly calls `sequelize.sync({ force: true, match: /_test$/ })` — `force: true` drops and recreates every table on every test run, so the test DB always has the new columns and every integration test passes. But any **existing, already-bootstrapped dev database** (a developer's local MySQL with a pre-existing `users` table from before this milestone, or — more importantly — the `remote`/production-style deployment referenced in `docker-compose.yml`/`README.md`) will NOT get the new columns from a plain `sequelize.sync()` boot. The app will then throw `Unknown column 'passwordChangedAt' in 'field list'` (or silently read `undefined` depending on the exact Sequelize/MySQL error path) the moment any resolver reads/writes that field — a runtime crash that **CI cannot catch**, because CI's MySQL service (`.github/workflows/ci.yml:9-18`) is provisioned fresh on every run and never carries pre-existing schema state.
+The intended flow is register → verify email (v1.1, already shipped) → admin links the account to a `FamilyMember` node → only then can the user reach `/family`/`/manage`. If the "pending" gate is implemented only as a React Router guard (analogous to today's `ProtectedRoute.jsx`, which checks auth but has no concept of "linked"), a verified-but-unlinked user still holds a perfectly valid JWT and can call any family-domain GraphQL query/mutation directly (bypassing the SPA entirely) unless the *resolver* layer independently enforces "does this JWT's user have a linked member." This is the same class of gap the codebase's own architecture doc already flags generally ("no query complexity/depth limiting... every resolver executes directly against the DB") — frontend gating has never been a substitute for resolver-level guards in this codebase, and the new membership dimension must follow that same discipline.
 
 **Why it happens:**
-The gap between "test DB is always force-recreated" and "dev/prod DB persists across deploys" is invisible until someone runs the new code against an already-populated database — exactly the scenario CI is structurally incapable of reproducing.
+It's natural to build the "pending" UI screen first (it's the visible, demo-able part) and treat the backend check as an afterthought, especially since `requireAuth`/`requireAdmin` already exist as a pattern to imitate but a third guard (`requireLinkedMember`) doesn't yet exist and is easy to forget to add to *every* family-domain resolver individually.
 
 **How to avoid:**
-This milestone's constraints explicitly defer "Sequelize migrations vs `sync()`" to a separate infra-hardening milestone (`PROJECT.md` Out of Scope) — so a full migration system is not the fix here. The pragmatic, in-scope options are:
-1. Switch `initializeDatabase()` to `sequelize.sync({ alter: true })` for this milestone only, scoped carefully — `alter: true` *does* add missing columns to existing tables by diffing model vs. DB state. This is explicitly flagged by Sequelize's own docs as risky for production (potential data loss on more complex diffs), but for this specific, additive-only change (new nullable columns, no renames/drops) the risk is low. Document this as a conscious, scoped tradeoff, not a silent behavior change.
-2. Alternative/safer: keep plain `sync()` but make all new columns explicitly `allowNull: true` with no `defaultValue` requiring backfill, and have each developer/operator run a one-time manual `ALTER TABLE` (documented in a migration note) — but this is easy to forget and doesn't self-heal.
-3. Whichever is chosen, add an explicit **non-test verification step**: after implementing the schema changes, manually boot the backend against a pre-existing (non-force-synced) local dev DB — not just `npm test` — and confirm no `Unknown column` errors, before considering the phase done. This must be called out in the phase's acceptance criteria since automated tests structurally cannot catch it.
+Add a `requireLinkedMember(user)` guard function alongside the existing `requireAuth`/`requireAdmin` in `backend/src/utils/auth.js` (or an equivalent new module), and apply it at the top of every family-domain resolver (mirroring the existing convention of guard clauses called first, before any other logic). Write an integration test with a verified, non-admin, **unlinked** JWT attempting to call a family query/mutation directly (bypassing the SPA) and assert it's rejected — this test is the actual verification that the gate isn't merely cosmetic.
 
 **Warning signs:**
-`npm test` (backend) is fully green, but `npm run dev` against a previously-running local MySQL instance throws SQL errors the first time a resolver touches a new column.
+- The "pending" gate exists only as a frontend route condition (`AuthContext`/`ProtectedRoute`-style check), with no equivalent guard inside any family resolver.
+- No integration test exercises "verified user, no linked member, calls family GraphQL operation directly."
 
 **Phase to address:**
-Whichever phase first adds a new `User` model column — likely both the `passwordChangedAt`/revocation phase and the email-verification phase (each adds columns). Flag this explicitly in both phases' plans; do not assume "tests pass" means "schema change is safe."
+Membership-gating phase — should ship in the same phase as (or immediately before) the first family-domain resolver, so no resolver is ever merged without the guard already in place.
+
+---
+
+### Pitfall 12: Membership gate locks out the very first admin who has no linked member yet (chicken-and-egg with v1.1's admin bootstrap)
+
+**What goes wrong:**
+v1.1 already solved "who becomes admin first" via an atomic, race-safe verify+promote mechanism. But that mechanism produces a `User` with `role = ADMIN` and **no** `FamilyMember` link — nothing in v1.1 created or linked a member node, because the family-tree domain didn't exist yet. If the new membership gate (Pitfall 11) is applied uniformly to all family-domain operations including the ones needed to *create the first member node and link it*, the first admin is locked out of the very tools needed to bootstrap the tree: they can't reach `/manage` to create/link a member because they're not yet linked, and they can't get linked without reaching `/manage`.
+
+**Why it happens:**
+"Gate everything family-related behind membership" is the correct rule for ordinary members, but applying it without an admin carve-out recreates exactly the kind of chicken-and-egg problem v1.1 already had to solve once (first-user-ADMIN) in a new form (first-member-link), and it's easy to reuse the mental model "membership gate = simple boolean check" without special-casing the role that must be exempt from it.
+
+**How to avoid:**
+`requireLinkedMember` (Pitfall 11) should not apply to ADMIN-role users for the specific operations that create/link member nodes and manage the whole tree (member CRUD, account-linking mutations) — admins operate on the whole tree by role, independent of being linked themselves; only the "view my tree" (`/family`, `/manage`-immediate-relatives) experience should require *that specific user* to be linked, and even then, an admin who chooses to also be a member should link themselves through the same admin tooling. Write an integration test: a freshly-promoted ADMIN with **no** linked `FamilyMember` can still call member-creation and account-linking mutations (proving the carve-out works), while a non-admin, unlinked, verified user cannot (proving Pitfall 11's gate still holds for everyone else). Also add a regression test confirming the v1.1 first-user-ADMIN promotion flow itself is unaffected by the new gate (it must still work with zero `FamilyMember` rows in the database).
+
+**Warning signs:**
+- `requireLinkedMember` is applied as a blanket guard with no role-based exemption.
+- No test covers "brand-new ADMIN, zero FamilyMember rows exist yet, can they still create the first node."
+
+**Phase to address:**
+Membership-gating phase, same as Pitfall 11 — the admin carve-out must be designed at the same time as the gate itself, not patched in after a demo reveals the lockout.
+
+---
+
+### Pitfall 13: `sequelize.sync()` (no migrations) mishandles self-referencing associations, and DataLoader/permission logic silently diverges between test harness and production
+
+**What goes wrong:**
+Two testability-specific traps compound here. First, self-referencing associations (`FamilyMember belongsTo FamilyMember as 'father'`, etc.) are a known rough edge for `sequelize.sync()` — depending on how associations are declared, `sync()` can attempt to create FK constraints in an order that fails on a genuinely empty database (chicken-and-egg at the schema level, distinct from the app-level chicken-and-egg in Pitfall 12), especially under `{ force: true }` (which this project's CI/test-DB setup already uses per `backend/test/globalSetup.js`). This might work in an incrementally-evolved dev DB (where the table already exists with data) while failing on a truly fresh CI database — exactly the scenario CI forces every run. Second, if the DataLoader instance or the permission-scope computation used in tests differs even slightly from what production's `context()` function builds (e.g., a test helper that skips DataLoader entirely and calls models directly "for simplicity"), the test suite can be green while the exact bugs this research flags (N+1 fan-out, stale permission scope) go completely undetected — the tests would be testing a different code path than production runs.
+
+**Why it happens:**
+Self-referencing FK/`sync()` interaction is a genuine MySQL/Sequelize edge case that most tutorials don't cover (most examples are one-directional, unrelated-table associations). And test helpers naturally drift toward "simplest thing that makes the assertion pass," which quietly diverges from the request-scoped `context()` wiring that production actually uses.
+
+**How to avoid:**
+- Add an explicit "does `sync({ force: true })` boot cleanly against a genuinely empty database with the new self-referencing model" smoke test very early — this should run as part of the existing CI global-setup path (`backend/test/globalSetup.js`), not be assumed to work by analogy with the existing `User` model.
+- Extend the existing `backend/test/helpers.js` request-builder to construct the same `context()` (including a fresh DataLoader instance) that `backend/src/server.js` builds in production, rather than a simplified test-only stand-in — the whole point of the executeOperation/supertest harness this project already has is that it exercises real request wiring; DataLoader and permission-scope guards must be part of that same wiring in tests, or regressions in exactly the areas this document flags will pass CI silently.
+- Build a reusable fixture-generation helper (e.g., `test/familyTreeFactory.js`) that programmatically creates N-generation trees, since hand-authoring 10-23 generations of fixtures per test is impractical; use it to write a query-count assertion (hook into Sequelize's logger, count queries per request) proving the DataLoader batching actually caps query count as tree depth grows, rather than only asserting the returned data shape is correct.
+- For file-upload tests, use a temp/mocked upload directory scoped per test run (cleaned up in the same teardown pattern as the DB), independent of the real Docker-mounted volume path, so upload tests neither depend on nor pollute the real storage location.
+
+**Warning signs:**
+- No test exists that runs `sync({ force: true })` against a fresh DB specifically covering the new self-referencing model in isolation.
+- Test helpers build GraphQL context by calling models directly instead of reusing production's `context()`/DataLoader construction.
+- No query-count assertion anywhere in the test suite for deep-tree reads.
+
+**Phase to address:**
+Should be addressed continuously starting with the data-model phase (the `sync()` smoke test) and reinforced in the resolver/DataLoader phase (harness parity) and the deep-tree-read phase (query-count assertions) — this isn't a single phase's concern but a standing practice that should be called out explicitly in each phase's success criteria.
 
 ---
 
 ## Technical Debt Patterns
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|-----------------|------------------|
-| Rate-limit with in-memory `MemoryStore` instead of Redis/shared store | Zero new infra dependency, fast to ship | Silently weaker limiting once >1 backend replica exists; resets on every restart/deploy | Acceptable for this milestone (single-instance deployment today per `docker-compose.yml`) — document the limitation, revisit if horizontal scaling is ever added |
-| `sequelize.sync({ alter: true })` instead of real migrations to add the new columns | Unblocks this milestone without a migration-tooling side-project | Sequelize's own docs warn `alter: true` can be destructive on more complex schema diffs; no rollback path | Acceptable *only* for simple, additive, nullable-column changes like this milestone's; must not be reused for future column renames/type changes — a real migration tool is explicitly deferred to the infra-hardening milestone |
-| Console-log mailer instead of a real provider | No email-provider account/credentials needed, fully local/dev-testable | Reset/verification emails are not actually delivered until a provider is wired in prod | Explicitly acceptable per `PROJECT.md` Out of Scope — provider integration is a separate future concern; must remain a swappable interface, not hardcoded console.log calls scattered through resolvers |
-| Password-strength check as a simple length/regex rule in the resolver | Fast, no new dependency (e.g. `zxcvbn`) | Weaker strength signal than a real strength-estimator library | Acceptable for a portfolio-scale app; note as a possible future upgrade, not a blocker |
+|----------|--------------------|-----------------|------------------|
+| Single self-FK `spouseId` column instead of a relationship join table | Faster to model, fewer joins for simple reads | Asymmetric-write drift (Pitfall 4), harder to extend to future multi-marriage support | Never for spouse; acceptable only for strictly-directional parent/child edges |
+| No admin merge/dedup tool for accidentally-duplicated parent nodes | Saves a phase of UI/backend work | Real family data silently forks into disconnected sub-trees (Pitfall 6) with no recovery path | Acceptable only if explicitly scoped out with a documented manual-SQL-fix fallback for v2.0 |
+| GraphQL multipart upload (`graphql-upload`) instead of a REST upload route | Keeps "everything through `/graphql`" architectural purity | Inherited CSRF-preflight gap, dependency/version friction (Pitfall 10) | Never — the REST-route deviation is cheap and strictly safer here |
+| Skipping the cycle-prevention check "because nobody would do that in the demo data" | One less check to write and test | A single bad edit corrupts every recursive read forever, discoverable only when the tree render hangs (Pitfall 3) | Never — this is a correctness invariant, not a UX nicety |
+| Reusing "sibling" logic built for tree *display* as the permission-scope computation for edits | Avoids writing a second function | Silent permission over-scope if display logic is ever more permissive than intended edit scope (Pitfall 7) | Never — keep display and permission-scope logic as separate, separately-tested functions even if they overlap today |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
-|-------------|-----------------|-------------------|
-| `express-rate-limit` on a single GraphQL route | Keying/limiting by path only, throttling all operations uniformly | Inspect the parsed operation (Apollo plugin `didResolveOperation`, or body-parsed `operationName`) and only apply limits to `login`/`register`/`requestPasswordReset` |
-| `express-rate-limit` behind a reverse proxy (README documents an Nginx/Caddy front-end for prod) | Keying by `req.ip` without `app.set('trust proxy', ...)` — every request appears to come from the proxy's IP, either rate-limiting all users together or (with `trust proxy: true` misconfigured) trusting a spoofable `X-Forwarded-For` header | Set `trust proxy` explicitly to the correct hop count/CIDR for the deployment topology, and test that distinct client IPs get distinct buckets; do not leave it at Express's default (`false`, meaning `req.ip` is always the proxy) or blindly `true` (spoofable) |
-| Apollo Server 4 `context` function (`backend/src/server.js:34-37`) | Adding rate-limit/verification checks inside resolvers only, missing the fact that `context` already runs `getUserFromRequest` on every request regardless of operation | If revocation (`passwordChangedAt`) should reject a token immediately, check it inside `getUserFromRequest` itself (so `context.user` is `null` for a revoked token everywhere, consistent with how expired/tampered tokens already behave in `backend/src/utils/auth.js:14-19`) rather than duplicating the check per-resolver |
-| Sequelize model hooks (`beforeCreate`/`beforeUpdate`) | Adding `passwordChangedAt` logic as a new unconditional hook instead of extending the existing `changed('passwordHash')`-guarded branch | Extend the existing hook body; never add a second, differently-scoped hook that could fire independently and diverge from the hashing hook's guard condition |
+|--------------|------------------|--------------------|
+| MySQL 8 `WITH RECURSIVE` for tree reads | Assuming unlimited recursion depth; hitting the default `cte_max_recursion_depth` (1000) unexpectedly on a pathological/cyclic graph | Set an explicit, generous-but-bounded `MAXRECURSION`/`cte_max_recursion_depth` and pair it with the app-level cycle-prevention check (Pitfall 3) so the CTE never needs to protect against a cycle that shouldn't exist in the first place |
+| Sequelize self-referencing associations + `sync()` | Assuming `sync()` handles self-referential FK creation exactly like unrelated-table associations | Prove it with a dedicated fresh-DB smoke test (Pitfall 13); consider `constraints: false` on one side of the association if `sync()` errors on FK-creation ordering |
+| DataLoader + Apollo Server 4 `context()` | Creating one DataLoader instance at server startup (module scope) and reusing it across requests | Instantiate DataLoaders inside the `context()` async function on every request, exactly where `models`/`user` are already computed in `backend/src/server.js` |
+| Docker Compose volume for uploads | Adding the upload feature without a named volume, testing only in a container that's never rebuilt | Declare the named volume in the same commit as the feature; verify with an explicit rebuild-and-check step |
+| `graphql-upload` + Apollo Server CSRF prevention | Enabling multipart uploads without also setting `csrfPrevention: true` | Prefer a separate REST upload route (Pitfall 10); if GraphQL multipart is used anyway, `csrfPrevention: true` is mandatory, not optional |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|-----------------|
-| Rate-limit store grows unbounded if not TTL'd (unlikely default, but custom stores can miss this) | Slow memory growth over long-running process uptime | Use `express-rate-limit`'s default `MemoryStore` (auto-expires) or confirm any custom store implements TTL/expiry | Only relevant at high sustained traffic + long uptime; not a v1.1-scale concern but worth a one-line check when choosing the store |
-| bcrypt cost factor (12, unchanged by this milestone) combined with new server-side password-strength checks running *before* hashing | None expected — strength check should be cheap synchronous string validation | Ensure password-strength validation happens before the (expensive) bcrypt hash, so invalid-password requests fail fast without paying the ~12-round bcrypt cost | Not a real risk at this scale; noted for completeness since `bcryptjs` is already flagged in `CONCERNS.md` as slower than native bcrypt |
+|------|-----------|------------|-----------------|
+| Per-field N+1 resolution of parent/child/spouse | Query log shows dozens-hundreds of near-identical SELECTs per `/family` request | DataLoader batching per relationship type, request-scoped | Becomes visible at ~3-4 generations, severe by 10+ |
+| No query depth/complexity limit on a now-recursive schema | A hand-crafted deep query hangs or slows the whole server, not just itself | `graphql-depth-limit`/complexity plugin added alongside the recursive type | Immediately exploitable once the recursive type ships, regardless of real data size |
+| Rendering the full tree as one deeply-nested React component tree | Browser tab freezes/jank scrolling or zooming a 10-23 generation tree | Fetch flat node+edge list, use a virtualizing tree-render library (e.g., a D3-based org-chart/family-chart library with pan/zoom + virtualization, or ReactFlow-style windowed rendering), collapse distant branches by default | Noticeable well before 23 generations if every node is a live React component with no windowing |
+| Default (untuned) Sequelize connection pool (max 5) under deep-tree read load | Requests queue/block waiting for a DB connection during a heavy tree fetch | Explicit `pool: { max, min, acquire, idle }` tuning once family-tree read volume is added (this was already flagged as a scaling limit before this milestone) | Breaks under concurrent `/family` loads even at modest user counts if tree reads are chatty (reinforces need for Pitfall 1's fix) |
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Rate-limit counter incremented after DB lookup (inside resolver) rather than before (in middleware/plugin) | Re-introduces the exact enumeration oracle the reset-token fix is closing (Pitfall 4) | Increment unconditionally, before any account-existence check, for `login` and `requestPasswordReset` |
-| CORS fix changes only the thrown `Error` message but leaves `console.error(origin)` or similar logged where a client can observe it (e.g. echoed in a different error path) | Origin leak just moves rather than closes | Confirm the *only* place the raw origin is written is a server-side log (not sent in any response body/header/GraphQL error) — write a red test asserting the CORS-rejection response body/error message does not contain the origin string, using whatever HTTP-level harness Pitfall 1 introduces |
-| Email verification implemented as a client-side-only gate (e.g. hiding the dashboard link until verified) | Server still issues a fully privileged token; determined attacker just calls the GraphQL API directly, bypassing the UI gate entirely | Enforce verification server-side (in `login` and/or `requireAuth`), never rely on frontend UI to withhold access |
-| `passwordChangedAt` compared with plain `<` instead of an inclusive boundary, or without unit conversion | Legitimate just-issued tokens rejected (denial of service against the user who just reset their own password) or, inverted, old tokens *not* rejected if the conversion bug goes the other way | See Pitfall 8 — explicit floor-to-seconds conversion, explicit boundary test |
+| Trusting client-supplied file extension/`Content-Type` for uploads | Stored XSS via a mislabeled HTML/SVG file served as an "image" | Magic-number content validation, disallow SVG, `nosniff` header on the serving route (Pitfall 9) |
+| Using client-supplied filename in a filesystem path | Path traversal, overwrite of arbitrary files | Server-generated filename only; original name stored as metadata, never interpolated into a path (Pitfall 9) |
+| Membership gate enforced only at the frontend route level | A valid-but-unlinked JWT reaches family data directly via GraphQL, bypassing the SPA gate entirely | Resolver-level `requireLinkedMember` guard on every family-domain operation (Pitfall 11) |
+| Permission scope computed loosely / reused from display logic | Privilege escalation — a member edits relatives outside their intended set | Single, separately-tested `getEditableMemberIds()` utility, recomputed fresh per mutation (Pitfall 7) |
+| Relationship edits accepted from one side without the other party's consent | A member fabricates a spouse/parent/child claim on an unrelated, already-linked member to expand their own edit scope | Require admin approval (or mutual confirmation) for edges connecting two independently-linked accounts (Pitfall 8) |
+| Blanket membership gate with no admin exemption | Locks the first admin out of the tools needed to bootstrap the tree | Role-based carve-out for admin-only tree-management operations (Pitfall 12) |
+
+## UX Pitfalls
+
+| Pitfall | User Impact | Better Approach |
+|---------|--------------|-------------------|
+| Sibling-firstname dedup rejects a legitimate half-sibling with a generic error | User can't figure out why a real family member can't be added, may work around it by lying about the name | Surface a specific, actionable error ("a child named X already exists under this parent — is this the same person?") rather than a bare validation failure |
+| No "search existing members" step before adding a new parent | Two relatives independently create duplicate parent nodes, silently forking the tree (Pitfall 6) | Require a search/select-existing step in `/manage` before allowing "create new parent," making linking the default and creation the deliberate exception |
+| Deep tree rendered fully expanded by default | Browser jank, users lost in 10-23 generations of nodes on first load | Default to a collapsed view centered on the viewing member, with explicit expand-per-branch and pan/zoom, not a fully-expanded initial render |
+| "Pending" gate with no explanation of *why* or *what's next* | Verified users stuck at a gate with no indication an admin needs to link them | Pending-state screen should explain the admin-linking step is required and roughly what to expect, so users don't assume the app is broken |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Reset-token removal:** Schema-level (`user.schema.js`) removal verified via introspection/query-validation test, not just resolver-response nulling — verify with `grep -rn resetToken backend/src frontend/src`
-- [ ] **Rate limiting:** Verify the enumeration-oracle test (Pitfall 4) passes — same 429-threshold for real vs. fake emails — not just "a limit exists"
-- [ ] **Rate limiting tests:** Verify the full suite (`npm test` at root, not just the new rate-limit test file) is still green and order-independent — run `vitest run` twice in a row and diff results
-- [ ] **`passwordChangedAt`:** Verify the same-second boundary case (reset password → immediately log in with new password, same second) explicitly, not just "eventually valid"
-- [ ] **JWT fail-fast:** Verify by running the *entire* existing test suite after the change lands — a passing new fail-fast test alone doesn't prove zero collateral damage to the other 39+ tests
-- [ ] **Email verification:** Verify an unverified user's token is rejected by an actual protected resolver call (e.g. `dashboard`), not just that a `register`-time flag exists in the DB
-- [ ] **Schema migrations:** Verify by booting the backend against a **non-force-synced**, pre-existing local dev DB (not just `npm test`) — this is the only way to catch the `sync()`-doesn't-alter-existing-tables gap (Pitfall 13)
-- [ ] **ForgotPassword frontend:** Verify by manually loading `/forgot-password` in a browser and submitting — there is no automated test today, so this must be a manual check until a test is added (Pitfall 7)
+- [ ] **Parent/child mutations:** Often missing a cycle-prevention check — verify a test attempts to create a cycle and asserts rejection, not just that normal additions succeed.
+- [ ] **Spouse relationship:** Often implemented as a plain one-directional FK column — verify querying from *either* member of a pair returns the same, symmetric result.
+- [ ] **Member deletion:** Often leaves cascade/orphan behavior undecided by default — verify a test deletes a member with children/spouse and asserts exactly what survives (not merely that the delete "succeeds").
+- [ ] **Sibling dedup check:** Often does a raw string comparison — verify a mixed-case/whitespace duplicate ("john" vs " John ") is actually caught.
+- [ ] **Deep-tree resolvers:** Often tested only against a 2-3 node fixture — verify a query-count assertion against a programmatically-generated 10+ generation fixture, not just correctness of a shallow tree.
+- [ ] **Membership gate:** Often implemented as a frontend route guard only — verify an integration test calls a family GraphQL operation directly with a verified-but-unlinked JWT and gets rejected.
+- [ ] **First-admin bootstrap:** Often untested post-family-tree-gate — verify a fresh ADMIN with zero linked `FamilyMember` rows can still create/link the first node.
+- [ ] **File upload:** Often tested only with a real, correctly-named image — verify adversarial fixtures (path-traversal filename, mislabeled content-type, oversized file) are explicitly rejected.
+- [ ] **Upload volume:** Often verified only in a container that's never been rebuilt — verify a photo survives an actual `docker compose` restart/rebuild.
+- [ ] **Permission scope function:** Often duplicated inline per-resolver — verify there is exactly one `getEditableMemberIds`-style utility used everywhere, tested against grandparents/cousins/siblings-of-siblings as explicit exclusions.
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
-|---------|----------------|-----------------|
-| JWT fail-fast crashes all tests (Pitfall 12) | LOW | Add the `NODE_ENV === 'production'` guard, re-run full suite; the failure mode is obvious and immediate (every test file errors at import) so it's caught before merge, not in production |
-| `sync()` doesn't add columns to existing dev DB (Pitfall 13) | MEDIUM | Manually `ALTER TABLE users ADD COLUMN ...` on the affected DB, or switch to `sync({ alter: true })` and re-run; costlier if discovered only after a real deployment (requires a manual DB migration against live data) |
-| Enumeration oracle reintroduced via rate-limit counting (Pitfall 4) | LOW–MEDIUM | Move the counter-increment point earlier (before DB lookup); re-verify with the same-threshold test; low cost if caught in review/TDD red step, higher if it ships and is later found in a security audit |
-| ForgotPassword frontend breaks silently (Pitfall 7) | LOW | Add the missing frontend test + fix the query/UI in the same PR as the backend mailer change; cheap if caught immediately, embarrassing (broken feature in a portfolio piece) if it ships unnoticed |
+|---------|----------------|------------------|
+| A cycle already exists in production data | HIGH | Requires a manual data-repair script (find and break the cycle via direct SQL/admin tooling) before any recursive read will work again; add the cycle-prevention check immediately to stop recurrence, then backfill-audit existing data |
+| Duplicate parent nodes already forked part of the tree | MEDIUM | Build (even a minimal) admin merge tool: reassign all child/spouse edges from the duplicate node to the canonical one, then delete the duplicate; requires careful transaction handling to avoid partial merges |
+| Uploaded photos lost due to non-persistent volume | LOW–MEDIUM | If caught early (no real user data yet), simply add the named volume and re-upload test data; if real user photos were lost, there is no recovery — communicate loss and re-request uploads from users |
+| Permission-scope bug allowed out-of-scope edits before being caught | MEDIUM–HIGH | Audit recent mutation history (if any audit log/timestamps exist) for edits made outside the intended scope; may require manually reviewing and reverting affected `FamilyMember` records; add the missing test before re-enabling the affected mutation |
+| Membership gate bypass allowed an unlinked user to read/write family data | MEDIUM | Patch the missing resolver-level guard immediately; review what that user could have accessed (family data is likely low-sensitivity relative to auth credentials, but personal data like birthdate/address/photo is still exposed) and consider notifying affected members per the app's data-sensitivity posture |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
-|---------|-------------------|---------------|
-| 1: `executeOperation` helper can't test CORS/rate-limit | First task of Rate-Limiting phase (harness extraction) | New supertest-based (or equivalent) HTTP-level test file exists and is used by both the CORS and rate-limit test suites |
-| 2: Path-based limiting throttles everything | Rate-Limiting phase | Test: burst of `me`/`dashboard` queries unaffected while `login` is throttled |
-| 3: In-memory store state bleed across tests | Rate-Limiting phase | Full suite run twice consecutively produces identical pass/fail results; `resetRateLimits()` helper exists and is called in `beforeEach` |
-| 4: Enumeration oracle via rate-limit counting | Rate-Limiting phase | Test: identical 429-threshold for real vs. fake email/account |
-| 5: Stale `resetToken` field/path | Mailer phase | Schema-introspection or query-validation test confirms `resetToken` is unqueryable |
-| 6: Mailer test over-mocking | Mailer phase | Mailer spy assertion checks call *arguments* (token match with `user.resetPasswordToken`), not just call count |
-| 7: Frontend `ForgotPassword` still expects token | Mailer phase (frontend task) | New `ForgotPassword.test.jsx` added; manual browser check of `/forgot-password` |
-| 8: `iat` seconds vs. DB ms precision | `passwordChangedAt`/Revocation phase | Same-second boundary test: reset → immediate re-login succeeds |
-| 9: `passwordChangedAt` scope creep beyond password changes | `passwordChangedAt`/Revocation phase | Model hook test: role/name-only update leaves `passwordChangedAt` untouched |
-| 10: Revocation check breaks on missing/null `passwordChangedAt` | `passwordChangedAt`/Revocation phase | `auth.test.js` case with `passwordChangedAt: null` stub still authenticates |
-| 11: Email verification breaks register→auto-login + ADMIN race | Email-Verification phase (sequence last/near-last) | Enumerated v1.0 test flips (see below) all pass under new behavior; unverified user's token rejected by `dashboard` |
-| 12: JWT fail-fast crashes test/dev | JWT-Secret-Fail-Fast phase (do first — low risk, easy to verify) | Full existing suite (`npm test`, root) green after the change; explicit `NODE_ENV=test` + weak-secret case does not throw |
-| 13: `sync()` doesn't alter existing tables | Both `passwordChangedAt` and Email-Verification phases (each adds columns) | Manual boot against non-force-synced dev DB, zero `Unknown column` errors |
-
-## Meta-Pitfall: v1.0 tests that assert the OLD (insecure) behavior and must be flipped as the TDD red step
-
-These are concrete, file-and-line-level. Each one currently passes against the insecure v1.0 behavior; under strict TDD, the fix's red step is "this test now fails because it asserts the old behavior," and the green step rewrites the assertion to the new, secure behavior.
-
-| Test | Current assertion (insecure/old) | Must become (secure/new) | Driving fix |
-|------|-------------------------------------|------------------------------|-------------|
-| `backend/src/resolvers/resetPassword.test.js` — `'returns the generic message and persists a reset token + expiry for an existing email'` | Queries `requestPasswordReset(email: $email) { message resetToken }` and implicitly allows a `resetToken` field to exist in the response shape (even though this specific test doesn't assert its value, the query itself requests the now-removed field) | Query must drop `resetToken` from the GraphQL selection entirely (field no longer exists in schema); assertions shift to confirming `user.resetPasswordToken` is persisted server-side only, and a mailer spy was called with the token | Mailer fix |
-| `backend/src/resolvers/resetPassword.test.js` — `'returns the identical generic message and a null resetToken for a non-existing email'` | Explicitly asserts `expect(response.data.requestPasswordReset.resetToken).toBeNull()` — this whole assertion is about a field that will no longer exist | Remove the `resetToken` assertion/selection; assert only `message`; add a new assertion that the mailer was *not* called for a non-existing email | Mailer fix |
-| `KNOWN-ISSUES.md` — "Reset-token exposure in `requestPasswordReset` response" entry | Documents the bug as accepted, deferred behavior | Must be removed/closed out once the fix ships (it's documentation, not a test, but it's the paper trail that needs to flip alongside the test) | Mailer fix |
-| `backend/src/resolvers/register.test.js` — `'makes the first registrant ADMIN and persists a hashed password'` | `jwt.verify(data.register.token, env.jwtSecret)` — asserts `register` returns an immediately-usable, fully-privileged JWT with no verification gate | If design option (a) from Pitfall 11 is chosen: assert `register` returns no token (or a token that `login`/`dashboard` will reject until verified); if option (b): assert the token carries `emailVerified: false` and privileged operations reject it | Email-verification fix |
-| `backend/src/resolvers/register.test.js` — `'makes subsequent registrants USER'` | Registers a second user and immediately checks `data.register.user.role === 'USER'` assuming instant, unconditional account creation | Should still pass largely unchanged for the *role* assertion, but the surrounding registration flow assertions (token presence/usability) need the same update as above | Email-verification fix |
-| `frontend/src/pages/Register.test.jsx` — `'navigates to /dashboard on successful registration'` | Mocks `graphqlRequest` to resolve `{ register: { token, user } }` and asserts `navigateSpy` is called with `/dashboard` immediately | Must mock the new response shape (no token, or a "pending verification" response) and assert the component shows a "check your email" state instead of navigating to `/dashboard` | Email-verification fix |
-| `frontend/src/context/AuthContext.jsx`'s `register()`/`authenticate()` (not directly unit-tested today, but `AuthContext.test.jsx` tests `login()` via the same `authenticate()` function) | `authenticate()` unconditionally does `localStorage.setItem('authToken', payload.token); setUser(payload.user)` for both login and register responses | If `register` no longer returns a token, `authenticate()` needs a register-specific branch that does *not* immediately log the user in — `AuthContext.test.jsx` doesn't cover `register()` today, so a **new** test must be added here (not strictly a "flip," but a coverage gap directly caused by this fix) | Email-verification fix |
-| No existing test — `backend/src/config/env.js` has no test file at all today | N/A — untested | New test(s) needed asserting fail-fast behavior in `production` and pass-through in `test`/`development` | JWT-secret-fail-fast fix |
-| No existing test for CORS (`backend/src/server.js:17-23`) | N/A — untested (confirmed via repo-wide grep, no CORS test exists) | New HTTP-level test needed (see Pitfall 1) asserting the rejected-origin error message no longer contains the raw origin | CORS fix |
-| No existing test for `passwordChangedAt`/revocation (field doesn't exist yet) | N/A — untested | New tests in `auth.test.js` (revocation logic) and `User.test.js` (hook sets the field) — see Pitfalls 8–10 | `passwordChangedAt` fix |
-| No existing test for password strength (`register.test.js`, `resetPassword.test.js` only use the fixed valid password `'Password123!'`) | Existing tests never exercise a weak password, so they won't break — but there's no test proving weak passwords are currently *accepted*, which would have been the natural "red" baseline | Add new tests asserting weak passwords are now rejected in `register` and `resetPassword`; existing tests are unaffected since `'Password123!'` already satisfies any reasonable strength bar | Password-strength fix |
-
-Two additional observations that inform the "what to flip" list:
-- `backend/src/resolvers/register.test.js`'s malformed-email test (`'rejects a malformed email via the isEmail model validator'`) and all `login.test.js`/`dashboard.test.js` tests use `createTestUser()` from `backend/test/helpers.js`, which sets `passwordHash: 'Password123!'` directly (bypassing `register`'s resolver-level validation entirely, since it goes straight to `models.User.create`). These tests are **not** affected by the password-strength fix (they don't go through the `register` resolver) and do not need flipping — worth confirming explicitly during planning so nobody wastes time "fixing" tests that don't touch the changed code path.
-- Every backend integration test file does `beforeEach(resetTables)` which only truncates `models.User` (`backend/test/helpers.js:16-18`) — if any new fix introduces a second table (e.g. a separate `EmailVerificationTokens` table rather than columns on `User`), `resetTables` must be extended to truncate it too, or state will bleed across tests in exactly the way Pitfall 3 describes for the rate limiter.
+|---------|-------------------|----------------|
+| 1. N+1 fan-out on deep tree | Relationship resolvers / data-model phase | Query-count assertion stays flat (not O(generations)) against a programmatic deep-tree fixture |
+| 2. Unbounded recursive query depth | Relationship resolvers phase (same as #1) | A hand-crafted over-depth query is rejected by the depth-limit plugin in a test |
+| 3. Cycles in parent/child graph | Data-model / relationship-mutation phase | Test asserts `setParent` rejects an edge that would make an ancestor a descendant |
+| 4. Asymmetric spouse relationship | Data-model design phase | Test reads the relationship from both members of a pair and asserts equality |
+| 5. Wrong cascade/orphan behavior on delete | Data-model design phase | Test deletes a member with children/spouse and asserts the exact, decided survival behavior |
+| 6. Sibling dedup edge cases (half-siblings, duplicate parents) | Dedup-rule + `/manage` UI phase | Tests cover case/whitespace normalization, half-sibling false-positive is documented, and search-before-create UX is present |
+| 7. Immediate-relatives scope computed wrong | Permission-scoping phase | Single `getEditableMemberIds` utility tested against explicit exclusion fixtures (grandparent, cousin, sibling-of-sibling) |
+| 8. Relationship edits as privilege escalation | Permission-scoping phase (same as #7) | Test: linked Member A cannot unilaterally attach themselves to linked Member B's subtree without consent/admin approval |
+| 9. Insecure file upload handling | File-upload phase | Adversarial fixtures (path traversal, mislabeled content, oversized file) are the first red tests, before the happy path |
+| 10. Volume persistence / upload transport choice | File-upload phase (same as #9) | Manual/CI check: photo survives a container rebuild; REST-vs-GraphQL-multipart decision recorded as a Key Decision |
+| 11. Membership gate is frontend-only | Membership-gating phase | Integration test: verified-but-unlinked JWT calling a family resolver directly is rejected |
+| 12. First-admin bootstrap chicken-and-egg | Membership-gating phase (same as #11) | Integration test: fresh ADMIN with zero linked members can still create/link the first node; v1.1 admin-promotion regression test still passes |
+| 13. `sync()`/DataLoader/permission logic diverges test-vs-prod | Continuous, starting at data-model phase | Fresh-DB `sync({ force: true })` smoke test; test harness reuses production's exact `context()`/DataLoader/guard wiring |
 
 ## Sources
 
-- Direct codebase reads (HIGH confidence, this repo): `backend/src/resolvers/user.resolver.js`, `backend/src/models/User.js`, `backend/src/config/env.js`, `backend/src/server.js`, `backend/src/utils/auth.js`, `backend/src/schemas/user.schema.js`, `backend/src/models/index.js`, `backend/test/helpers.js`, `backend/test/globalSetup.js`, `backend/test/guard.js`, `backend/vitest.config.js`, `backend/src/resolvers/{login,register,resetPassword,dashboard}.test.js`, `backend/src/utils/auth.test.js`, `backend/src/models/User.test.js`, `backend/test/guard.test.js`, `frontend/src/pages/ForgotPassword.jsx`, `frontend/src/context/AuthContext.jsx`, `frontend/src/context/AuthContext.test.jsx`, `frontend/src/pages/Register.test.jsx`, `.github/workflows/ci.yml`, `package.json` (root/backend), `.planning/PROJECT.md`, `.planning/codebase/CONCERNS.md`, `.planning/codebase/TESTING.md`, `KNOWN-ISSUES.md`
-- [Sequelize v6 Model Synchronization docs](https://sequelize.org/docs/v6/core-concepts/model-basics/#model-synchronization) — confirms plain `sync()` does not alter existing tables; `alter: true` does but is documented as risky for production (HIGH confidence, official docs)
-- [express-rate-limit "Creating Your Own Store" wiki](https://github.com/express-rate-limit/express-rate-limit/wiki/Creating-Your-Own-Store) and [express-rate-limit npm/docs](https://www.npmjs.com/package/express-rate-limit) — confirms `resetKey()`/`resetAll()` store methods exist for test cleanup (MEDIUM confidence — not yet verified against the exact version to be pinned in this milestone)
-- General JWT `iat`-precision discussion (community pattern, not this codebase) — [Medium: "Your Password Changed — But Your Old Sessions Didn't"](https://medium.com/@mr.nt09/your-password-changed-but-your-old-sessions-didnt-the-ghost-session-bug-and-how-to-kill-it-0f0f7a8de6dc) (LOW-MEDIUM confidence, single community source, used only to corroborate a pattern already derivable from first principles of the JWT spec + this codebase's actual `signToken`/`jwt.verify` calls)
+- [Apollo GraphQL Docs — Fetching Data (DataLoader patterns)](https://www.apollographql.com/docs/apollo-server/data/fetching-data)
+- [Apollo GraphQL Docs — Handling the N+1 Problem](https://www.apollographql.com/docs/graphos/schema-design/guides/handling-n-plus-one)
+- [Using Apollo Server 4 to Solve the N+1 Problem with DataLoaders — CodeSignal](https://codesignal.com/learn/courses/advanced-graphql-data-patterns-and-fetching-1/lessons/using-apollo-server-4-to-solve-the-n1-problem-with-data-loaders)
+- [MySQL 8.0 Labs — Recursive Common Table Expressions (CTEs), Part Three: Hierarchies](https://dev.mysql.com/blog-archive/mysql-8-0-labs-recursive-common-table-expressions-in-mysql-ctes-part-three-hierarchies/)
+- [Cycle Detection for Recursive Search in Hierarchical Trees — sqlfordevs.com](https://sqlfordevs.com/cycle-detection-recursive-query)
+- [Recursive CTE vs Closure Tables in MySQL — Medium](https://medium.com/@ramu.ramaiah/recursive-cte-vs-closure-tables-in-mysql-choosing-the-right-strategy-for-hierarchical-data-c1c89ebd264f)
+- [Apollo Server File Upload Best Practices — Apollo GraphQL Blog](https://www.apollographql.com/blog/file-upload-best-practices)
+- [GraphQL.org — Handling File Uploads in GraphQL](https://graphql.org/learn/file-uploads/)
+- [Doyensec — "That single GraphQL issue that you keep missing" (GraphQL CSRF via multipart)](https://blog.doyensec.com/2021/05/20/graphql-csrf.html)
+- [Apollo GraphQL Docs — CSRF Prevention](https://www.apollographql.com/docs/graphos/routing/security/csrf)
+- [ReactFlow for Family Tree Visualization — tva.sg](https://www.tva.sg/insights/reactflow-family-tree-visualization)
+- [family-chart — D3-based family tree visualization (GitHub)](https://github.com/donatso/family-chart)
+- Internal: `.planning/codebase/CONCERNS.md` (existing scaling/pool/pagination concerns, no query depth limiting, `sync()` vs migrations debt)
+- Internal: `.planning/PROJECT.md` (v1.1 first-admin race-safe promotion mechanism, v2.0 feature scope and deferred-scope boundaries)
 
 ---
-*Pitfalls research for: v1.1 Security Remediation (7 fixes) on the Portfolio Auth App*
-*Researched: 2026-07-12*
+*Pitfalls research for: Collaborative family-tree domain (v2.0 milestone) on Express/Apollo/Sequelize/MySQL/React stack*
+*Researched: 2026-07-21*
