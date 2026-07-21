@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Collaborative Family Tree
 status: executing
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-07-21T21:21:43.954Z"
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-07-21T21:29:16.888Z"
 last_activity: 2026-07-21
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 8
-  completed_plans: 5
+  completed_plans: 6
   percent: 17
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 13 (membership-gating-account-linking) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-21
 
-Progress: [██████░░░░] 63%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Progress: [██████░░░░] 63%
 
 *Updated after each plan completion*
 | Phase 13 P01 | 15min | 2 tasks | 6 files |
+| Phase 13 P02 | 10min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 13]: requireFamilyAccess = linked-member OR ADMIN (D-06 carve-out), delegating to requireAuth for the null check
 - [Phase 13]: familyMemberId declared only via the User.belongsTo(FamilyMember) association, not redeclared in User.init() (association-owns-the-column convention, mirrors Spouse.js)
 - [Phase 13]: FamilyMember.hasOne(User) used instead of hasMany, reflecting the UNIQUE-constrained one-to-one link (D-07)
+- [Phase 13]: familyMember/familyMembers resolvers return raw Sequelize instances so the fullname VIRTUAL getter resolves via default GraphQL field resolution
+- [Phase 13]: linkUserToMember validates memberId/newMember mutual exclusivity via (memberId == null) === (newMember == null), and relies on the DB UniqueConstraintError (not a pre-emptive findOne) to catch duplicate-link races (D-07/T-13-06)
+- [Phase 13]: create-and-link path creates only a bare FamilyMember (no linkParent/addChild/setSpouse), keeping D-05's scope boundary enforced by a zero-match grep
 
 ### Pending Todos
 
@@ -104,8 +108,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-21T21:21:43.948Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-07-21T21:29:16.882Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None
 
 ## Operator Next Steps

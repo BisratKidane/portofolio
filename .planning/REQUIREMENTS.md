@@ -29,8 +29,8 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 ### Access & Account Linking (ACC)
 
 - [ ] **ACC-01**: A registered, email-verified user with no linked member sees a "pending — awaiting admin linking" gate and cannot reach family data.
-- [ ] **ACC-02**: An admin can link a user account to a family member node, granting that user member access.
-- [ ] **ACC-03**: The first-verified-user ADMIN keeps access without a linked member (explicit carve-out) and can self-link to their own member node.
+- [x] **ACC-02**: An admin can link a user account to a family member node, granting that user member access.
+- [x] **ACC-03**: The first-verified-user ADMIN keeps access without a linked member (explicit carve-out) and can self-link to their own member node.
 - [x] **ACC-04**: A backend guard (`requireFamilyAccess`: linked-member-or-ADMIN) enforces access on every family query and mutation server-side, not only in the frontend.
 - [x] **ACC-05**: The `User↔FamilyMember` link is added to the existing `users` table via a tracked manual `ALTER` + boot-verify step (not assumed to apply via `sync()`).
 
@@ -128,8 +128,8 @@ Which phase covers which requirement.
 | REL-05 | Phase 12 | Complete |
 | REL-06 | Phase 15 | Pending |
 | ACC-01 | Phase 13 | Pending |
-| ACC-02 | Phase 13 | Pending |
-| ACC-03 | Phase 13 | Pending |
+| ACC-02 | Phase 13 | Complete |
+| ACC-03 | Phase 13 | Complete |
 | ACC-04 | Phase 13 | Complete |
 | ACC-05 | Phase 13 | Complete |
 | PERM-01 | Phase 14 | Pending |
