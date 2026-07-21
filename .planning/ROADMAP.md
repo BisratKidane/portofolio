@@ -29,7 +29,7 @@ Full detail archived in [milestones/v1.0-ROADMAP.md](milestones/v1.0-ROADMAP.md)
 - [x] **Phase 8: Mailer Abstraction & Reset-Token Remediation** - Reset tokens are delivered via a pluggable mailer and dropped from the API entirely (completed 2026-07-13)
 - [x] **Phase 9: Session Revocation via passwordChangedAt** - A password reset invalidates JWTs issued beforehand (completed 2026-07-20)
 - [x] **Phase 10: Rate Limiting on Auth Mutations** - login/register/requestPasswordReset are throttled per-IP without affecting normal usage (completed 2026-07-20)
-- [ ] **Phase 11: Email Verification & ADMIN Race Fix** - Registration requires proven email ownership before a session or the ADMIN role is granted
+- [x] **Phase 11: Email Verification & ADMIN Race Fix** - Registration requires proven email ownership before a session or the ADMIN role is granted (completed 2026-07-21)
 
 ## Phase Details
 
