@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Collaborative Family Tree
-status: executing
-stopped_at: Completed 13-03-PLAN.md
-last_updated: "2026-07-21T21:35:27.536Z"
+status: verifying
+stopped_at: Completed 13-04-PLAN.md
+last_updated: "2026-07-21T21:41:12.980Z"
 last_activity: 2026-07-21
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 17
+  completed_plans: 8
+  percent: 33
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 
 Phase: 13 (membership-gating-account-linking) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-21
 
-Progress: [█████████░] 88%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [█████████░] 88%
 | Phase 13 P01 | 15min | 2 tasks | 6 files |
 | Phase 13 P02 | 10min | 2 tasks | 8 files |
 | Phase 13 P03 | 12min | 2 tasks | 7 files |
+| Phase 13 P04 | 12min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 13]: ProtectedRoute's pending-gate guard sits between the !user check and the allowedRoles check so unlinked users are gated before any role-mismatch redirect
 - [Phase 13]: familyMemberId added to ME_QUERY, LOGIN_MUTATION, and VERIFY_EMAIL_MUTATION (not just ME_QUERY) since authenticate() never re-runs me after login/verifyEmail
 - [Phase 13]: Pending.jsx is deliberately static (no useEffect/polling/admin-contact link) per D-02, and bounces linked/ADMIN users to /dashboard, unauthenticated to /login
+- [Phase 13]: AdminLinkMembers.jsx wires page-level unlinkedUsers/familyMembers fetch to per-row pick-existing (Autocomplete) or create-and-link (bare-member form) submit handlers, calling linkUserToMember
+- [Phase 13]: /admin/link-members registered behind ProtectedRoute allowedRoles=['ADMIN'], reusing the existing role-gate mechanism unchanged
 
 ### Pending Todos
 
@@ -112,8 +115,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-21T21:35:27.530Z
-Stopped at: Completed 13-03-PLAN.md
+Last session: 2026-07-21T21:41:12.975Z
+Stopped at: Completed 13-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
