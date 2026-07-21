@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Collaborative Family Tree
 status: executing
-stopped_at: Phase 13 context gathered
-last_updated: "2026-07-21T21:14:51.724Z"
-last_activity: 2026-07-21 -- Phase 13 planning complete
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-07-21T21:21:43.954Z"
+last_activity: 2026-07-21
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 8
-  completed_plans: 4
+  completed_plans: 5
   percent: 17
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 13 — membership gating & account linking
+**Current focus:** Phase 13 — membership-gating-account-linking
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
+Phase: 13 (membership-gating-account-linking) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-21 -- Phase 13 planning complete
+Last activity: 2026-07-21
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████░░░░] 63%
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 13 P01 | 15min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - v2.0 roadmap: Phase 17 (/family) opens with a spike validating the React Flow (`@xyflow/react` + `dagre`) synthetic-union-node spouse-pairing pattern against a realistic-depth fixture before the full page is built — the library choice is a confirm-not-settled decision per STACK.md/SUMMARY.md.
 - v2.0 roadmap: QUAL-01/02/03 (cross-cutting TDD/CI constraints) are baked into every phase's success criteria rather than isolated as a standalone phase, per milestone instructions; for traceability purposes QUAL-01 is anchored to Phase 16 (last new backend surface) and QUAL-02/03 to Phase 17 (milestone-closing frontend + CI validation).
 - v2.0 roadmap note: REQUIREMENTS.md's stated "34 total" header undercounts by one — the actual v1 requirements list contains 35 IDs (MEM×5, REL×6, ACC×5, PERM×5, PHOTO×3, MNG×4, TREE×4, QUAL×3). All 35 are mapped 1:1 to phases 12–17 with 100% coverage; the header count was corrected to 35 during roadmap creation.
+- [Phase 13]: requireFamilyAccess = linked-member OR ADMIN (D-06 carve-out), delegating to requireAuth for the null check
+- [Phase 13]: familyMemberId declared only via the User.belongsTo(FamilyMember) association, not redeclared in User.init() (association-owns-the-column convention, mirrors Spouse.js)
+- [Phase 13]: FamilyMember.hasOne(User) used instead of hasMany, reflecting the UNIQUE-constrained one-to-one link (D-07)
 
 ### Pending Todos
 
@@ -100,9 +104,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-21T20:42:35.213Z
-Stopped at: Phase 13 context gathered
-Resume file: .planning/phases/13-membership-gating-account-linking/13-CONTEXT.md
+Last session: 2026-07-21T21:21:43.948Z
+Stopped at: Completed 13-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
