@@ -741,11 +741,12 @@ differences — this research deliberately cited `sequelize.org/docs/v6/...` URL
 | A4 | Married-in-only helper functions (not Sequelize hooks) are the right architectural choice for cascade logic | "Alternatives Considered", Anti-Patterns | Low — this is "Claude's Discretion" per CONTEXT.md, explicitly left open; either approach is testable |
 | A5 | Ancestor-chain cycle-walk algorithm (iterative BFS with a `visited` set, batched per-depth queries) is correct and sufficiently performant for ~23-generation trees | Pattern 4 | Low — this is standard, well-understood graph theory; the batching detail is a performance optimization, not a correctness requirement — even an unbatched per-node walk would be correct, just slower |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `Spouse` rows be queryable/creatable through `FamilyMember` association methods (e.g.
    `member.getSpouses()`) in addition to the dedicated `Spouse` model, or is direct `Spouse.findAll`
-   with `Op.or` sufficient?**
+   with `Op.or` sufficient?** — RESOLVED: skip the `belongsToMany` convenience association; use the
+   direct `Op.or` symmetric-read helper (single source of truth). Plan 12-02 implements this.
    - What we know: D-01 only requires "read correctly from either side" — the `Op.or` helper in
      Pattern 3 satisfies this without needing a `belongsToMany` shortcut.
    - What's unclear: whether the planner wants a convenience association (e.g.
@@ -758,7 +759,9 @@ differences — this research deliberately cited `sequelize.org/docs/v6/...` URL
      complexity without removing the need for the symmetric helper, and CONTEXT.md's "one source of
      truth" framing favors the simpler, single explicit query path.
 
-2. **Exact error message text for cycle rejection and married-in-only deletion outcomes.**
+2. **Exact error message text for cycle rejection and married-in-only deletion outcomes.** — RESOLVED:
+   use clear, specific messages now; Phase 12 tests assert an error is thrown (`.rejects.toThrow()`),
+   not exact string text, leaving Phase 14 free to wrap/translate. Plan 12-03 implements this.
    - What we know: D-11 requires tests that "construct the bad state and assert rejection/survival" —
      tests can assert on `.rejects.toThrow()` without pinning exact message text, or pin a specific
      message if the planner wants message-stability tests.
