@@ -6,6 +6,7 @@ import {
   getUserFromRequest,
   requireAuth,
   requireAdmin,
+  requireFamilyAccess,
   createResetToken,
   resetTokenExpiry,
   createVerificationToken,
@@ -176,6 +177,26 @@ describe('requireAdmin', () => {
 
   it('throws for null (via requireAuth)', () => {
     expect(() => requireAdmin(null)).toThrow();
+  });
+});
+
+describe('requireFamilyAccess', () => {
+  it('does not throw for a linked (non-admin) user', () => {
+    expect(() => requireFamilyAccess({ role: 'USER', familyMemberId: 5 })).not.toThrow();
+  });
+
+  it('does not throw for an ADMIN with no linked member (D-06 carve-out)', () => {
+    expect(() => requireFamilyAccess({ role: 'ADMIN', familyMemberId: null })).not.toThrow();
+  });
+
+  it('throws for an unlinked, non-admin user', () => {
+    expect(() => requireFamilyAccess({ role: 'USER', familyMemberId: null })).toThrow(
+      'Your account is not yet linked to a family member.'
+    );
+  });
+
+  it('throws for null (via requireAuth)', () => {
+    expect(() => requireFamilyAccess(null)).toThrow('You must be logged in to perform this action.');
   });
 });
 
