@@ -32,6 +32,17 @@ FamilyMember.hasMany(FamilyMember, { as: 'childrenAsFather', foreignKey: 'father
 Spouse.belongsTo(FamilyMember, { as: 'memberA', foreignKey: { name: 'memberAId', allowNull: false } });
 Spouse.belongsTo(FamilyMember, { as: 'memberB', foreignKey: { name: 'memberBId', allowNull: false } });
 
+// User <-> FamilyMember link (Phase 13, D-06/D-07) -- the first association
+// touching the pre-existing `users` table. hasOne (not hasMany) because the
+// UNIQUE constraint on familyMemberId makes this a true one-to-one.
+User.belongsTo(FamilyMember, {
+  as: 'familyMember',
+  foreignKey: { name: 'familyMemberId', allowNull: true, unique: true },
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE'
+});
+FamilyMember.hasOne(User, { as: 'linkedUser', foreignKey: 'familyMemberId' });
+
 export const models = {
   User,
   FamilyMember,

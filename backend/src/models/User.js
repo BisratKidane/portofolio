@@ -50,6 +50,8 @@ export function initUser(sequelize) {
       emailVerified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
       emailVerificationToken: { type: DataTypes.STRING, allowNull: true },
       emailVerificationExpiresAt: { type: DataTypes.DATE, allowNull: true }
+      // familyMemberId is added by the User.belongsTo(FamilyMember) association in
+      // models/index.js (Phase 13, D-07) -- not redeclared here.
     },
     {
       sequelize,
