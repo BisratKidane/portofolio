@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { Op } from 'sequelize';
 import { models } from './index.js';
 import { resetTables } from '../../test/helpers.js';
+import { setSpouse, getSpouseRows } from '../services/familyMember.service.js';
 
 const { Spouse } = models;
 
@@ -116,5 +117,52 @@ describe('multiple spouse edges (D-02)', () => {
     });
 
     expect(rows).toHaveLength(2);
+  });
+});
+
+describe('setSpouse (REL-02)', () => {
+  it('is idempotent when called again with swapped argument order', async () => {
+    const a = await models.FamilyMember.create({
+      firstname: 'A',
+      lastname: 'Doe',
+      gender: 'Female'
+    });
+    const b = await models.FamilyMember.create({
+      firstname: 'B',
+      lastname: 'Doe',
+      gender: 'Male'
+    });
+
+    await setSpouse(a.id, b.id);
+    await expect(setSpouse(b.id, a.id)).resolves.not.toThrow();
+
+    const count = await models.Spouse.count();
+    expect(count).toBe(1);
+  });
+});
+
+describe('getSpouseRows (REL-02)', () => {
+  it('resolves to the same row with associations included, queried from either member id', async () => {
+    const a = await models.FamilyMember.create({
+      firstname: 'A',
+      lastname: 'Doe',
+      gender: 'Female'
+    });
+    const b = await models.FamilyMember.create({
+      firstname: 'B',
+      lastname: 'Doe',
+      gender: 'Male'
+    });
+
+    await setSpouse(a.id, b.id);
+
+    const fromA = await getSpouseRows(a.id);
+    const fromB = await getSpouseRows(b.id);
+
+    expect(fromA).toHaveLength(1);
+    expect(fromB).toHaveLength(1);
+    expect(fromA[0].id).toBe(fromB[0].id);
+    expect(fromA[0].memberA.id).toBe(a.id);
+    expect(fromA[0].memberB.id).toBe(b.id);
   });
 });
