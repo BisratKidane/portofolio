@@ -14,6 +14,7 @@ export default function ProtectedRoute({ allowedRoles }) {
   }
 
   if (!user) return <Navigate to="/login" replace />;
+  if (!user.familyMemberId && user.role !== 'ADMIN') return <Navigate to="/pending" replace />;
   if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/dashboard" replace />;
 
   return <Outlet />;
