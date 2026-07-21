@@ -111,3 +111,7 @@ None - no external service configuration required.
 ---
 *Phase: 13-membership-gating-account-linking*
 *Completed: 2026-07-21*
+
+## Self-Check: PASSED
+
+All created files and commit hashes verified present (familyMember.schema.js, familyMember.resolver.js, familyMember.resolver.test.js, linkUserToMember.test.js, SUMMARY.md, and commits 1a2b9ab, 1b1e4a7, 2728704, 7b79991, 76e3961).
