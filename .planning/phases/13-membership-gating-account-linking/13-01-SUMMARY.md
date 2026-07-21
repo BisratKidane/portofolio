@@ -105,3 +105,7 @@ None - no external service configuration required. Note: `backend/migrations/man
 ---
 *Phase: 13-membership-gating-account-linking*
 *Completed: 2026-07-21*
+
+## Self-Check: PASSED
+
+All created files and commit hashes verified present (migration file, SUMMARY.md, and commits 5376bf3, 4690336, 67cd1a4, c0febda).
