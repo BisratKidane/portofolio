@@ -53,7 +53,7 @@
 - [x] **VERIFY-01**: The `User` model gains `emailVerified` (boolean, default false), `emailVerificationToken`, and `emailVerificationExpiresAt` columns.
 - [ ] **VERIFY-02**: `register` creates an unverified user, sends a verification email via the mailer, and returns a message-only payload — no JWT, no session, no ADMIN role granted at registration time.
 - [ ] **VERIFY-03**: A new `verifyEmail(token)` mutation flips `emailVerified` to true, clears the token/expiry (single-use), and returns an `AuthPayload` so the user lands logged in.
-- [ ] **VERIFY-04**: ADMIN role is assigned at verification time to the first *verified* user only — closing the registration-speed land-grab race.
+- [x] **VERIFY-04**: ADMIN role is assigned at verification time to the first *verified* user only — closing the registration-speed land-grab race. (Plan 11-08: atomic transaction + locking FOR UPDATE admin-count read + retry-once-on-deadlock; deterministic concurrency test.)
 - [ ] **VERIFY-05**: `login` rejects an unverified account with a clear message after password validation succeeds.
 - [ ] **VERIFY-06**: The verification token is cryptographically random, single-use, and time-limited (24 h expiry).
 - [ ] **VERIFY-07**: A `resendVerificationEmail(email)` mutation reissues a fresh token/email for an unverified account, so an expired/lost verification email is recoverable without re-registration.

@@ -4,14 +4,14 @@ milestone: v1.1
 milestone_name: Security Remediation
 status: executing
 stopped_at: 11-07 Tasks 1-2 complete (Register confirmation panel, VerifyEmail page/route); paused at Task 3 human-action checkpoint (apply Plan 11-03 migration + manual flow verification)
-last_updated: "2026-07-21T07:48:44.961Z"
-last_activity: 2026-07-21
+last_updated: "2026-07-21T11:00:00.000Z"
+last_activity: 2026-07-21 -- Phase 11 planning complete
 progress:
   total_phases: 5
-  completed_phases: 5
-  total_plans: 18
+  completed_phases: 4
+  total_plans: 19
   completed_plans: 18
-  percent: 100
+  percent: 80
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 ## Current Position
 
 Phase: 11 (email-verification-admin-race-fix) — EXECUTING
-Plan: 2 of 7
-Status: Ready to execute
-Last activity: 2026-07-21
+Plan: 11-08 complete (VERIFY-04 gap closed)
+Status: 11-08 done; 11-07 Task 3 human checkpoint (migration boot-and-verify) still pending for phase close
+Last activity: 2026-07-21 -- 11-08 verifyEmail race fix executed (atomic transaction + FOR UPDATE + deadlock retry)
 
 Progress: [██████████] 100%
 
@@ -93,6 +93,10 @@ Recent decisions affecting current work:
 - [Phase 10]: Plan 03: rate-limit test-harness bypass-resistance and enumeration-parity proofs (RATE-01..05) all driven via executeOperation(), zero HTTP boot — Closes T-10-03a (enumeration oracle) and T-10-03b (operation-rename bypass) with dedicated tests
 - [Phase 11]: Plan 07 Task 1: Register.jsx removes useNavigate entirely and renders a check-your-email confirmation Alert instead of navigating (D-15) — closes the client-side half of the ADMIN-race elevation-of-privilege threat (T-11-07a)
 - [Phase 11]: Plan 07 Task 2: /verify-email is registered as a ProtectedRoute sibling (not nested inside it), reads ?token= via useSearchParams, and auto-calls verifyEmail(token) on mount — establishes the session and redirects to /dashboard on success, shows a recoverable error + Return to sign in link on failure or missing token (D-14)
+- [Phase 11]: Plan 08 (VERIFY-04 gap closure, CR-01 Option B): verifyEmail now wraps token-consumption + admin-count check + ADMIN promotion in ONE sequelize.transaction; the admin-count read is a locking `SELECT COUNT(*) ... FOR UPDATE` so concurrent verifiers serialize on the single ADMIN slot structurally instead of relying on autocommit statement timing — replacing the prior two-statement UPDATE...JOIN that empirically deadlocked 28/30 under real MySQL 8.4 concurrency (11-VERIFICATION.md)
+- [Phase 11]: Plan 08: added retry-once-on-`ER_LOCK_DEADLOCK` around the transaction — a losing racer rolls back cleanly (single-use token NOT consumed) and re-runs once, so it still receives a valid AuthPayload instead of a burned token + raw SQL error; second deadlock or any non-deadlock error propagates unchanged
+- [Phase 11]: Plan 08: the ADMIN-race concurrency test was rewritten (WR-03) from a bare Promise.all (which passes regardless of fix status) into a deterministic two-connection harness — a raw mysql2 connection holds an exclusive lock on a shared non-admin anchor row to pin two real verifiers at their admin-count read, then releases so both promotions fire simultaneously; proven to FAIL against the pre-fix resolver (one racer hits ER_LOCK_DEADLOCK) and pass 5/5 against the fix
+- [Phase 11]: Plan 08: the plan's flake-check verify command used `npx vitest run --reporter=basic`, which is not a valid reporter in Vitest 4 (ERR_LOAD_URL); ran the 5x check with the default reporter instead — the reporter flag is a tooling incompatibility, not a test result
 
 ### Pending Todos
 
@@ -119,8 +123,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T21:01:09.221Z
-Stopped at: 11-07 Tasks 1-2 complete (Register confirmation panel, VerifyEmail page/route); paused at Task 3 human-action checkpoint (apply Plan 11-03 migration + manual flow verification)
+Last session: 2026-07-21
+Stopped at: 11-08 complete — verifyEmail VERIFY-04 race fix (atomic transaction + FOR UPDATE + deadlock retry) executed, full backend suite 121/121 green, concurrency test stable 5/5. Phase close still gated on 11-07 Task 3 human checkpoint (apply migration to pre-existing dev DB + manual 8-step flow verification).
 Resume file: .planning/phases/11-email-verification-admin-race-fix/11-07-PLAN.md
 
 ## Operator Next Steps

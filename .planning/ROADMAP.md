@@ -162,6 +162,10 @@ Plans:
 
 - [ ] 11-07-PLAN.md — Register confirmation state + /verify-email route + manual migration boot-and-verify (VERIFY-08 / SC-5)
 
+**Wave 5** *(gap closure — post-verification remediation of the VERIFY-04 race)*
+
+- [x] 11-08-PLAN.md — verifyEmail atomic transaction + locking FOR UPDATE admin-count read + retry-once-on-deadlock; deterministic two-connection concurrency test (VERIFY-04) — completed 2026-07-21
+
 **UI hint**: yes
 
 ## Progress
