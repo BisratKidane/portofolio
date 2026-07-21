@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Security Remediation
-status: "v1.1 Security Remediation complete — archived + tagged v1.1; PR #2 open (family → main)"
-stopped_at: v1.1 milestone complete — all 5 phases (7–11) verified, archived to milestones/v1.1-*, tagged v1.1. Awaiting PR #2 merge and next-milestone planning (/gsd:new-milestone).
-last_updated: "2026-07-21T12:10:00.000Z"
+milestone: v2.0
+milestone_name: Collaborative Family Tree
+status: planning
+last_updated: "2026-07-21T14:02:09.145Z"
 last_activity: 2026-07-21
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 19
-  completed_plans: 19
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,12 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 
 ## Current Position
 
-Milestone: v1.1 Security Remediation — COMPLETE (archived, tagged v1.1)
-Phases: 7–11 all complete (19/19 plans)
-Status: Awaiting PR #2 merge; next milestone not yet scoped
-Last activity: 2026-07-21
-
-Progress: [██████████] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-07-21 — Milestone v2.0 started
 
 ## Performance Metrics
 
