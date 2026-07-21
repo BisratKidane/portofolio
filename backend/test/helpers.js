@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { ApolloServer } from '@apollo/server';
-import { models } from '../src/models/index.js';
+import { models, sequelize } from '../src/models/index.js';
 import { typeDefs } from '../src/schemas/index.js';
 import { resolvers } from '../src/resolvers/index.js';
 import { app } from '../src/server.js';
@@ -22,7 +22,16 @@ export async function graphql(query, variables, user = null, clientIp = '127.0.0
 }
 
 export async function resetTables() {
+  // MySQL forbids TRUNCATE on any table still referenced by a foreign key
+  // (family_members self-references itself via motherId/fatherId, and
+  // spouses references family_members), even once the referencing rows are
+  // gone. Disabling FK checks around the truncate sequence is the standard
+  // pattern for FK-constrained test resets.
+  await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+  await models.Spouse.destroy({ where: {}, truncate: true });
+  await models.FamilyMember.destroy({ where: {}, truncate: true });
   await models.User.destroy({ where: {}, truncate: true });
+  await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
 }
 
 export { resetRateLimitStore };
