@@ -15,6 +15,7 @@ function renderProtectedRoute({ allowedRoles } = {}) {
       <Routes>
         <Route path="/login" element={<div>Login Sentinel</div>} />
         <Route path="/dashboard" element={<div>Dashboard Sentinel</div>} />
+        <Route path="/pending" element={<div>Pending Sentinel</div>} />
         <Route element={<ProtectedRoute allowedRoles={allowedRoles} />}>
           <Route path="/admin" element={<div>Admin Sentinel</div>} />
         </Route>
@@ -48,7 +49,7 @@ describe('ProtectedRoute', () => {
   });
 
   it('renders the protected child route for an authenticated user with no role restriction', () => {
-    useAuthMock.mockReturnValue({ loading: false, user: { id: 1, role: 'USER' } });
+    useAuthMock.mockReturnValue({ loading: false, user: { id: 1, role: 'USER', familyMemberId: 5 } });
 
     renderProtectedRoute({ allowedRoles: undefined });
 
@@ -56,11 +57,36 @@ describe('ProtectedRoute', () => {
   });
 
   it('redirects to /dashboard when the user role is not in allowedRoles', () => {
-    useAuthMock.mockReturnValue({ loading: false, user: { id: 1, role: 'USER' } });
+    useAuthMock.mockReturnValue({ loading: false, user: { id: 1, role: 'USER', familyMemberId: 5 } });
 
     renderProtectedRoute({ allowedRoles: ['ADMIN'] });
 
     expect(screen.getByText('Dashboard Sentinel')).toBeInTheDocument();
     expect(screen.queryByText('Admin Sentinel')).not.toBeInTheDocument();
+  });
+
+  it('redirects an unlinked, non-admin user to /pending', () => {
+    useAuthMock.mockReturnValue({ loading: false, user: { id: 1, role: 'USER', familyMemberId: null } });
+
+    renderProtectedRoute();
+
+    expect(screen.getByText('Pending Sentinel')).toBeInTheDocument();
+    expect(screen.queryByText('Admin Sentinel')).not.toBeInTheDocument();
+  });
+
+  it('does not redirect an ADMIN with no linked member to /pending (carve-out)', () => {
+    useAuthMock.mockReturnValue({ loading: false, user: { id: 1, role: 'ADMIN', familyMemberId: null } });
+
+    renderProtectedRoute();
+
+    expect(screen.getByText('Admin Sentinel')).toBeInTheDocument();
+  });
+
+  it('does not redirect a linked, non-admin user to /pending', () => {
+    useAuthMock.mockReturnValue({ loading: false, user: { id: 1, role: 'USER', familyMemberId: 5 } });
+
+    renderProtectedRoute();
+
+    expect(screen.getByText('Admin Sentinel')).toBeInTheDocument();
   });
 });

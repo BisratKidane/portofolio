@@ -80,6 +80,11 @@ describe('AuthContext', () => {
     expect(await screen.findByText('user:Ada')).toBeInTheDocument();
     expect(screen.getByText('authed:true')).toBeInTheDocument();
     expect(localStorage.getItem('authToken')).toBe('tok-123');
+    expect(graphqlRequest).toHaveBeenCalledWith(
+      expect.stringContaining('familyMemberId'),
+      { email: 'ada@example.com', password: 'secret' }
+    );
+    expect(graphqlRequest).toHaveBeenCalledTimes(1);
   });
 
   it('registers without establishing a session (message-only contract)', async () => {
@@ -119,6 +124,11 @@ describe('AuthContext', () => {
     expect(await screen.findByText('user:Ada')).toBeInTheDocument();
     expect(screen.getByText('authed:true')).toBeInTheDocument();
     expect(localStorage.getItem('authToken')).toBe('tok-verify');
+    expect(graphqlRequest).toHaveBeenCalledWith(
+      expect.stringContaining('familyMemberId'),
+      { token: 'sometoken' }
+    );
+    expect(graphqlRequest).toHaveBeenCalledTimes(1);
   });
 
   it('clears the user and the token after logout', async () => {
