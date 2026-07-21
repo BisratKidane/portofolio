@@ -43,6 +43,48 @@
 
 ---
 
+## Milestone: v1.1 — Security Remediation
+
+**Shipped:** 2026-07-21
+**Phases:** 5 (7–11) | **Plans:** 19 | **Tasks:** 42
+
+### What Was Built
+- Reset-token exposure closed: pluggable `sendMail()` mailer (console in dev/test, SMTP-wired for prod), token dropped from the API schema, stored `sha256`-hashed at rest.
+- JWT-secret production fail-fast (unset/`change-me` refuses boot); dev/test unaffected.
+- Per-IP rate limiting on login/register/requestPasswordReset as an Apollo plugin keyed off the parsed operation AST, testable via `executeOperation()`, with 429-count parity (no enumeration oracle).
+- Session revocation via `passwordChangedAt` (null-safe seconds-floor compare, same-second boundary proven).
+- Server-side 8-char password minimum in register + resetPassword.
+- Email-verified registration (message-only register, `verifyEmail`, unverified-login rejection, `resendVerificationEmail`, `/verify-email` route) with a DB-enforced race-safe first-verified-user-ADMIN assignment.
+- CORS rejection no longer echoes the origin; verified via a new HTTP-level supertest harness.
+
+### What Worked
+- **Dependency-first phase sequencing** (foundation → mailer → passwordChangedAt on the same resolver → rate limiting after resolvers stabilized → verification last) meant each shared resolver was touched once, not repeatedly re-edited with unrelated changes interleaved.
+- **TDD red-green on real MySQL** caught what unit-level reasoning missed: the phase verifier reproduced VERIFY-04's ADMIN promotion as non-atomic under genuine concurrency, and the gap-closure test was proven to fail against the pre-fix resolver before the fix landed.
+- **Independent re-verification that didn't trust the SUMMARY** (reverting the fix and watching the concurrency test fail 3/3) turned "tests pass" into "this test actually guards the invariant."
+- **Manual boot-and-verify (SC-5) as an explicit acceptance step** covered the `sequelize.sync()`-won't-alter-existing-tables blind spot that CI's force-recreate can never surface.
+
+### What Was Inefficient
+- **The same `main`-vs-`family` branch-strategy gap from v1.0 recurred and grew** (125 → 286 commits): the single long-lived branch and stale `origin/main` meant the "Phase 11" ship was really a whole-branch/milestone PR, and tag-vs-merge timing again had to be decided late. The v1.0 lesson ("decide branch strategy at milestone start") was recorded but not acted on.
+- **A plan's literal test design didn't survive contact with real InnoDB locking** (no index on `role` → full-table locks), so the RED harness had to be empirically re-derived (two symmetric transactional promoters) mid-execution — a sign the plan under-modeled the DB's actual lock behavior.
+- **Requirement checkboxes in REQUIREMENTS.md drifted** — many stayed `[ ]` though their phases had passed verification; status had to be reconciled at milestone close from phase verification rather than being maintained continuously.
+
+### Patterns Established
+- **AST-keyed rate limiting** — never trust the client-supplied `operationName`; key limits off the parsed GraphQL operation to close rename bypasses.
+- **Adversarial re-verification** — revert the fix and confirm the new test fails, as the standard proof that a regression guard is real.
+- **Transaction + `FOR UPDATE` for read-check-write invariants** under concurrency, with retry-once-on-`ER_LOCK_DEADLOCK` so a losing racer still completes.
+- **Manual boot-and-verify checkpoint** for schema changes on already-provisioned DBs (the `sync()` gap).
+
+### Key Lessons
+1. For "check a count, then conditionally write" invariants, statement-level timing is not atomic under real concurrency — a single transaction with a locking read is the structural fix, and the regression test must run against real MySQL, not a mock.
+2. A concurrency test only counts if it's proven to fail against the broken code — assert that before trusting the green.
+3. Act on carried-forward process lessons: the branch/merge/tag strategy should be settled at milestone *start*; deferring it a second time doubled the divergence.
+
+### Cost Observations
+- Model mix: Opus (orchestration) + Sonnet-class executor/verifier subagents; the Phase 11 gap-closure executor empirically probed 5 harness designs against the live DB (higher cost, but it produced an honest RED the plan's design couldn't).
+- Notable: the highest-value step was the verifier independently reverting the fix to confirm the guard — cheap relative to shipping a silently-broken invariant.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -50,13 +92,17 @@
 | Milestone | Phases | Plans | Key Change |
 |-----------|--------|-------|------------|
 | v1.0 | 6 | 13 | Established GSD wave execution + live-fire CI verification for this project |
+| v1.1 | 5 | 19 | Dependency-first sequencing on shared resolvers; adversarial re-verification (revert-to-confirm-RED); real-DB concurrency TDD |
 
 ### Cumulative Quality
 
 | Milestone | Tests | Zero-Dep Additions |
 |-----------|-------|--------------------|
 | v1.0 | 51 (backend 39, frontend 12) | Test tooling only; no new runtime deps |
+| v1.1 | 121 backend green at close | nodemailer (mailer); no framework changes |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Verify against real infrastructure, not just static config review. *(v1.0)*
+1. Verify against real infrastructure, not just static config review. *(v1.0, reinforced v1.1 — real-MySQL concurrency)*
+2. A test only counts once it's proven to fail against the broken code. *(v1.1)*
+3. Settle branch/merge/tag strategy at milestone start — deferring it compounded the divergence across v1.0→v1.1. *(v1.0, recurred v1.1)*

@@ -1,5 +1,26 @@
 # Milestones
 
+## v1.1 Security Remediation (Shipped: 2026-07-21)
+
+**Phases completed:** 5 phases (7–11), 19 plans, 42 tasks
+**Timeline:** 2026-07-12 → 2026-07-21 (9 days) · 63 files changed, +3,340/−137 (backend + frontend)
+**Delivered:** Remediated all 7 security bugs v1.0 documented but left unfixed — closing account-takeover, brute-force, stale-session, and privilege-escalation vectors — TDD red-green-refactor with CI green throughout. Shipped via PR #2 (family → main).
+
+**Key accomplishments:**
+
+- Reset-token exposure closed: the token is now delivered only to the account owner via a pluggable `sendMail()` mailer (console driver in dev/test, SMTP-wired for prod), dropped from the API schema entirely, and stored `sha256`-hashed at rest.
+- JWT-secret production fail-fast: the backend refuses to boot when `NODE_ENV=production` and `JWT_SECRET` is unset or the insecure `'change-me'` default — while dev/test keep booting on the weak shared secret (the full suite stays green).
+- Per-IP rate limiting on `login` (5/15min) / `register` / `requestPasswordReset` (5/hour), implemented as an Apollo plugin keyed off the parsed GraphQL operation AST (closing an operation-rename bypass) and testable via the in-process `executeOperation()` harness; 429-count parity proven so it adds no enumeration oracle.
+- Session revocation via `passwordChangedAt`: a password reset immediately invalidates any JWT issued beforehand (`getUserFromRequest` rejects tokens whose `iat` predates it, null-safe seconds-floor compare), proven by a same-second boundary test.
+- Server-side 8-char password minimum enforced in `register` and `resetPassword` before hashing.
+- Email verification on registration: `register` returns a message-only payload (no JWT/session/ADMIN), `verifyEmail(token)` logs the user in, `login` rejects unverified accounts, and `resendVerificationEmail` recovers lost tokens; frontend gained a `/verify-email` route and a "check your email" register state.
+- First-user-becomes-ADMIN land-grab race closed with a DB-enforced guarantee: `verifyEmail` runs token-consumption + a locking `SELECT COUNT(*) … FOR UPDATE` admin-count read + conditional promotion inside one `sequelize.transaction`, with retry-once-on-`ER_LOCK_DEADLOCK` so a losing racer still gets a valid session. Independently re-verified (reverting the fix fails the concurrency test 3/3 with `Deadlock found`).
+- CORS rejection no longer echoes the rejected origin to the client — it's logged server-side and the client-facing error is generic. Verified via a new HTTP-level (supertest) test harness against an importable Express `app`.
+
+**Verification:** All 5 phases passed GSD verification (Phase 11 re-verified 8/8 after gap-closure plan 11-08). Backend suite 121/121 green; Phase 11 concurrency test stable across 5 consecutive real-MySQL runs. SC-5 manual boot-and-verify (migration + 8-step register→verify→dashboard flow) signed off 2026-07-21. Open-artifact audit clear at close; no milestone audit run (waived — all phases individually verified).
+
+---
+
 ## v1.0 Full-Stack Testing Safety Net (Shipped: 2026-07-12)
 
 **Phases completed:** 6 phases, 13 plans, 29 tasks

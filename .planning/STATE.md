@@ -2,32 +2,32 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Security Remediation
-status: "v1.1 shipped — PR #2 (family → main)"
-stopped_at: 11-08 complete — verifyEmail VERIFY-04 race fix (atomic transaction + FOR UPDATE + deadlock retry) executed, full backend suite 121/121 green, concurrency test stable 5/5. Phase close still gated on 11-07 Task 3 human checkpoint (apply migration to pre-existing dev DB + manual 8-step flow verification).
-last_updated: "2026-07-21T11:52:38.878Z"
+status: "v1.1 Security Remediation complete — archived + tagged v1.1; PR #2 open (family → main)"
+stopped_at: v1.1 milestone complete — all 5 phases (7–11) verified, archived to milestones/v1.1-*, tagged v1.1. Awaiting PR #2 merge and next-milestone planning (/gsd:new-milestone).
+last_updated: "2026-07-21T12:10:00.000Z"
 last_activity: 2026-07-21
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 19
-  completed_plans: 18
-  percent: 80
+  completed_plans: 19
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-12)
+See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 11 — email-verification-admin-race-fix
+**Current focus:** v1.1 shipped & archived — planning next milestone (`/gsd:new-milestone`)
 
 ## Current Position
 
-Phase: 11 (email-verification-admin-race-fix) — EXECUTING
-Plan: 11-08 complete (VERIFY-04 gap closed)
-Status: v1.1 shipped — PR #2 (family → main)
+Milestone: v1.1 Security Remediation — COMPLETE (archived, tagged v1.1)
+Phases: 7–11 all complete (19/19 plans)
+Status: Awaiting PR #2 merge; next milestone not yet scoped
 Last activity: 2026-07-21
 
 Progress: [██████████] 100%
@@ -104,10 +104,9 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 7's JWT fail-fast check must be gated exclusively on `NODE_ENV === 'production'` — an ungated check would crash the entire test/CI suite (env/test.env uses a deliberately weak shared secret).
-- Phase 9/11 column additions are invisible-safe in CI (globalSetup force-recreates tables) but will break any real, already-provisioned dev/prod database via `sequelize.sync()` not altering existing tables — each phase's plan must include the manual boot-and-verify step, not rely on green tests alone.
-- Phase 11 (email verification) breaks several v1.0 tests by design (`register.test.js` JWT-usability assertions, `Register.test.jsx` auto-navigate assertion, `createTestUser()` default) — these flips are expected TDD red steps, not regressions.
-- Plan 11-07 Task 3 (checkpoint:human-action, gate=blocking) is unresolved: human must apply backend/migrations/manual/011-add-email-verification-columns.sql to their real, pre-existing, non-force-synced local dev database and manually verify the 8-step register -> verify -> dashboard flow before Plan 11-07 / Phase 11 can be marked complete (ROADMAP SC-5).
+- None open — all v1.1 blockers resolved at milestone close (JWT fail-fast gated to production; Phases 9 & 11 manual migrations applied + SC-5 signed off 2026-07-21; the intended v1.0-test flips landed as TDD red steps).
+- Carry-forward note for any DB schema change in future milestones: `sequelize.sync()` does not alter existing tables, so a real pre-existing dev/prod DB needs a manual `ALTER TABLE` + human boot-verify — CI's force-recreate can't surface the gap. (Standing infra-debt: adopt Sequelize migrations.)
+- Carry-forward process note: this project runs on one long-lived `family` branch with a stale `origin/main`; decide the branch/merge/tag strategy at the *start* of the next milestone (the divergence grew 125→286 commits across v1.0→v1.1).
 
 ## Deferred Items
 
@@ -124,8 +123,8 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-07-21
-Stopped at: 11-08 complete — verifyEmail VERIFY-04 race fix (atomic transaction + FOR UPDATE + deadlock retry) executed, full backend suite 121/121 green, concurrency test stable 5/5. Phase close still gated on 11-07 Task 3 human checkpoint (apply migration to pre-existing dev DB + manual 8-step flow verification).
-Resume file: .planning/phases/11-email-verification-admin-race-fix/11-07-PLAN.md
+Stopped at: v1.1 Security Remediation milestone complete — Phases 7–11 verified, archived to milestones/v1.1-ROADMAP.md + milestones/v1.1-REQUIREMENTS.md, REQUIREMENTS.md removed for next milestone, tagged v1.1. PR #2 (family → main) open, awaiting merge.
+Resume file: (next) run /gsd:new-milestone to scope v2
 
 ## Operator Next Steps
 

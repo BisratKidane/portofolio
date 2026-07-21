@@ -2,23 +2,23 @@
 
 ## What This Is
 
-A full-stack authentication application built as a portfolio piece: a React + MUI single-page frontend talking to an Express + Apollo GraphQL backend, with user accounts persisted in MySQL via Sequelize. It ships working registration, JWT login, protected routes, a dashboard, and (as of v1.0) a full-stack automated test suite enforced in CI. This milestone hardens the security posture — remediating the account-takeover and brute-force vulnerabilities that v1.0 deliberately documented but left unfixed.
+A full-stack authentication application built as a portfolio piece: a React + MUI single-page frontend talking to an Express + Apollo GraphQL backend, with user accounts persisted in MySQL via Sequelize. It ships email-verified registration, JWT login with server-side session revocation, rate-limited auth mutations, protected routes, a dashboard, and (as of v1.0) a full-stack automated test suite enforced in CI. As of v1.1 the security posture is hardened — the account-takeover, brute-force, stale-session, and first-user-ADMIN privilege-escalation vulnerabilities that v1.0 deliberately documented are remediated.
 
 ## Core Value
 
 Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
 
-## Current Milestone: v1.1 Security Remediation
+## Shipped Milestone: v1.1 Security Remediation (2026-07-21)
 
-**Goal:** Remediate the security bugs deferred from v1.0 — closing the account-takeover and brute-force vectors — while keeping the test suite green.
+**Goal (met):** Remediate the security bugs deferred from v1.0 — closing the account-takeover and brute-force vectors — while keeping the test suite green. All 28 requirements delivered, all 5 phases (7–11) verified.
 
-**Target features:**
-- Reset-token exposure fixed: token delivered via a pluggable mailer (logs to console in dev, wired for a real provider in prod) and dropped from the API response
-- JWT secret fail-fast: refuse to boot in production when `JWT_SECRET` is unset or equals the insecure `'change-me'` default
-- Rate limiting on `login` / `register` / `requestPasswordReset` to block brute-force, enumeration, and reset-token guessing
-- Token/session revocation via `passwordChangedAt` so a password reset invalidates JWTs issued beforehand
-- Server-side password strength validation in `register` and `resetPassword`
-- Email verification on registration, closing the first-user-becomes-ADMIN land-grab race
+**Delivered:**
+- Reset-token exposure fixed: token delivered via a pluggable mailer (console in dev, SMTP-wired in prod), dropped from the API response, and hashed at rest
+- JWT secret fail-fast: production boot refuses an unset or `'change-me'` `JWT_SECRET`
+- Per-IP rate limiting on `login` / `register` / `requestPasswordReset` (AST-keyed Apollo plugin)
+- Token/session revocation via `passwordChangedAt` invalidating pre-reset JWTs
+- Server-side 8-char password minimum in `register` and `resetPassword`
+- Email verification on registration, closing the first-user-becomes-ADMIN land-grab race with a DB-enforced atomic verify+promote
 - CORS rejection no longer echoes the rejected origin back to the client
 
 ## Requirements
@@ -41,18 +41,19 @@ Changes to the app can be made with confidence — auth and core flows are prote
 - ✓ Frontend has a working test runner (`npm test` → Vitest) with React Testing Library + jsdom that renders and queries React components — Validated in Phase 4: Frontend Test Tooling (`frontend/vitest.config.js`, `frontend/test/setup.js`, `frontend/src/harness.test.jsx`)
 - ✓ Frontend auth surfaces (AuthContext, ProtectedRoute, Login/Register pages) are component-tested — Validated in Phase 5: Frontend Component Tests (`frontend/src/context/AuthContext.test.jsx`, `frontend/src/components/ProtectedRoute.test.jsx`, `frontend/src/pages/Login.test.jsx`, `frontend/src/pages/Register.test.jsx`)
 - ✓ A single root `npm test` runs both suites, and a GitHub Actions CI pipeline runs and enforces the full suite on every push/PR (green + red runs proven live; `main` branch protection requires the `test` check) — Validated in Phase 6: Root Orchestration & CI Pipeline (`package.json`, `.github/workflows/ci.yml`, `README.md`)
+- ✓ Reset token no longer returned over the API; delivered via a pluggable mailer (dev-logs, prod-wired) and hashed at rest — v1.1 (Phases 8, 9)
+- ✓ JWT secret fail-fast at startup in production — v1.1 (Phase 7)
+- ✓ Rate limiting on auth-sensitive mutations (login, register, requestPasswordReset), AST-keyed — v1.1 (Phase 10)
+- ✓ Token/session revocation via `passwordChangedAt` — v1.1 (Phase 9)
+- ✓ Server-side 8-char password strength validation — v1.1 (Phase 7)
+- ✓ Email verification on registration, with a DB-enforced race-safe first-user-ADMIN assignment — v1.1 (Phase 11)
+- ✓ CORS rejection no longer leaks the rejected origin — v1.1 (Phase 7)
 
 ### Active
 
-<!-- This milestone (v1.1): security remediation. Hypotheses until shipped; scoped in REQUIREMENTS.md. -->
+<!-- Next milestone (v2, TBD): candidates below to be refined via /gsd:new-milestone. Fresh REQUIREMENTS.md created at next milestone start. -->
 
-- Reset-token no longer returned over the API; delivered via a pluggable mailer (dev-logs, prod-wired)
-- JWT secret fail-fast at startup in production
-- Rate limiting on auth-sensitive mutations (login, register, requestPasswordReset)
-- Token/session revocation via `passwordChangedAt`
-- Server-side password strength validation
-- Email verification on registration (fixes first-user-ADMIN race)
-- CORS rejection no longer leaks the rejected origin
+- (None active — v1.1 shipped. Next milestone not yet scoped; see "Next Milestone Goals".)
 
 ### Out of Scope
 
@@ -91,16 +92,18 @@ Changes to the app can be made with confidence — auth and core flows are prote
 | Test-only for known bugs; document, don't fix | Keeps milestone scope clean; remediation is its own milestone with its own risk profile | ✓ Good — reset-token exposure + others tracked in `KNOWN-ISSUES.md`, none fixed |
 | Propose Vitest as the shared runner | One tool works for the ESM backend and the Vite/React frontend; less config surface | ✓ Good — Vitest 4.1.10 confirmed and used across both workspaces |
 | No browser E2E this milestone | Backend integration + frontend component tests meet the safety-net need at lower cost | ✓ Good — component + integration coverage met the safety-net need |
-| v1.1: remediate ALL documented security issues (7), not just the flagship reset-token bug | v1.0's test suite makes wholesale auth changes safe; fixing them together avoids re-touching the same resolvers repeatedly | Pending v1.1 |
-| v1.1: reset token delivered via a pluggable mailer that logs in dev, wired for a provider in prod | Portfolio app — closes the account-takeover vector without requiring a live email account; same mailer backs email verification | Pending v1.1 |
-| v1.1: each fix is test-driven; v1.0 tests that document bugs get flipped to assert the fixed behavior | The safety net only stays meaningful if it tracks the new intended behavior; CI must stay green | Pending v1.1 |
-| v1.1 is a minor bump (v1.1, not v2.0) | Hardening + fixes on the existing feature set; no new auth methods or rewrite | Pending v1.1 |
+| v1.1: remediate ALL documented security issues (7), not just the flagship reset-token bug | v1.0's test suite makes wholesale auth changes safe; fixing them together avoids re-touching the same resolvers repeatedly | ✓ Good — all 7 remediated across Phases 7–11, CI green throughout |
+| v1.1: reset token delivered via a pluggable mailer that logs in dev, wired for a provider in prod | Portfolio app — closes the account-takeover vector without requiring a live email account; same mailer backs email verification | ✓ Good — one `sendMail()` abstraction backs both reset and verification |
+| v1.1: each fix is test-driven; v1.0 tests that document bugs get flipped to assert the fixed behavior | The safety net only stays meaningful if it tracks the new intended behavior; CI must stay green | ✓ Good — every fix TDD'd red-green; backend suite 121/121 at close |
+| v1.1 is a minor bump (v1.1, not v2.0) | Hardening + fixes on the existing feature set; no new auth methods or rewrite | ✓ Good — shipped as v1.1 |
+| v1.1: verify+promote made atomic via one transaction + `FOR UPDATE` + retry-once-on-deadlock (Phase 11 CR-01 Option B) | Statement-level timing was non-atomic under real MySQL concurrency (burned the losing racer's token); a locking read structurally serializes verifiers | ✓ Good — re-verified 8/8; reverting the fix fails the concurrency test 3/3 |
+| v1.1: rate limiting keyed off the parsed GraphQL operation AST, not the client `operationName` string | The client-supplied name is spoofable — an attacker could rename an operation to dodge the limit | ✓ Good — closed the rename bypass; 0-match grep proof on `operationName` |
 
 ## Current State
 
 **Shipped: v1.0 Full-Stack Testing Safety Net (2026-07-12).** The app now has an automated test suite across the whole stack — 51 tests (backend 39: unit + integration; frontend 12: component), a Vitest runner in each workspace, an isolated MySQL test database provisioned/torn down per run, a single root `npm test`, and a GitHub Actions CI pipeline that runs and enforces the suite on every push/PR. `main` branch protection requires the `test` check, so a red build blocks merge (proven live). No application runtime behavior was changed; known security bugs are documented in `KNOWN-ISSUES.md`, not fixed. Delivered via PR #2 (family → main).
 
-**In progress: v1.1 Security Remediation.** Phase 9 complete (2026-07-20): session revocation via `passwordChangedAt` — a password reset now invalidates JWTs issued beforehand (`getUserFromRequest` rejects tokens whose `iat` predates the user's `passwordChangedAt`, null-safe seconds-floor compare), and password-reset tokens are stored hashed (sha256) at rest (RESET-06). Validated SESS-01, SESS-02, SESS-03, RESET-06; backend suite at 75 tests, all green.
+**Shipped: v1.1 Security Remediation (2026-07-21).** All 7 documented security bugs remediated across Phases 7–11 (19 plans, 42 tasks), TDD red-green-refactor with CI green throughout: reset-token exposure closed (mailer-delivered, dropped from the API, hashed at rest), JWT production fail-fast, per-IP AST-keyed rate limiting, `passwordChangedAt` session revocation, 8-char password minimum, email-verified registration, and a DB-enforced race-safe first-verified-user-ADMIN assignment (atomic transaction + `FOR UPDATE` + deadlock retry). All 5 phases verified (Phase 11 re-verified 8/8 after gap-closure plan 11-08); backend suite 121/121 green; SC-5 manual boot-and-verify signed off. Shipped via PR #2 (family → main).
 
 ## Next Milestone Goals
 
@@ -127,4 +130,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-20 — Phase 9 (Session Revocation via passwordChangedAt) complete*
+*Last updated: 2026-07-21 after v1.1 Security Remediation milestone*
