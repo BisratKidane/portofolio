@@ -121,6 +121,8 @@ Changes to the app can be made with confidence — auth and core flows are prote
 
 **Shipped: v1.1 Security Remediation (2026-07-21).** All 7 documented security bugs remediated across Phases 7–11 (19 plans, 42 tasks), TDD red-green-refactor with CI green throughout: reset-token exposure closed (mailer-delivered, dropped from the API, hashed at rest), JWT production fail-fast, per-IP AST-keyed rate limiting, `passwordChangedAt` session revocation, 8-char password minimum, email-verified registration, and a DB-enforced race-safe first-verified-user-ADMIN assignment (atomic transaction + `FOR UPDATE` + deadlock retry). All 5 phases verified (Phase 11 re-verified 8/8 after gap-closure plan 11-08); backend suite 121/121 green; SC-5 manual boot-and-verify signed off. Shipped via PR #2 (family → main).
 
+**In progress: v2.0 Collaborative Family Tree.** Phase 12 (Family Data Model Foundation) complete — the family-tree data model exists and is provably correct before any resolver/permission/UI logic is built on it: `FamilyMember` model (required firstname/lastname/gender, derived `fullname`, optional fields), self-referencing `motherId`/`fatherId` FKs with `ON DELETE SET NULL`, a symmetric `Spouse` join model with canonical ordered-pair hashing, a hand-rolled cycle-prevention ancestor-walk, and transactional `deleteMember` with married-in one-hop delete semantics (D-03/D-04). Verified 5/5; backend suite 171/171 green; TDD red-green throughout. Requirements MEM-01/02/03/05 and REL-01/02/03/05 validated. Advisory code review (12-REVIEW.md) flagged latent ID string/number coercion (WR-01) and a founding-couple delete edge case (WR-02) to revisit when resolvers land in Phase 14.
+
 ## Next Milestone Goals
 
 Candidate directions after v1.1 (to be refined via `/gsd:new-milestone`):
@@ -146,4 +148,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-21 — v2.0 Collaborative Family Tree milestone started*
+*Last updated: 2026-07-21 — Phase 12 (Family Data Model Foundation) complete*
