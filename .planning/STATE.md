@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Collaborative Family Tree
 status: executing
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-07-21T21:29:16.888Z"
+stopped_at: Completed 13-03-PLAN.md
+last_updated: "2026-07-21T21:35:27.536Z"
 last_activity: 2026-07-21
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 17
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 13 (membership-gating-account-linking) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-21
 
-Progress: [████████░░] 75%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [████████░░] 75%
 *Updated after each plan completion*
 | Phase 13 P01 | 15min | 2 tasks | 6 files |
 | Phase 13 P02 | 10min | 2 tasks | 8 files |
+| Phase 13 P03 | 12min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,9 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 13]: familyMember/familyMembers resolvers return raw Sequelize instances so the fullname VIRTUAL getter resolves via default GraphQL field resolution
 - [Phase 13]: linkUserToMember validates memberId/newMember mutual exclusivity via (memberId == null) === (newMember == null), and relies on the DB UniqueConstraintError (not a pre-emptive findOne) to catch duplicate-link races (D-07/T-13-06)
 - [Phase 13]: create-and-link path creates only a bare FamilyMember (no linkParent/addChild/setSpouse), keeping D-05's scope boundary enforced by a zero-match grep
+- [Phase 13]: ProtectedRoute's pending-gate guard sits between the !user check and the allowedRoles check so unlinked users are gated before any role-mismatch redirect
+- [Phase 13]: familyMemberId added to ME_QUERY, LOGIN_MUTATION, and VERIFY_EMAIL_MUTATION (not just ME_QUERY) since authenticate() never re-runs me after login/verifyEmail
+- [Phase 13]: Pending.jsx is deliberately static (no useEffect/polling/admin-contact link) per D-02, and bounces linked/ADMIN users to /dashboard, unauthenticated to /login
 
 ### Pending Todos
 
@@ -108,8 +112,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-21T21:29:16.882Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-07-21T21:35:27.530Z
+Stopped at: Completed 13-03-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
