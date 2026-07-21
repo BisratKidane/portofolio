@@ -11,4 +11,16 @@ describe('database connectivity', () => {
     const count = await models.User.count();
     expect(count).toBeGreaterThanOrEqual(0);
   });
+
+  it('can query the FamilyMember table', async () => {
+    expect(models.FamilyMember).toBeDefined();
+    const count = await models.FamilyMember.count();
+    expect(count).toBeGreaterThanOrEqual(0);
+  });
+
+  it('can query the Spouse table', async () => {
+    expect(models.Spouse).toBeDefined();
+    const count = await models.Spouse.count();
+    expect(count).toBeGreaterThanOrEqual(0);
+  });
 });

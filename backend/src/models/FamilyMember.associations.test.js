@@ -151,6 +151,7 @@ describe('mothersname independence (D-06)', () => {
       lastname: 'Doe',
       gender: 'Male'
     });
+    await member.reload();
 
     expect(member.mothersname).toBeNull();
     expect(member.motherId).toBeFalsy();
