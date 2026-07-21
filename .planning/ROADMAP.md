@@ -41,7 +41,7 @@ Full detail archived in [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 
 **Milestone Goal:** Add a family-tree domain where app access is gated on being an admin-linked member; members collaboratively add/edit their immediate relatives on `/manage`, and any linked member views a deep, pan/zoom tree on `/family` — built test-first (TDD) with CI staying green.
 
-- [ ] **Phase 12: Family Data Model Foundation** - Self-referencing parent/child FKs, symmetric spouse join table, cycle/cascade safety, and a fresh-DB sync smoke test.
+- [x] **Phase 12: Family Data Model Foundation** - Self-referencing parent/child FKs, symmetric spouse join table, cycle/cascade safety, and a fresh-DB sync smoke test. (completed 2026-07-21)
 - [ ] **Phase 13: Membership Gating & Account Linking** - Registered users are gated behind admin-linking to a family member node, with a carve-out so the first admin isn't locked out.
 - [ ] **Phase 14: Relationship Resolvers, Permission Scoping & Query Safety** - Members can only add/edit their immediate relatives — enforced server-side, resistant to privilege escalation, safe against N+1/DoS.
 - [ ] **Phase 15: Sibling Dedup Guard & /manage Self-Service UI** - `/manage` lets members edit their scope and admins manage the whole tree, with duplicate-child creation guarded.
@@ -80,7 +80,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 12-04-PLAN.md — setSpouse/getSpouseRows + married-in one-hop deleteMember, full-suite phase gate (REL-02, D-03/D-04)
+- [x] 12-04-PLAN.md — setSpouse/getSpouseRows + married-in one-hop deleteMember, full-suite phase gate (REL-02, D-03/D-04)
 
 ### Phase 13: Membership Gating & Account Linking
 
@@ -177,7 +177,7 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 9. Session Revocation via passwordChangedAt | v1.1 | 3/3 | Complete | 2026-07-20 |
 | 10. Rate Limiting on Auth Mutations | v1.1 | 3/3 | Complete | 2026-07-20 |
 | 11. Email Verification & ADMIN Race Fix | v1.1 | 8/8 | Complete | 2026-07-21 |
-| 12. Family Data Model Foundation | v2.0 | 3/4 | In Progress|  |
+| 12. Family Data Model Foundation | v2.0 | 4/4 | Complete   | 2026-07-21 |
 | 13. Membership Gating & Account Linking | v2.0 | 0/TBD | Not started | - |
 | 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 0/TBD | Not started | - |
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 0/TBD | Not started | - |
