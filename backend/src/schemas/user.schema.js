@@ -9,6 +9,7 @@ export const userTypeDefs = `#graphql
     name: String!
     email: String!
     role: Role!
+    familyMemberId: ID
     createdAt: String!
     updatedAt: String!
   }
@@ -36,6 +37,7 @@ export const userTypeDefs = `#graphql
     me: User
     dashboard: Dashboard!
     users: [User!]!
+    unlinkedUsers: [User!]!
   }
 
   type Mutation {
@@ -46,5 +48,6 @@ export const userTypeDefs = `#graphql
     resetPassword(token: String!, password: String!): Boolean!
     verifyEmail(token: String!): AuthPayload!
     resendVerificationEmail(email: String!): PasswordResetPayload!
+    linkUserToMember(userId: ID!, memberId: ID, newMember: NewFamilyMemberInput): User!
   }
 `;

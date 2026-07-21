@@ -1,3 +1,4 @@
+import { UniqueConstraintError } from 'sequelize';
 import {
   createResetToken,
   createVerificationToken,
@@ -40,6 +41,10 @@ export const userResolvers = {
     users: async (_parent, _args, { models, user }) => {
       requireAdmin(user);
       return models.User.findAll({ order: [['createdAt', 'DESC']] });
+    },
+    unlinkedUsers: async (_parent, _args, { models, user }) => {
+      requireAdmin(user);
+      return models.User.findAll({ where: { familyMemberId: null }, order: [['createdAt', 'DESC']] });
     }
   },
   Mutation: {
@@ -198,6 +203,37 @@ export const userResolvers = {
       if (elapsed < MIN_RESET_RESPONSE_MS) await delay(MIN_RESET_RESPONSE_MS - elapsed);
 
       return { message: RESEND_VERIFICATION_MESSAGE };
+    },
+    linkUserToMember: async (_parent, { userId, memberId, newMember }, { models, user }) => {
+      requireAdmin(user);
+
+      if ((memberId == null) === (newMember == null)) {
+        throw new Error('Provide exactly one of memberId or newMember.');
+      }
+
+      const targetUser = await models.User.findByPk(userId);
+      if (!targetUser) throw new Error('User not found.');
+
+      let resolvedMemberId;
+      if (memberId != null) {
+        const member = await models.FamilyMember.findByPk(memberId);
+        if (!member) throw new Error('Family member not found.');
+        resolvedMemberId = memberId;
+      } else {
+        const createdMember = await models.FamilyMember.create(newMember);
+        resolvedMemberId = createdMember.id;
+      }
+
+      try {
+        await targetUser.update({ familyMemberId: resolvedMemberId });
+      } catch (error) {
+        if (error instanceof UniqueConstraintError) {
+          throw new Error('This family member is already linked to another account.');
+        }
+        throw error;
+      }
+
+      return targetUser;
     }
   }
 };
