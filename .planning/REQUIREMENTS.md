@@ -50,14 +50,14 @@
 
 ### Email Verification (VERIFY) — Fix #6
 
-- [ ] **VERIFY-01**: The `User` model gains `emailVerified` (boolean, default false), `emailVerificationToken`, and `emailVerificationExpiresAt` columns.
+- [x] **VERIFY-01**: The `User` model gains `emailVerified` (boolean, default false), `emailVerificationToken`, and `emailVerificationExpiresAt` columns.
 - [ ] **VERIFY-02**: `register` creates an unverified user, sends a verification email via the mailer, and returns a message-only payload — no JWT, no session, no ADMIN role granted at registration time.
 - [ ] **VERIFY-03**: A new `verifyEmail(token)` mutation flips `emailVerified` to true, clears the token/expiry (single-use), and returns an `AuthPayload` so the user lands logged in.
 - [ ] **VERIFY-04**: ADMIN role is assigned at verification time to the first *verified* user only — closing the registration-speed land-grab race.
 - [ ] **VERIFY-05**: `login` rejects an unverified account with a clear message after password validation succeeds.
 - [ ] **VERIFY-06**: The verification token is cryptographically random, single-use, and time-limited (24 h expiry).
 - [ ] **VERIFY-07**: A `resendVerificationEmail(email)` mutation reissues a fresh token/email for an unverified account, so an expired/lost verification email is recoverable without re-registration.
-- [ ] **VERIFY-08**: The frontend gains a `/verify-email` route that reads the token from the query string, calls `verifyEmail`, and logs the user in on success; `Register` no longer auto-navigates to the dashboard but shows a "check your email" state; `AuthContext` handles the message-only register response without setting a session.
+- [x] **VERIFY-08**: The frontend gains a `/verify-email` route that reads the token from the query string, calls `verifyEmail`, and logs the user in on success; `Register` no longer auto-navigates to the dashboard but shows a "check your email" state; `AuthContext` handles the message-only register response without setting a session.
 
 ### CORS Hardening (CORS) — Fix #7
 
