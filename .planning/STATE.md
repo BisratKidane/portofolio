@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Security Remediation
-status: executing
-stopped_at: 11-07 Tasks 1-2 complete (Register confirmation panel, VerifyEmail page/route); paused at Task 3 human-action checkpoint (apply Plan 11-03 migration + manual flow verification)
-last_updated: "2026-07-21T11:00:00.000Z"
-last_activity: 2026-07-21 -- Phase 11 planning complete
+status: "v1.1 shipped — PR #2 (family → main)"
+stopped_at: 11-08 complete — verifyEmail VERIFY-04 race fix (atomic transaction + FOR UPDATE + deadlock retry) executed, full backend suite 121/121 green, concurrency test stable 5/5. Phase close still gated on 11-07 Task 3 human checkpoint (apply migration to pre-existing dev DB + manual 8-step flow verification).
+last_updated: "2026-07-21T11:52:38.878Z"
+last_activity: 2026-07-21
 progress:
   total_phases: 5
   completed_phases: 4
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-07-12)
 
 Phase: 11 (email-verification-admin-race-fix) — EXECUTING
 Plan: 11-08 complete (VERIFY-04 gap closed)
-Status: 11-08 done; 11-07 Task 3 human checkpoint (migration boot-and-verify) still pending for phase close
-Last activity: 2026-07-21 -- 11-08 verifyEmail race fix executed (atomic transaction + FOR UPDATE + deadlock retry)
+Status: v1.1 shipped — PR #2 (family → main)
+Last activity: 2026-07-21
 
 Progress: [██████████] 100%
 
