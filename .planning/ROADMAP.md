@@ -58,9 +58,15 @@ Full detail archived in [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
   1. A family member can be created with required `firstname`/`lastname`/`gender` and optional `mothersname`/`email`/`birthdate`/`deathdate`/`phone`/`address`; `fullname` is derived, never entered as separate input, and the model is persisted via Sequelize following the existing barrel/model conventions.
   2. A member's mother and/or father can be linked (existing or newly created), a child can be added establishing the parent→child link, and a spouse link set from either member reads identically from both sides (symmetric write).
   3. Attempting a parent/child edit that would make a member their own ancestor is rejected with a clear error (cycle-prevention check), proven by a test that constructs and attempts the cycle.
-  4. Deleting a member does not cascade-delete their children/spouse/parents — every self-referencing association explicitly sets dependents' references to null, proven by a test that deletes a mid-tree member and asserts descendants survive.
+  4. Deleting a member never cascade-deletes any blood relative (children/parents/blood spouse) — every self-referencing association explicitly sets dependents' references to null; a **married-in-only** spouse (no linked mother, no linked father, no children) is removed one hop alongside their deleted partner (revised per 12-CONTEXT.md D-03/D-04) — proven by tests that (a) delete a mid-tree blood member and assert descendants + blood spouse survive, and (b) delete a member whose spouse is married-in-only and assert that spouse is removed one hop deep, with no recursion.
   5. `sequelize.sync({ force: true })` boots cleanly against a genuinely fresh database with the new self-referencing models (CI smoke test), and the full backend suite is green, built test-first (TDD red-green).
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — FamilyMember core model: required/optional fields, gender ENUM, derived fullname, full date validation (MEM-01/02/03/05)
+- [ ] 12-02-PLAN.md — Self-referencing parent associations (motherId/fatherId, SET NULL) + Spouse join model with canonical ordering (REL-01/02/03)
+- [ ] 12-03-PLAN.md — Cycle-prevention ancestor-walk + linkParent/addChild service helpers (REL-01/03/05)
+- [ ] 12-04-PLAN.md — setSpouse/getSpouseRows + married-in one-hop deleteMember, full-suite phase gate (REL-02, D-03/D-04)
 
 ### Phase 13: Membership Gating & Account Linking
 **Goal**: App access is gated on being an admin-linked family member — enforced at the resolver layer, not just the frontend route — with an explicit carve-out so the first bootstrapped admin isn't locked out of the tools needed to bootstrap the tree.
@@ -142,7 +148,7 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 9. Session Revocation via passwordChangedAt | v1.1 | 3/3 | Complete | 2026-07-20 |
 | 10. Rate Limiting on Auth Mutations | v1.1 | 3/3 | Complete | 2026-07-20 |
 | 11. Email Verification & ADMIN Race Fix | v1.1 | 8/8 | Complete | 2026-07-21 |
-| 12. Family Data Model Foundation | v2.0 | 0/TBD | Not started | - |
+| 12. Family Data Model Foundation | v2.0 | 0/4 | Planned | - |
 | 13. Membership Gating & Account Linking | v2.0 | 0/TBD | Not started | - |
 | 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 0/TBD | Not started | - |
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 0/TBD | Not started | - |
