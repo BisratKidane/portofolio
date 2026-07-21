@@ -128,33 +128,45 @@ export const userResolvers = {
         throw new Error('The email verification token is invalid or has expired.');
       }
 
-      // Atomic conditional update: only succeeds if the token is still the one we just read.
-      // This closes the read-then-write race where two concurrent requests could both pass
-      // the findOne/expiry check and both save() successfully (mirrors resetPassword's WR-02 fix).
-      const [affectedCount] = await models.User.update(
-        { emailVerified: true, emailVerificationToken: null, emailVerificationExpiresAt: null },
-        { where: { id: user.id, emailVerificationToken: hashed }, individualHooks: true }
-      );
-      if (affectedCount === 0) throw new Error('The email verification token is invalid or has expired.');
+      const sequelize = models.User.sequelize;
 
-      // Race-safe ADMIN assignment: a second, separate atomic update. Only sets role='ADMIN'
-      // if no verified ADMIN exists yet — under two concurrent verifications, exactly one
-      // wins this conditional UPDATE and the loser's WHERE clause simply matches zero rows.
-      // An already-filled ADMIN slot is never reopened (D-04/D-06).
-      // MySQL forbids selecting directly from the same table being updated inside a subquery
-      // ("You can't specify target table 'users' for update in FROM clause"), so the
-      // NOT EXISTS (SELECT 1 FROM users WHERE role = 'ADMIN' AND emailVerified = true) check
-      // is expressed as an UPDATE ... JOIN against a materialized derived table instead —
-      // functionally identical atomicity/race-safety, MySQL-compatible syntax.
-      await models.User.sequelize.query(
-        `UPDATE users
-         JOIN (
-           SELECT COUNT(*) AS adminCount FROM users WHERE role = 'ADMIN' AND emailVerified = true
-         ) AS existingAdmin
-         SET users.role = 'ADMIN'
-         WHERE users.id = :id AND users.role != 'ADMIN' AND existingAdmin.adminCount = 0`,
-        { replacements: { id: user.id } }
-      );
+      // Verify-and-promote run inside a single transaction so token consumption and the single
+      // ADMIN-slot decision commit (or roll back) as one atomic unit. The admin-count read takes
+      // a locking FOR UPDATE read, so concurrent verifiers serialize on it — structurally
+      // guaranteeing at most one ADMIN rather than relying on statement-level autocommit timing.
+      // Nothing is visible until the whole transaction commits, so a deadlock arising from two
+      // racers contending on lock order is always safe to retry: the losing racer's token is not
+      // yet consumed on rollback, so re-running the transaction is idempotent (D-04/D-05/D-11).
+      const verifyAndPromote = () =>
+        sequelize.transaction(async (t) => {
+          // Atomic conditional update: only succeeds if the token is still the one we just read.
+          const [affectedCount] = await models.User.update(
+            { emailVerified: true, emailVerificationToken: null, emailVerificationExpiresAt: null },
+            { where: { id: user.id, emailVerificationToken: hashed }, individualHooks: true, transaction: t }
+          );
+          if (affectedCount === 0) throw new Error('The email verification token is invalid or has expired.');
+
+          const [{ adminCount }] = await sequelize.query(
+            "SELECT COUNT(*) AS adminCount FROM users WHERE role = 'ADMIN' AND emailVerified = true FOR UPDATE",
+            { transaction: t, type: sequelize.QueryTypes.SELECT }
+          );
+          if (Number(adminCount) === 0) {
+            await models.User.update({ role: 'ADMIN' }, { where: { id: user.id }, transaction: t });
+          }
+        });
+
+      const isDeadlock = (error) =>
+        error?.original?.code === 'ER_LOCK_DEADLOCK' || error?.parent?.code === 'ER_LOCK_DEADLOCK';
+
+      try {
+        await verifyAndPromote();
+      } catch (error) {
+        // A lock-order deadlock between two concurrent racers rolls back cleanly (nothing
+        // committed, single-use token not consumed), so it is safe to retry exactly once. Any
+        // other error, or a second deadlock, propagates unchanged.
+        if (!isDeadlock(error)) throw error;
+        await verifyAndPromote();
+      }
 
       await user.reload();
       return { token: signToken(user), user };
