@@ -1,7 +1,8 @@
 ---
 phase: 11-email-verification-admin-race-fix
 verified: 2026-07-21T11:10:00Z
-status: human_needed
+status: pass
+sc5_signed_off: 2026-07-21 -- human confirmed migration applied + 8-step flow verified against real pre-existing dev DB
 score: 8/8 must-haves verified
 overrides_applied: 0
 re_verification:
@@ -33,7 +34,7 @@ human_verification:
 
 **Phase Goal:** New accounts must prove ownership of their email before they receive a usable session or any chance at the ADMIN role — closing the first-user-becomes-ADMIN land-grab race.
 **Verified:** 2026-07-21T11:10:00Z (re-verification after 11-08 gap closure)
-**Status:** human_needed (automated VERIFY-04 gap CLOSED; ROADMAP SC-5 human checkpoint remains)
+**Status:** pass (automated VERIFY-04 gap CLOSED; ROADMAP SC-5 human checkpoint signed off 2026-07-21 — migration applied + 8-step flow verified against a real pre-existing dev DB)
 **Re-verification:** Yes — after gap closure (previous: gaps_found 7/8, VERIFY-04 failed)
 
 ## Re-Verification Summary
@@ -46,8 +47,9 @@ RED, `7bb006a` GREEN, `63f7fe6` docs) closed this gap. This re-verification conf
 against the actual code and tests — not the SUMMARY narrative.
 
 **VERIFY-04 is now MET.** Score improves 7/8 → 8/8. No regressions to VERIFY-01/02/03/05/06/07/08.
-The only remaining item is the ROADMAP SC-5 human checkpoint, which by nature cannot be verified
-programmatically.
+The ROADMAP SC-5 human checkpoint was signed off by the user on 2026-07-21 (migration applied to a
+real pre-existing dev DB + full 8-step register → verify → dashboard flow verified end-to-end),
+closing the last outstanding item — status is now `pass`.
 
 ## Goal Achievement
 

@@ -160,7 +160,7 @@ Plans:
 
 **Wave 4** *(blocked on Waves 1-3 — runs last so the manual checkpoint proves the whole stack)*
 
-- [ ] 11-07-PLAN.md — Register confirmation state + /verify-email route + manual migration boot-and-verify (VERIFY-08 / SC-5)
+- [x] 11-07-PLAN.md — Register confirmation state + /verify-email route + manual migration boot-and-verify (VERIFY-08 / SC-5) — SC-5 human sign-off 2026-07-21
 
 **Wave 5** *(gap closure — post-verification remediation of the VERIFY-04 race)*
 
