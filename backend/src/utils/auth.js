@@ -40,6 +40,12 @@ export function requireAdmin(user) {
   if (user.role !== 'ADMIN') throw new Error('Admin access is required.');
 }
 
+export function requireFamilyAccess(user) {
+  requireAuth(user);
+  if (user.role === 'ADMIN') return;
+  if (!user.familyMemberId) throw new Error('Your account is not yet linked to a family member.');
+}
+
 export function createResetToken() {
   return crypto.randomBytes(32).toString('hex');
 }
