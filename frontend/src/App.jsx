@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
+import AdminLinkMembers from './pages/AdminLinkMembers.jsx';
 import AppLayout from './components/AppLayout.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -22,6 +23,9 @@ export default function App() {
         <Route path="pending" element={<Pending />} />
         <Route element={<ProtectedRoute />}>
           <Route path="dashboard" element={<Dashboard />} />
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+          <Route path="admin/link-members" element={<AdminLinkMembers />} />
         </Route>
       </Route>
     </Routes>
