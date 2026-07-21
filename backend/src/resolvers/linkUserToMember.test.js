@@ -1,0 +1,163 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { models } from '../models/index.js';
+import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
+
+const LINK_USER_TO_MEMBER_MUTATION = `
+  mutation LinkUserToMember($userId: ID!, $memberId: ID, $newMember: NewFamilyMemberInput) {
+    linkUserToMember(userId: $userId, memberId: $memberId, newMember: $newMember) {
+      id
+      familyMemberId
+    }
+  }
+`;
+
+beforeEach(resetTables);
+
+describe('linkUserToMember', () => {
+  it('rejects a non-admin caller', async () => {
+    const caller = await createTestUser({ role: 'USER' });
+    const target = await createTestUser({ role: 'USER' });
+    const member = await models.FamilyMember.create({ firstname: 'Ada', lastname: 'Lovelace', gender: 'Female' });
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      { userId: String(target.id), memberId: String(member.id) },
+      caller
+    );
+
+    expect(errors[0].message).toBe('Admin access is required.');
+    expect(data).toBeNull();
+  });
+
+  it('links an existing user to an existing member', async () => {
+    const admin = await createTestUser({ role: 'ADMIN' });
+    const target = await createTestUser({ role: 'USER' });
+    const member = await models.FamilyMember.create({ firstname: 'Ada', lastname: 'Lovelace', gender: 'Female' });
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      { userId: String(target.id), memberId: String(member.id) },
+      admin
+    );
+
+    expect(errors).toBeUndefined();
+    expect(data.linkUserToMember.familyMemberId).toBe(String(member.id));
+  });
+
+  it('creates a bare FamilyMember and links it in one step (D-04/D-05)', async () => {
+    const admin = await createTestUser({ role: 'ADMIN' });
+    const target = await createTestUser({ role: 'USER' });
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      {
+        userId: String(target.id),
+        newMember: { firstname: 'Grace', lastname: 'Hopper', gender: 'Female' }
+      },
+      admin
+    );
+
+    expect(errors).toBeUndefined();
+    expect(data.linkUserToMember.familyMemberId).not.toBeNull();
+
+    const created = await models.FamilyMember.findByPk(data.linkUserToMember.familyMemberId);
+    expect(created.firstname).toBe('Grace');
+    expect(created.lastname).toBe('Hopper');
+    expect(created.motherId).toBeNull();
+    expect(created.fatherId).toBeNull();
+  });
+
+  it('throws when neither memberId nor newMember is supplied', async () => {
+    const admin = await createTestUser({ role: 'ADMIN' });
+    const target = await createTestUser({ role: 'USER' });
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      { userId: String(target.id) },
+      admin
+    );
+
+    expect(errors[0].message).toBe('Provide exactly one of memberId or newMember.');
+    expect(data).toBeNull();
+  });
+
+  it('throws when both memberId and newMember are supplied', async () => {
+    const admin = await createTestUser({ role: 'ADMIN' });
+    const target = await createTestUser({ role: 'USER' });
+    const member = await models.FamilyMember.create({ firstname: 'Ada', lastname: 'Lovelace', gender: 'Female' });
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      {
+        userId: String(target.id),
+        memberId: String(member.id),
+        newMember: { firstname: 'Grace', lastname: 'Hopper', gender: 'Female' }
+      },
+      admin
+    );
+
+    expect(errors[0].message).toBe('Provide exactly one of memberId or newMember.');
+    expect(data).toBeNull();
+  });
+
+  it('throws "User not found." when userId does not resolve to an existing User', async () => {
+    const admin = await createTestUser({ role: 'ADMIN' });
+    const member = await models.FamilyMember.create({ firstname: 'Ada', lastname: 'Lovelace', gender: 'Female' });
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      { userId: '999999', memberId: String(member.id) },
+      admin
+    );
+
+    expect(errors[0].message).toBe('User not found.');
+    expect(data).toBeNull();
+  });
+
+  it('throws "Family member not found." when memberId does not resolve to an existing FamilyMember', async () => {
+    const admin = await createTestUser({ role: 'ADMIN' });
+    const target = await createTestUser({ role: 'USER' });
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      { userId: String(target.id), memberId: '999999' },
+      admin
+    );
+
+    expect(errors[0].message).toBe('Family member not found.');
+    expect(data).toBeNull();
+  });
+
+  it('throws a friendly error when memberId is already linked to a different user (D-07)', async () => {
+    const admin = await createTestUser({ role: 'ADMIN' });
+    const member = await models.FamilyMember.create({ firstname: 'Ada', lastname: 'Lovelace', gender: 'Female' });
+    await createTestUser({ role: 'USER', familyMemberId: member.id });
+    const secondTarget = await createTestUser({ role: 'USER' });
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      { userId: String(secondTarget.id), memberId: String(member.id) },
+      admin
+    );
+
+    expect(errors[0].message).toBe('This family member is already linked to another account.');
+    expect(data).toBeNull();
+  });
+
+  it('allows an ADMIN to self-link via newMember (ACC-03)', async () => {
+    const admin = await createTestUser({ role: 'ADMIN' });
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      {
+        userId: String(admin.id),
+        newMember: { firstname: 'Admin', lastname: 'Self', gender: 'Other' }
+      },
+      admin
+    );
+
+    expect(errors).toBeUndefined();
+    expect(data.linkUserToMember.id).toBe(String(admin.id));
+    expect(data.linkUserToMember.familyMemberId).not.toBeNull();
+  });
+});
