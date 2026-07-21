@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Collaborative Family Tree
-status: executing
-stopped_at: Phase 12 context gathered
-last_updated: "2026-07-21T18:28:55.315Z"
+status: ready_to_plan
+stopped_at: Phase 12 complete (4/4) — ready to discuss Phase 13
+last_updated: 2026-07-21T19:57:58.912Z
 last_activity: 2026-07-21 -- Phase 12 execution started
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
+  completed_plans: 4
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 12 — family-data-model-foundation
+**Current focus:** Phase 13 — membership gating & account linking
 
 ## Current Position
 
-Phase: 12 (family-data-model-foundation) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 12
-Last activity: 2026-07-21 -- Phase 12 execution started
+Phase: 13
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-21
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -36,7 +36,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 24 (v1.0: 13, v1.1: 19) — none yet in v2.0
+- Total plans completed: 28 (v1.0: 13, v1.1: 19) — none yet in v2.0
 - Average duration: - min
 - Total execution time: 0 hours (v2.0)
 
@@ -47,6 +47,7 @@ Progress: [░░░░░░░░░░] 0%
 | 01–06 (v1.0) | 13 | - | - |
 | 07–11 (v1.1) | 19 | - | - |
 | 12–17 (v2.0) | TBD | - | - |
+| 12 | 4 | - | - |
 
 **Recent Trend:**
 

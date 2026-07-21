@@ -11,19 +11,19 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 
 ### Member Records (MEM)
 
-- [ ] **MEM-01**: A user can create a family member with required `firstname`, `lastname`, and `gender` (one of Male / Female / Other).
-- [ ] **MEM-02**: A member record captures optional `mothersname`, `email`, `birthdate`, `deathdate`, `phone`, and `address`.
-- [ ] **MEM-03**: A member's `fullname` is displayed as a derived combination of `firstname` + `lastname` (not entered or stored as separate input).
+- [x] **MEM-01**: A user can create a family member with required `firstname`, `lastname`, and `gender` (one of Male / Female / Other).
+- [x] **MEM-02**: A member record captures optional `mothersname`, `email`, `birthdate`, `deathdate`, `phone`, and `address`.
+- [x] **MEM-03**: A member's `fullname` is displayed as a derived combination of `firstname` + `lastname` (not entered or stored as separate input).
 - [ ] **MEM-04**: A user can edit the fields of a family member that is within their permitted scope.
-- [ ] **MEM-05**: Family members are persisted in MySQL via a new Sequelize model that follows the existing barrel/model conventions.
+- [x] **MEM-05**: Family members are persisted in MySQL via a new Sequelize model that follows the existing barrel/model conventions.
 
 ### Relationships (REL)
 
-- [ ] **REL-01**: A user can set a member's parents (mother and/or father) by linking to existing members or creating them.
-- [ ] **REL-02**: A user can link two members as spouses, and the relationship reads correctly from either side (symmetric).
-- [ ] **REL-03**: A user can add a child to a member, establishing the parent→child link.
+- [x] **REL-01**: A user can set a member's parents (mother and/or father) by linking to existing members or creating them.
+- [x] **REL-02**: A user can link two members as spouses, and the relationship reads correctly from either side (symmetric).
+- [x] **REL-03**: A user can add a child to a member, establishing the parent→child link.
 - [ ] **REL-04**: Siblings are derived from shared parents (never stored) and presented as such.
-- [ ] **REL-05**: The system rejects any relationship edit that would create a cycle (a member cannot become their own ancestor).
+- [x] **REL-05**: The system rejects any relationship edit that would create a cycle (a member cannot become their own ancestor).
 - [ ] **REL-06**: The system blocks creating/linking a child whose `firstname` duplicates an existing child that shares **either** parent (any-shared-parent scope).
 
 ### Access & Account Linking (ACC)
@@ -116,16 +116,16 @@ Which phase covers which requirement.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MEM-01 | Phase 12 | Pending |
-| MEM-02 | Phase 12 | Pending |
-| MEM-03 | Phase 12 | Pending |
+| MEM-01 | Phase 12 | Complete |
+| MEM-02 | Phase 12 | Complete |
+| MEM-03 | Phase 12 | Complete |
 | MEM-04 | Phase 14 | Pending |
-| MEM-05 | Phase 12 | Pending |
-| REL-01 | Phase 12 | Pending |
-| REL-02 | Phase 12 | Pending |
-| REL-03 | Phase 12 | Pending |
+| MEM-05 | Phase 12 | Complete |
+| REL-01 | Phase 12 | Complete |
+| REL-02 | Phase 12 | Complete |
+| REL-03 | Phase 12 | Complete |
 | REL-04 | Phase 14 | Pending |
-| REL-05 | Phase 12 | Pending |
+| REL-05 | Phase 12 | Complete |
 | REL-06 | Phase 15 | Pending |
 | ACC-01 | Phase 13 | Pending |
 | ACC-02 | Phase 13 | Pending |
