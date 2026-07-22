@@ -261,6 +261,18 @@ export const familyMemberResolvers = {
     // DataLoader. Unlike children/spouses/siblings, this field is not on the
     // deep-fan-out recursive traversal path, so per-node batching is lower
     // priority here.
-    linkedUser: (member) => member.getLinkedUser()
+    //
+    // CR-01 (mitigate): the User type carries email/role, which Query.users
+    // and Query.unlinkedUsers protect with requireAdmin. Member ids are
+    // sequential, so an ungated traversal here would let any linked USER
+    // enumerate the whole user table. Resolve the row only for an ADMIN, or
+    // when the linked user IS the acting user; otherwise null (the SDL field
+    // is nullable).
+    linkedUser: async (member, _args, { user }) => {
+      const linked = await member.getLinkedUser();
+      if (!linked) return null;
+      if (user?.role === 'ADMIN' || linked.id === user?.id) return linked;
+      return null;
+    }
   }
 };
