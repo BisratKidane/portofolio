@@ -6,6 +6,7 @@ import { env } from './config/env.js';
 import { buildCorsOptions } from './config/corsOptions.js';
 import { initializeDatabase, models } from './models/index.js';
 import { typeDefs, resolvers, validationRules } from './graphql/serverConfig.js';
+import { createLoaders } from './loaders/familyMember.loaders.js';
 import { getUserFromRequest } from './utils/auth.js';
 import { rateLimitPlugin } from './plugins/rateLimitPlugin.js';
 
@@ -33,7 +34,8 @@ app.use(
     context: async ({ req }) => ({
       models,
       user: await getUserFromRequest(req, models),
-      clientIp: req.ip
+      clientIp: req.ip,
+      loaders: createLoaders(models)
     })
   })
 );
