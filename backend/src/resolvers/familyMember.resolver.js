@@ -1,6 +1,12 @@
 import { requireAdmin, requireFamilyAccess } from '../utils/auth.js';
 import { sanitizeNewMember } from './user.resolver.js';
-import { computeEditableScope, linkParent, setSpouse, addChild } from '../services/familyMember.service.js';
+import {
+  computeEditableScope,
+  linkParent,
+  setSpouse,
+  addChild,
+  deleteMember as deleteFamilyMember
+} from '../services/familyMember.service.js';
 
 export const familyMemberResolvers = {
   Query: {
@@ -11,6 +17,22 @@ export const familyMemberResolvers = {
     familyMember: async (_parent, { id }, { models, user }) => {
       requireFamilyAccess(user);
       return models.FamilyMember.findByPk(id);
+    },
+    // T-14-10 (accept): no arguments exist for a client to request another
+    // user's scope -- the returned set is entirely server-derived from
+    // user.familyMemberId, so no cross-user leak is possible by construction.
+    myEditableMembers: async (_parent, _args, { user }) => {
+      requireFamilyAccess(user);
+      if (user.familyMemberId == null) return [];
+
+      const scope = await computeEditableScope(user.familyMemberId);
+      const rows = [scope.self, ...scope.parents, ...scope.spouses, ...scope.children, ...scope.siblings].filter(
+        Boolean
+      );
+
+      const seen = new Map();
+      for (const row of rows) seen.set(row.id, row);
+      return [...seen.values()];
     }
   },
   Mutation: {
@@ -153,6 +175,55 @@ export const familyMemberResolvers = {
 
         return addChild(attrs, { transaction: t });
       });
+    },
+    // T-14-01 (mitigate): identical non-admin scope check via
+    // computeEditableScope. T-14-03 (mitigate, D-06 field-lock): compares
+    // target.linkedUser.id against the ACTING user's id (user.id), not
+    // user.familyMemberId -- this is the exact identity match that keeps
+    // self-edit allowed while blocking edits to a relative who manages their
+    // own linked profile. D-05 is enforced structurally by
+    // EditFamilyMemberInput's schema shape (no edge-mutating field exists at
+    // all), not by resolver logic.
+    editMember: async (_parent, { id, fields }, { models, user }) => {
+      requireFamilyAccess(user);
+
+      const targetId = Number(id);
+      const isAdmin = user.role === 'ADMIN';
+
+      if (!isAdmin) {
+        const scope = await computeEditableScope(user.familyMemberId);
+        if (!scope.ids.has(targetId)) {
+          throw new Error('This member is outside your editable scope.');
+        }
+      }
+
+      const target = await models.FamilyMember.findByPk(targetId, {
+        include: [{ association: 'linkedUser' }]
+      });
+      if (!target) throw new Error('Family member not found.');
+
+      if (!isAdmin && target.linkedUser && target.linkedUser.id !== user.id) {
+        throw new Error('This member manages their own profile and cannot be edited by others.');
+      }
+
+      return target.update(sanitizeNewMember(fields));
+    },
+    // T-14-04 (mitigate): requireAdmin(user) is the FIRST and ONLY guard --
+    // deliberately no computeEditableScope call anywhere in this resolver.
+    // Members have zero delete capability by construction, not by a scope
+    // check that happens to always fail for non-admins (PERM-03/PERM-04).
+    // D-10: reuses the Phase 12 deleteMember service function verbatim,
+    // imported under the deleteFamilyMember alias to avoid shadowing this
+    // resolver map's own deleteMember key.
+    deleteMember: async (_parent, { id }, { models, user }) => {
+      requireAdmin(user);
+
+      const targetId = Number(id);
+      const target = await models.FamilyMember.findByPk(targetId);
+      if (!target) throw new Error('Family member not found.');
+
+      await deleteFamilyMember(targetId);
+      return true;
     }
   },
   FamilyMember: {
