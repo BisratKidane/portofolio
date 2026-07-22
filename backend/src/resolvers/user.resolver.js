@@ -6,6 +6,7 @@ import {
   hashVerificationToken,
   requireAdmin,
   requireAuth,
+  requireFamilyAccess,
   resetTokenExpiry,
   signToken,
   verificationTokenExpiry
@@ -50,7 +51,7 @@ export const userResolvers = {
   Query: {
     me: (_parent, _args, { user }) => serializeUser(user),
     dashboard: async (_parent, _args, { models, user }) => {
-      requireAuth(user);
+      requireFamilyAccess(user);
       const users = user.role === 'ADMIN' ? await models.User.findAll({ order: [['createdAt', 'DESC']] }) : null;
       return {
         message: user.role === 'ADMIN' ? 'Welcome to the admin dashboard.' : 'Welcome to your dashboard.',
