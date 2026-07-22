@@ -129,7 +129,29 @@ Plans:
   4. A member cannot fabricate a relationship edge (spouse/parent/child) to an already-linked, unrelated member's subtree to expand their own editable scope without that member's consent or admin approval, proven by an adversarial test.
   5. A deep-tree fixture's resolved SQL query count stays flat as generation depth grows (request-scoped DataLoader/flat-fetch, no per-node N+1), and a hand-crafted over-depth query is rejected by a `graphql-depth-limit` rule.
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 14-01-PLAN.md — Shared Apollo server config + GraphQL depth-limit validation rule + request-scoped DataLoader factory (PERM-05)
+- [ ] 14-02-PLAN.md — computeEditableScope service utility + WR-04 dashboard gating fix (PERM-05, REL-04, PERM-01)
+
+**Wave 2** *(blocked on 14-01 completion)*
+
+- [ ] 14-03-PLAN.md — Recursive FamilyMember schema fields wired to DataLoaders + SC-5 flat-query-count/depth-limit proof (REL-04, PERM-05)
+
+**Wave 3** *(blocked on 14-02 and 14-03 completion)*
+
+- [ ] 14-04-PLAN.md — addParent + addSpouse mutations (PERM-01, PERM-02)
+
+**Wave 4** *(blocked on 14-04 completion)*
+
+- [ ] 14-05-PLAN.md — addChild + addSibling mutations, incl. the primary SC-4 adversarial test (PERM-01, PERM-02, REL-04)
+
+**Wave 5** *(blocked on 14-05 completion)*
+
+- [ ] 14-06-PLAN.md — editMember + deleteMember + myEditableMembers (MEM-04, PERM-02, PERM-03, PERM-04)
 
 ### Phase 15: Sibling Dedup Guard & /manage Self-Service UI
 
@@ -195,8 +217,8 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 9. Session Revocation via passwordChangedAt | v1.1 | 3/3 | Complete | 2026-07-20 |
 | 10. Rate Limiting on Auth Mutations | v1.1 | 3/3 | Complete | 2026-07-20 |
 | 11. Email Verification & ADMIN Race Fix | v1.1 | 8/8 | Complete | 2026-07-21 |
-| 12. Family Data Model Foundation | v2.0 | 4/4 | Complete    | 2026-07-21 |
-| 13. Membership Gating & Account Linking | v2.0 | 4/4 | Complete   | 2026-07-21 |
+| 12. Family Data Model Foundation | v2.0 | 4/4 | Complete   | 2026-07-22 |
+| 13. Membership Gating & Account Linking | v2.0 | 4/4 | Complete   | 2026-07-22 |
 | 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 0/TBD | Not started | - |
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 0/TBD | Not started | - |
 | 16. Photo Upload | v2.0 | 0/TBD | Not started | - |
