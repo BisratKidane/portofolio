@@ -153,6 +153,38 @@ export const familyMemberResolvers = {
 
         return addChild(attrs, { transaction: t });
       });
+    },
+    // T-14-01 (mitigate): identical non-admin scope check via
+    // computeEditableScope. T-14-03 (mitigate, D-06 field-lock): compares
+    // target.linkedUser.id against the ACTING user's id (user.id), not
+    // user.familyMemberId -- this is the exact identity match that keeps
+    // self-edit allowed while blocking edits to a relative who manages their
+    // own linked profile. D-05 is enforced structurally by
+    // EditFamilyMemberInput's schema shape (no edge-mutating field exists at
+    // all), not by resolver logic.
+    editMember: async (_parent, { id, fields }, { models, user }) => {
+      requireFamilyAccess(user);
+
+      const targetId = Number(id);
+      const isAdmin = user.role === 'ADMIN';
+
+      if (!isAdmin) {
+        const scope = await computeEditableScope(user.familyMemberId);
+        if (!scope.ids.has(targetId)) {
+          throw new Error('This member is outside your editable scope.');
+        }
+      }
+
+      const target = await models.FamilyMember.findByPk(targetId, {
+        include: [{ association: 'linkedUser' }]
+      });
+      if (!target) throw new Error('Family member not found.');
+
+      if (!isAdmin && target.linkedUser && target.linkedUser.id !== user.id) {
+        throw new Error('This member manages their own profile and cannot be edited by others.');
+      }
+
+      return target.update(sanitizeNewMember(fields));
     }
   },
   FamilyMember: {

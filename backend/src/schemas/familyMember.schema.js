@@ -42,6 +42,21 @@ export const familyMemberTypeDefs = `#graphql
     address: String
   }
 
+  # D-05, structural: deliberately no id/edge-mutating field (no motherId,
+  # fatherId, or spouse reference) -- editMember can only ever touch plain
+  # fields, never rewire or remove an existing parent/spouse edge.
+  input EditFamilyMemberInput {
+    firstname: String
+    lastname: String
+    gender: Gender
+    mothersname: String
+    email: String
+    birthdate: String
+    deathdate: String
+    phone: String
+    address: String
+  }
+
   extend type Query {
     familyMembers: [FamilyMember!]!
     familyMember(id: ID!): FamilyMember
@@ -52,5 +67,6 @@ export const familyMemberTypeDefs = `#graphql
     addSpouse(memberId: ID!, newMember: NewFamilyMemberInput!): FamilyMember!
     addChild(memberId: ID!, role: ParentRole!, newMember: NewFamilyMemberInput!, otherParentId: ID): FamilyMember!
     addSibling(memberId: ID!, newMember: NewFamilyMemberInput!): FamilyMember!
+    editMember(id: ID!, fields: EditFamilyMemberInput!): FamilyMember!
   }
 `;
