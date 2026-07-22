@@ -151,4 +151,28 @@ describe('FamilyMember relationship field resolvers (REL-04)', () => {
     expect(unlinkedResult.errors).toBeUndefined();
     expect(unlinkedResult.data.familyMember.linkedUser).toBeNull();
   });
+
+  it('hides another member linkedUser from a non-admin actor (CR-01)', async () => {
+    const actorMember = await models.FamilyMember.create({ firstname: 'Actor', lastname: 'Person', gender: 'Other' });
+    const otherMember = await models.FamilyMember.create({ firstname: 'Other', lastname: 'Person', gender: 'Other' });
+    await createTestUser({ role: 'USER', familyMemberId: otherMember.id, email: 'cr01-other@example.com' });
+    const actor = await createTestUser({ role: 'USER', familyMemberId: actorMember.id, email: 'cr01-actor@example.com' });
+
+    const { data, errors } = await graphql(FAMILY_MEMBER_RELATIONSHIPS_QUERY, { id: otherMember.id }, actor);
+
+    expect(errors).toBeUndefined();
+    expect(data.familyMember.id).toBe(String(otherMember.id));
+    expect(data.familyMember.linkedUser).toBeNull();
+  });
+
+  it('still exposes the acting user own linkedUser to themselves (CR-01)', async () => {
+    const actorMember = await models.FamilyMember.create({ firstname: 'Actor', lastname: 'Person', gender: 'Other' });
+    const actor = await createTestUser({ role: 'USER', familyMemberId: actorMember.id, email: 'cr01-self@example.com' });
+
+    const { data, errors } = await graphql(FAMILY_MEMBER_RELATIONSHIPS_QUERY, { id: actorMember.id }, actor);
+
+    expect(errors).toBeUndefined();
+    expect(data.familyMember.linkedUser.id).toBe(String(actor.id));
+    expect(data.familyMember.linkedUser.email).toBe(actor.email);
+  });
 });
