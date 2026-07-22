@@ -51,5 +51,6 @@ export const familyMemberTypeDefs = `#graphql
     addParent(memberId: ID!, role: ParentRole!, newMember: NewFamilyMemberInput!): FamilyMember!
     addSpouse(memberId: ID!, newMember: NewFamilyMemberInput!): FamilyMember!
     addChild(memberId: ID!, role: ParentRole!, newMember: NewFamilyMemberInput!, otherParentId: ID): FamilyMember!
+    addSibling(memberId: ID!, newMember: NewFamilyMemberInput!): FamilyMember!
   }
 `;

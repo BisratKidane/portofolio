@@ -121,6 +121,38 @@ export const familyMemberResolvers = {
 
         return addChild(attrs, { transaction: t });
       });
+    },
+    // T-14-09 (mitigate): the no-parent-recorded rejection is a data-integrity
+    // rule, not a scope boundary -- it applies even to admins, since fabricating
+    // a placeholder parent nobody created would corrupt the tree regardless of
+    // who requested it.
+    addSibling: async (_parent, { memberId, newMember }, { models, user }) => {
+      requireFamilyAccess(user);
+
+      const targetId = Number(memberId);
+      const isAdmin = user.role === 'ADMIN';
+
+      if (!isAdmin) {
+        const scope = await computeEditableScope(user.familyMemberId);
+        if (!scope.ids.has(targetId)) {
+          throw new Error('This member is outside your editable scope.');
+        }
+      }
+
+      return models.User.sequelize.transaction(async (t) => {
+        const target = await models.FamilyMember.findByPk(targetId, { transaction: t });
+        if (!target) throw new Error('Family member not found.');
+
+        if (target.motherId == null && target.fatherId == null) {
+          throw new Error('Add a parent first — siblings are derived from a shared parent.');
+        }
+
+        const attrs = { ...sanitizeNewMember(newMember) };
+        if (target.motherId != null) attrs.motherId = target.motherId;
+        if (target.fatherId != null) attrs.fatherId = target.fatherId;
+
+        return addChild(attrs, { transaction: t });
+      });
     }
   },
   FamilyMember: {
