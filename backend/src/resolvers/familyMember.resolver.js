@@ -1,6 +1,12 @@
 import { requireAdmin, requireFamilyAccess } from '../utils/auth.js';
 import { sanitizeNewMember } from './user.resolver.js';
-import { computeEditableScope, linkParent, setSpouse, addChild } from '../services/familyMember.service.js';
+import {
+  computeEditableScope,
+  linkParent,
+  setSpouse,
+  addChild,
+  deleteMember as deleteFamilyMember
+} from '../services/familyMember.service.js';
 
 export const familyMemberResolvers = {
   Query: {
@@ -185,6 +191,23 @@ export const familyMemberResolvers = {
       }
 
       return target.update(sanitizeNewMember(fields));
+    },
+    // T-14-04 (mitigate): requireAdmin(user) is the FIRST and ONLY guard --
+    // deliberately no computeEditableScope call anywhere in this resolver.
+    // Members have zero delete capability by construction, not by a scope
+    // check that happens to always fail for non-admins (PERM-03/PERM-04).
+    // D-10: reuses the Phase 12 deleteMember service function verbatim,
+    // imported under the deleteFamilyMember alias to avoid shadowing this
+    // resolver map's own deleteMember key.
+    deleteMember: async (_parent, { id }, { models, user }) => {
+      requireAdmin(user);
+
+      const targetId = Number(id);
+      const target = await models.FamilyMember.findByPk(targetId);
+      if (!target) throw new Error('Family member not found.');
+
+      await deleteFamilyMember(targetId);
+      return true;
     }
   },
   FamilyMember: {
