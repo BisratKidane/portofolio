@@ -14,7 +14,7 @@ import {
 import { assertPasswordStrength } from '../utils/passwordPolicy.js';
 import { sendPasswordResetEmail, sendVerificationEmail } from '../services/mailer.js';
 
-const OPTIONAL_FAMILY_MEMBER_FIELDS = ['mothersname', 'email', 'birthdate', 'deathdate', 'phone', 'address'];
+export const OPTIONAL_FAMILY_MEMBER_FIELDS = ['mothersname', 'email', 'birthdate', 'deathdate', 'phone', 'address'];
 
 // Admin-submitted `newMember` payloads send blank optional fields as empty
 // strings, not null/undefined. Sequelize only skips validators for
@@ -22,7 +22,10 @@ const OPTIONAL_FAMILY_MEMBER_FIELDS = ['mothersname', 'email', 'birthdate', 'dea
 // and fails (CR-01). Trim strings and convert blank optional fields to null
 // before they reach the model; required fields (firstname/lastname/gender)
 // are left untouched so their own required-field validation still fires.
-function sanitizeNewMember(newMember) {
+// Exported so every Phase 14 mutation accepting a `NewFamilyMemberInput`
+// reuses this single blank-string-to-null implementation rather than
+// duplicating it (RESEARCH.md "Don't Hand-Roll" table).
+export function sanitizeNewMember(newMember) {
   const sanitized = { ...newMember };
   for (const key of OPTIONAL_FAMILY_MEMBER_FIELDS) {
     const value = sanitized[key];
