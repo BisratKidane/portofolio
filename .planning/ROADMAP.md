@@ -143,7 +143,7 @@ Plans:
 
 **Wave 3** *(blocked on 14-02 and 14-03 completion)*
 
-- [ ] 14-04-PLAN.md — addParent + addSpouse mutations (PERM-01, PERM-02)
+- [x] 14-04-PLAN.md — addParent + addSpouse mutations (PERM-01, PERM-02)
 
 **Wave 4** *(blocked on 14-04 completion)*
 
@@ -219,7 +219,7 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 11. Email Verification & ADMIN Race Fix | v1.1 | 8/8 | Complete | 2026-07-21 |
 | 12. Family Data Model Foundation | v2.0 | 4/4 | Complete   | 2026-07-22 |
 | 13. Membership Gating & Account Linking | v2.0 | 4/4 | Complete   | 2026-07-22 |
-| 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 3/6 | In Progress|  |
+| 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 4/6 | In Progress|  |
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 0/TBD | Not started | - |
 | 16. Photo Upload | v2.0 | 0/TBD | Not started | - |
 | 17. /family Deep Tree Visualization | v2.0 | 0/TBD | Not started | - |
