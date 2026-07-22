@@ -154,8 +154,9 @@ export const familyMemberResolvers = {
       const targetId = Number(memberId);
       const isAdmin = user.role === 'ADMIN';
 
+      let scope;
       if (!isAdmin) {
-        const scope = await computeEditableScope(user.familyMemberId);
+        scope = await computeEditableScope(user.familyMemberId);
         if (!scope.ids.has(targetId)) {
           throw new Error('This member is outside your editable scope.');
         }
@@ -167,6 +168,20 @@ export const familyMemberResolvers = {
 
         if (target.motherId == null && target.fatherId == null) {
           throw new Error('Add a parent first — siblings are derived from a shared parent.');
+        }
+
+        // CR-02 (mitigate, SC-4): the parent FKs copied off the target are an
+        // implicit reference to EXISTING nodes, exactly like addChild's
+        // otherParentId -- and computeEditableScope is one hop, so a child's
+        // co-parent or a spouse's parents are provably outside scope. Reject
+        // with addChild's message so both doors enforce the same control.
+        if (!isAdmin) {
+          const inherited = [target.motherId, target.fatherId]
+            .filter((id) => id != null)
+            .map(Number);
+          if (!inherited.every((id) => scope.ids.has(id))) {
+            throw new Error('You may only reference relatives already within your editable scope.');
+          }
         }
 
         const attrs = { ...sanitizeNewMember(newMember) };
