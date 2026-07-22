@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
+import { models } from '../models/index.js';
 
 const DASHBOARD_QUERY = `
   query Dashboard {
@@ -35,7 +36,10 @@ describe('dashboard', () => {
   });
 
   it('returns the user dashboard with a null users list for a USER', async () => {
-    const user = await createTestUser({ role: 'USER' });
+    // requireFamilyAccess (WR-04) rejects an unlinked non-admin, so this
+    // fixture must be a linked member, mirroring familyMember.resolver.test.js.
+    const member = await models.FamilyMember.create({ firstname: 'Ada', lastname: 'Lovelace', gender: 'Female' });
+    const user = await createTestUser({ role: 'USER', familyMemberId: member.id });
 
     const { data, errors } = await graphql(DASHBOARD_QUERY, {}, user);
 
@@ -48,6 +52,15 @@ describe('dashboard', () => {
     const { data, errors } = await graphql(DASHBOARD_QUERY, {}, null);
 
     expect(errors[0].message).toBe('You must be logged in to perform this action.');
+    expect(data).toBeNull();
+  });
+
+  it('rejects a verified-but-unlinked USER (WR-04)', async () => {
+    const user = await createTestUser({ role: 'USER', familyMemberId: null });
+
+    const { data, errors } = await graphql(DASHBOARD_QUERY, {}, user);
+
+    expect(errors[0].message).toBe('Your account is not yet linked to a family member.');
     expect(data).toBeNull();
   });
 });
