@@ -5,6 +5,11 @@ export const familyMemberTypeDefs = `#graphql
     Other
   }
 
+  enum ParentRole {
+    MOTHER
+    FATHER
+  }
+
   type FamilyMember {
     id: ID!
     firstname: String!
@@ -40,5 +45,10 @@ export const familyMemberTypeDefs = `#graphql
   extend type Query {
     familyMembers: [FamilyMember!]!
     familyMember(id: ID!): FamilyMember
+  }
+
+  extend type Mutation {
+    addParent(memberId: ID!, role: ParentRole!, newMember: NewFamilyMemberInput!): FamilyMember!
+    addSpouse(memberId: ID!, newMember: NewFamilyMemberInput!): FamilyMember!
   }
 `;

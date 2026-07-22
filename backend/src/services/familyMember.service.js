@@ -3,7 +3,7 @@ import { models, sequelize } from '../models/index.js';
 
 const MAX_DEPTH = 100; // generous upper bound; tree is documented at ~10-23 generations
 
-export async function wouldCreateCycle(childId, candidateParentId) {
+export async function wouldCreateCycle(childId, candidateParentId, { transaction } = {}) {
   if (childId === candidateParentId) return true;
 
   let frontier = [candidateParentId];
@@ -14,7 +14,8 @@ export async function wouldCreateCycle(childId, candidateParentId) {
 
     const rows = await models.FamilyMember.findAll({
       where: { id: frontier },
-      attributes: ['id', 'motherId', 'fatherId']
+      attributes: ['id', 'motherId', 'fatherId'],
+      transaction
     });
 
     const next = new Set();
@@ -29,11 +30,11 @@ export async function wouldCreateCycle(childId, candidateParentId) {
   return false;
 }
 
-export async function linkParent(childId, { motherId, fatherId } = {}) {
-  if (motherId != null && (await wouldCreateCycle(childId, motherId))) {
+export async function linkParent(childId, { motherId, fatherId } = {}, { transaction } = {}) {
+  if (motherId != null && (await wouldCreateCycle(childId, motherId, { transaction }))) {
     throw new Error('This assignment would make the member their own ancestor (mother).');
   }
-  if (fatherId != null && (await wouldCreateCycle(childId, fatherId))) {
+  if (fatherId != null && (await wouldCreateCycle(childId, fatherId, { transaction }))) {
     throw new Error('This assignment would make the member their own ancestor (father).');
   }
 
@@ -41,32 +42,41 @@ export async function linkParent(childId, { motherId, fatherId } = {}) {
   if (motherId !== undefined) updates.motherId = motherId;
   if (fatherId !== undefined) updates.fatherId = fatherId;
 
-  return models.FamilyMember.update(updates, { where: { id: childId } });
+  return models.FamilyMember.update(updates, { where: { id: childId }, transaction });
 }
 
 export async function addChild(attrs) {
   return models.FamilyMember.create(attrs);
 }
 
-export async function setSpouse(memberAId, memberBId) {
-  return sequelize.transaction(async (transaction) => {
-    try {
-      return await models.Spouse.create({ memberAId, memberBId }, { transaction });
-    } catch (error) {
-      if (error instanceof UniqueConstraintError) {
-        return models.Spouse.findOne({
-          where: {
-            [Op.or]: [
-              { memberAId, memberBId },
-              { memberAId: memberBId, memberBId: memberAId }
-            ]
-          },
-          transaction
-        });
-      }
-      throw error;
+async function createOrFindSpouseRow(memberAId, memberBId, transaction) {
+  try {
+    return await models.Spouse.create({ memberAId, memberBId }, { transaction });
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      return models.Spouse.findOne({
+        where: {
+          [Op.or]: [
+            { memberAId, memberBId },
+            { memberAId: memberBId, memberBId: memberAId }
+          ]
+        },
+        transaction
+      });
     }
-  });
+    throw error;
+  }
+}
+
+export async function setSpouse(memberAId, memberBId, { transaction } = {}) {
+  // When a transaction is supplied by the caller, run directly against it --
+  // never nest a second sequelize.transaction(...) inside an existing one.
+  // Only wrap in a fresh transaction when no caller-supplied transaction
+  // exists, preserving the pre-existing 2-arg-caller behavior unchanged.
+  if (transaction) {
+    return createOrFindSpouseRow(memberAId, memberBId, transaction);
+  }
+  return sequelize.transaction((t) => createOrFindSpouseRow(memberAId, memberBId, t));
 }
 
 export async function getSpouseRows(memberId) {

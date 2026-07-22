@@ -1,4 +1,6 @@
 import { requireAdmin, requireFamilyAccess } from '../utils/auth.js';
+import { sanitizeNewMember } from './user.resolver.js';
+import { computeEditableScope, linkParent, setSpouse } from '../services/familyMember.service.js';
 
 export const familyMemberResolvers = {
   Query: {
@@ -9,6 +11,68 @@ export const familyMemberResolvers = {
     familyMember: async (_parent, { id }, { models, user }) => {
       requireFamilyAccess(user);
       return models.FamilyMember.findByPk(id);
+    }
+  },
+  Mutation: {
+    // T-14-01/T-14-02 (mitigate): every non-admin call is scope-checked via
+    // computeEditableScope (PERM-05 single source of truth) before any
+    // write, and D-01 is enforced structurally -- this mutation only ever
+    // accepts a `newMember` payload for the parent being added, never an
+    // existing-node id.
+    addParent: async (_parent, { memberId, role, newMember }, { models, user }) => {
+      requireFamilyAccess(user);
+
+      const targetId = Number(memberId);
+      const isAdmin = user.role === 'ADMIN';
+
+      if (!isAdmin) {
+        const scope = await computeEditableScope(user.familyMemberId);
+        if (!scope.ids.has(targetId)) {
+          throw new Error('This member is outside your editable scope.');
+        }
+      }
+
+      const slot = role === 'MOTHER' ? 'motherId' : 'fatherId';
+
+      return models.User.sequelize.transaction(async (t) => {
+        const target = await models.FamilyMember.findByPk(targetId, { transaction: t });
+        if (!target) throw new Error('Family member not found.');
+
+        if (target[slot] != null && !isAdmin) {
+          throw new Error(`This member already has a ${role.toLowerCase()} on record.`);
+        }
+
+        const parent = await models.FamilyMember.create(sanitizeNewMember(newMember), { transaction: t });
+        await linkParent(targetId, { [slot]: parent.id }, { transaction: t });
+
+        return parent;
+      });
+    },
+    // T-14-01 (mitigate): identical non-admin scope check to addParent, gated
+    // through the same computeEditableScope single source of truth; D-01 is
+    // enforced structurally (newMember-only, never an existing-node id).
+    addSpouse: async (_parent, { memberId, newMember }, { models, user }) => {
+      requireFamilyAccess(user);
+
+      const targetId = Number(memberId);
+      const isAdmin = user.role === 'ADMIN';
+
+      if (!isAdmin) {
+        const scope = await computeEditableScope(user.familyMemberId);
+        if (!scope.ids.has(targetId)) {
+          throw new Error('This member is outside your editable scope.');
+        }
+      }
+
+      return models.User.sequelize.transaction(async (t) => {
+        const target = await models.FamilyMember.findByPk(targetId, { transaction: t });
+        if (!target) throw new Error('Family member not found.');
+
+        const spouse = await models.FamilyMember.create(sanitizeNewMember(newMember), { transaction: t });
+        await setSpouse(targetId, spouse.id, { transaction: t });
+
+        return spouse;
+      });
     }
   },
   FamilyMember: {
