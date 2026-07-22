@@ -5,8 +5,7 @@ import { expressMiddleware } from '@apollo/server/express4';
 import { env } from './config/env.js';
 import { buildCorsOptions } from './config/corsOptions.js';
 import { initializeDatabase, models } from './models/index.js';
-import { typeDefs } from './schemas/index.js';
-import { resolvers } from './resolvers/index.js';
+import { typeDefs, resolvers, validationRules } from './graphql/serverConfig.js';
 import { getUserFromRequest } from './utils/auth.js';
 import { rateLimitPlugin } from './plugins/rateLimitPlugin.js';
 
@@ -22,7 +21,7 @@ app.get('/health', (_req, res) => {
 
 app.use(cors(buildCorsOptions(env)));
 
-const apollo = new ApolloServer({ typeDefs, resolvers, plugins: [rateLimitPlugin] });
+const apollo = new ApolloServer({ typeDefs, resolvers, validationRules, plugins: [rateLimitPlugin] });
 
 await apollo.start();
 await initializeDatabase();

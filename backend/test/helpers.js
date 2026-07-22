@@ -1,13 +1,12 @@
 import request from 'supertest';
 import { ApolloServer } from '@apollo/server';
 import { models, sequelize } from '../src/models/index.js';
-import { typeDefs } from '../src/schemas/index.js';
-import { resolvers } from '../src/resolvers/index.js';
+import { typeDefs, resolvers, validationRules } from '../src/graphql/serverConfig.js';
 import { app } from '../src/server.js';
 import { rateLimitPlugin } from '../src/plugins/rateLimitPlugin.js';
 import { resetRateLimitStore } from '../src/utils/rateLimitStore.js';
 
-const server = new ApolloServer({ typeDefs, resolvers, plugins: [rateLimitPlugin] });
+const server = new ApolloServer({ typeDefs, resolvers, validationRules, plugins: [rateLimitPlugin] });
 
 export function httpClient() {
   return request(app);
