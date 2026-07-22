@@ -88,6 +88,67 @@ async function isMarriedInOnly(memberId, transaction) {
   return childCount === 0;
 }
 
+// PERM-05: the single, reused server-side computation of the "editable set" —
+// self, both parents, spouses (from either Spouse-row direction), children,
+// and either-parent-derived siblings (including half-siblings). Bounded to
+// exactly one hop of self's own parentIds — never recurses into
+// grandparents, cousins, or a sibling's other siblings. Every mutation
+// resolver in this phase must import and reuse this, never re-derive scope
+// inline (T-14-01).
+export async function computeEditableScope(memberId, { transaction } = {}) {
+  if (memberId == null) {
+    return { ids: new Set(), self: null, parents: [], spouses: [], children: [], siblings: [] };
+  }
+
+  const self = await models.FamilyMember.findByPk(memberId, { transaction });
+  if (!self) {
+    return { ids: new Set(), self: null, parents: [], spouses: [], children: [], siblings: [] };
+  }
+
+  const parentIds = [self.motherId, self.fatherId].filter((id) => id != null);
+
+  const [parents, spouseRows, children, siblings] = await Promise.all([
+    parentIds.length > 0
+      ? models.FamilyMember.findAll({ where: { id: parentIds }, transaction })
+      : Promise.resolve([]),
+    models.Spouse.findAll({
+      where: { [Op.or]: [{ memberAId: memberId }, { memberBId: memberId }] },
+      include: [{ association: 'memberA' }, { association: 'memberB' }],
+      transaction
+    }),
+    models.FamilyMember.findAll({
+      where: { [Op.or]: [{ motherId: memberId }, { fatherId: memberId }] },
+      transaction
+    }),
+    // Never add a bare null-valued parent-column clause here — that would
+    // compile to an IS NULL check, matching every other parentless member
+    // (Pitfall 4). Skip the query entirely when self has no recorded parents.
+    parentIds.length > 0
+      ? models.FamilyMember.findAll({
+          where: {
+            [Op.and]: [
+              { id: { [Op.ne]: memberId } },
+              { [Op.or]: parentIds.flatMap((pid) => [{ motherId: pid }, { fatherId: pid }]) }
+            ]
+          },
+          transaction
+        })
+      : Promise.resolve([])
+  ]);
+
+  const spouses = spouseRows.map((row) => (row.memberAId === memberId ? row.memberB : row.memberA));
+
+  const ids = new Set([
+    memberId,
+    ...parentIds,
+    ...spouses.map((s) => s.id),
+    ...children.map((c) => c.id),
+    ...siblings.map((s) => s.id)
+  ]);
+
+  return { ids, self, parents, spouses, children, siblings };
+}
+
 export async function deleteMember(memberId) {
   return sequelize.transaction(async (transaction) => {
     const spouseRows = await models.Spouse.findAll({
