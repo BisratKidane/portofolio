@@ -17,6 +17,12 @@ export const familyMemberTypeDefs = `#graphql
     deathdate: String
     phone: String
     address: String
+    mother: FamilyMember
+    father: FamilyMember
+    spouses: [FamilyMember!]!
+    children: [FamilyMember!]!
+    siblings: [FamilyMember!]!
+    linkedUser: User
   }
 
   input NewFamilyMemberInput {

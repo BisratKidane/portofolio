@@ -22,7 +22,7 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 - [x] **REL-01**: A user can set a member's parents (mother and/or father) by linking to existing members or creating them.
 - [x] **REL-02**: A user can link two members as spouses, and the relationship reads correctly from either side (symmetric).
 - [x] **REL-03**: A user can add a child to a member, establishing the parent→child link.
-- [ ] **REL-04**: Siblings are derived from shared parents (never stored) and presented as such.
+- [x] **REL-04**: Siblings are derived from shared parents (never stored) and presented as such.
 - [x] **REL-05**: The system rejects any relationship edit that would create a cycle (a member cannot become their own ancestor).
 - [ ] **REL-06**: The system blocks creating/linking a child whose `firstname` duplicates an existing child that shares **either** parent (any-shared-parent scope).
 
@@ -40,7 +40,7 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 - [ ] **PERM-02**: A member-user can edit the fields and relationships of members within their immediate-relative set.
 - [ ] **PERM-03**: A member-user cannot remove any member; removal is admin-only. (The member→admin removal-request flow is deferred — see v2.)
 - [ ] **PERM-04**: An admin can add, edit, and remove any member across the whole tree.
-- [ ] **PERM-05**: The backend computes each member-user's editable immediate-relative set and enforces it in resolvers (no client-supplied scope is trusted).
+- [x] **PERM-05**: The backend computes each member-user's editable immediate-relative set and enforces it in resolvers (no client-supplied scope is trusted).
 
 ### Photos (PHOTO)
 
@@ -124,7 +124,7 @@ Which phase covers which requirement.
 | REL-01 | Phase 12 | Complete |
 | REL-02 | Phase 12 | Complete |
 | REL-03 | Phase 12 | Complete |
-| REL-04 | Phase 14 | Pending |
+| REL-04 | Phase 14 | Complete |
 | REL-05 | Phase 12 | Complete |
 | REL-06 | Phase 15 | Pending |
 | ACC-01 | Phase 13 | Complete |
@@ -136,7 +136,7 @@ Which phase covers which requirement.
 | PERM-02 | Phase 14 | Pending |
 | PERM-03 | Phase 14 | Pending |
 | PERM-04 | Phase 14 | Pending |
-| PERM-05 | Phase 14 | Pending |
+| PERM-05 | Phase 14 | Complete |
 | PHOTO-01 | Phase 16 | Pending |
 | PHOTO-02 | Phase 16 | Pending |
 | PHOTO-03 | Phase 16 | Pending |
