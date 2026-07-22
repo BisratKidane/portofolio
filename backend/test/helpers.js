@@ -1,22 +1,26 @@
 import request from 'supertest';
 import { ApolloServer } from '@apollo/server';
 import { models, sequelize } from '../src/models/index.js';
-import { typeDefs } from '../src/schemas/index.js';
-import { resolvers } from '../src/resolvers/index.js';
+import { typeDefs, resolvers, validationRules } from '../src/graphql/serverConfig.js';
+import { createLoaders } from '../src/loaders/familyMember.loaders.js';
 import { app } from '../src/server.js';
 import { rateLimitPlugin } from '../src/plugins/rateLimitPlugin.js';
 import { resetRateLimitStore } from '../src/utils/rateLimitStore.js';
 
-const server = new ApolloServer({ typeDefs, resolvers, plugins: [rateLimitPlugin] });
+const server = new ApolloServer({ typeDefs, resolvers, validationRules, plugins: [rateLimitPlugin] });
 
 export function httpClient() {
   return request(app);
 }
 
 export async function graphql(query, variables, user = null, clientIp = '127.0.0.1') {
+  // A fresh createLoaders(models) call per graphql() invocation -- never
+  // hoisted to module scope -- gives every test call the same per-request
+  // loader isolation a real request would get through server.js's context
+  // factory (D-07).
   const response = await server.executeOperation(
     { query, variables },
-    { contextValue: { models, user, clientIp } }
+    { contextValue: { models, user, clientIp, loaders: createLoaders(models) } }
   );
   return response.body.singleResult;
 }
