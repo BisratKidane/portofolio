@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { models } from '../models/index.js';
 import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
 
@@ -12,6 +12,7 @@ const LINK_USER_TO_MEMBER_MUTATION = `
 `;
 
 beforeEach(resetTables);
+afterEach(() => vi.restoreAllMocks());
 
 describe('linkUserToMember', () => {
   it('rejects a non-admin caller', async () => {
@@ -160,4 +161,42 @@ describe('linkUserToMember', () => {
     expect(data.linkUserToMember.id).toBe(String(admin.id));
     expect(data.linkUserToMember.familyMemberId).not.toBeNull();
   });
+
+  it('sanitizes blank optional fields to null before creating the member (CR-01)', async () => {
+    const admin = await createTestUser({ role: 'ADMIN' });
+    const target = await createTestUser({ role: 'USER' });
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      {
+        userId: String(target.id),
+        newMember: {
+          firstname: 'Grace',
+          lastname: 'Hopper',
+          gender: 'Female',
+          mothersname: '  ',
+          email: '',
+          birthdate: '',
+          deathdate: '',
+          phone: '',
+          address: ''
+        }
+      },
+      admin
+    );
+
+    expect(errors).toBeUndefined();
+    expect(data.linkUserToMember.familyMemberId).not.toBeNull();
+
+    const created = await models.FamilyMember.findByPk(data.linkUserToMember.familyMemberId);
+    expect(created.firstname).toBe('Grace');
+    expect(created.lastname).toBe('Hopper');
+    expect(created.mothersname).toBeNull();
+    expect(created.email).toBeNull();
+    expect(created.birthdate).toBeNull();
+    expect(created.deathdate).toBeNull();
+    expect(created.phone).toBeNull();
+    expect(created.address).toBeNull();
+  });
+
 });
