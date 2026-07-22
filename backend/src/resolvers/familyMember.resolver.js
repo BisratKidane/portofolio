@@ -17,6 +17,22 @@ export const familyMemberResolvers = {
     familyMember: async (_parent, { id }, { models, user }) => {
       requireFamilyAccess(user);
       return models.FamilyMember.findByPk(id);
+    },
+    // T-14-10 (accept): no arguments exist for a client to request another
+    // user's scope -- the returned set is entirely server-derived from
+    // user.familyMemberId, so no cross-user leak is possible by construction.
+    myEditableMembers: async (_parent, _args, { user }) => {
+      requireFamilyAccess(user);
+      if (user.familyMemberId == null) return [];
+
+      const scope = await computeEditableScope(user.familyMemberId);
+      const rows = [scope.self, ...scope.parents, ...scope.spouses, ...scope.children, ...scope.siblings].filter(
+        Boolean
+      );
+
+      const seen = new Map();
+      for (const row of rows) seen.set(row.id, row);
+      return [...seen.values()];
     }
   },
   Mutation: {

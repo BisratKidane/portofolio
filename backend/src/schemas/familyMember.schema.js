@@ -60,6 +60,7 @@ export const familyMemberTypeDefs = `#graphql
   extend type Query {
     familyMembers: [FamilyMember!]!
     familyMember(id: ID!): FamilyMember
+    myEditableMembers: [FamilyMember!]!
   }
 
   extend type Mutation {
