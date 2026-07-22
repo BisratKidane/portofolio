@@ -234,18 +234,24 @@ export const userResolvers = {
       const targetUser = await models.User.findByPk(userId);
       if (!targetUser) throw new Error('User not found.');
 
-      let resolvedMemberId;
-      if (memberId != null) {
-        const member = await models.FamilyMember.findByPk(memberId);
-        if (!member) throw new Error('Family member not found.');
-        resolvedMemberId = memberId;
-      } else {
-        const createdMember = await models.FamilyMember.create(sanitizeNewMember(newMember));
-        resolvedMemberId = createdMember.id;
-      }
-
+      // Member resolution/creation and the user link are wrapped in a single
+      // transaction (WR-01): if linking the user fails after a new
+      // FamilyMember row was just created, the whole thing rolls back
+      // instead of leaving an orphaned, unlinked family_members row.
       try {
-        await targetUser.update({ familyMemberId: resolvedMemberId });
+        await models.User.sequelize.transaction(async (t) => {
+          let resolvedMemberId;
+          if (memberId != null) {
+            const member = await models.FamilyMember.findByPk(memberId, { transaction: t });
+            if (!member) throw new Error('Family member not found.');
+            resolvedMemberId = memberId;
+          } else {
+            const createdMember = await models.FamilyMember.create(sanitizeNewMember(newMember), { transaction: t });
+            resolvedMemberId = createdMember.id;
+          }
+
+          await targetUser.update({ familyMemberId: resolvedMemberId }, { transaction: t });
+        });
       } catch (error) {
         if (error instanceof UniqueConstraintError) {
           throw new Error('This family member is already linked to another account.');
