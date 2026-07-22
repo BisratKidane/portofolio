@@ -1,6 +1,6 @@
 import { requireAdmin, requireFamilyAccess } from '../utils/auth.js';
 import { sanitizeNewMember } from './user.resolver.js';
-import { computeEditableScope, linkParent, setSpouse } from '../services/familyMember.service.js';
+import { computeEditableScope, linkParent, setSpouse, addChild } from '../services/familyMember.service.js';
 
 export const familyMemberResolvers = {
   Query: {
@@ -72,6 +72,86 @@ export const familyMemberResolvers = {
         await setSpouse(targetId, spouse.id, { transaction: t });
 
         return spouse;
+      });
+    },
+    // T-14-01 (mitigate, primary SC-4 target): `otherParentId` -- the ONE
+    // argument in this entire phase where a member-user references an
+    // EXISTING node id to complete a relationship -- is checked against the
+    // SAME scope.ids computed for the primary target, before the transaction
+    // opens. T-14-02 (mitigate): only the NEW child's FK slots are ever set;
+    // neither memberId's nor otherParentId's own motherId/fatherId is ever
+    // rewritten by this mutation.
+    addChild: async (_parent, { memberId, role, newMember, otherParentId }, { models, user }) => {
+      requireFamilyAccess(user);
+
+      const targetId = Number(memberId);
+      const isAdmin = user.role === 'ADMIN';
+
+      let scope;
+      if (!isAdmin) {
+        scope = await computeEditableScope(user.familyMemberId);
+        if (!scope.ids.has(targetId)) {
+          throw new Error('This member is outside your editable scope.');
+        }
+      }
+
+      let otherId = null;
+      if (otherParentId != null) {
+        otherId = Number(otherParentId);
+        if (!isAdmin && !scope.ids.has(otherId)) {
+          throw new Error('You may only reference relatives already within your editable scope.');
+        }
+      }
+
+      const slot = role === 'MOTHER' ? 'motherId' : 'fatherId';
+      const otherSlot = role === 'MOTHER' ? 'fatherId' : 'motherId';
+
+      return models.User.sequelize.transaction(async (t) => {
+        const target = await models.FamilyMember.findByPk(targetId, { transaction: t });
+        if (!target) throw new Error('Family member not found.');
+
+        let otherParent = null;
+        if (otherId != null) {
+          otherParent = await models.FamilyMember.findByPk(otherId, { transaction: t });
+          if (!otherParent) throw new Error('Family member not found.');
+        }
+
+        const attrs = { ...sanitizeNewMember(newMember), [slot]: targetId };
+        if (otherParent) attrs[otherSlot] = otherId;
+
+        return addChild(attrs, { transaction: t });
+      });
+    },
+    // T-14-09 (mitigate): the no-parent-recorded rejection is a data-integrity
+    // rule, not a scope boundary -- it applies even to admins, since fabricating
+    // a placeholder parent nobody created would corrupt the tree regardless of
+    // who requested it.
+    addSibling: async (_parent, { memberId, newMember }, { models, user }) => {
+      requireFamilyAccess(user);
+
+      const targetId = Number(memberId);
+      const isAdmin = user.role === 'ADMIN';
+
+      if (!isAdmin) {
+        const scope = await computeEditableScope(user.familyMemberId);
+        if (!scope.ids.has(targetId)) {
+          throw new Error('This member is outside your editable scope.');
+        }
+      }
+
+      return models.User.sequelize.transaction(async (t) => {
+        const target = await models.FamilyMember.findByPk(targetId, { transaction: t });
+        if (!target) throw new Error('Family member not found.');
+
+        if (target.motherId == null && target.fatherId == null) {
+          throw new Error('Add a parent first — siblings are derived from a shared parent.');
+        }
+
+        const attrs = { ...sanitizeNewMember(newMember) };
+        if (target.motherId != null) attrs.motherId = target.motherId;
+        if (target.fatherId != null) attrs.fatherId = target.fatherId;
+
+        return addChild(attrs, { transaction: t });
       });
     }
   },
