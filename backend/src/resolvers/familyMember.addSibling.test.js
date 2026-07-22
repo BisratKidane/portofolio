@@ -107,6 +107,80 @@ describe('addSibling (D-03/D-04, REL-04, PERM-01/PERM-02)', () => {
     expect(data).toBeNull();
   });
 
+  it('rejects (CR-02) inheriting a co-parent FK that lies outside the actor editable scope', async () => {
+    // The actor's child C has motherId = self and fatherId = coParent. C is in
+    // self's scope (children), but coParent is not (one hop only) -- addChild
+    // would reject otherParentId: coParent, so addSibling must reject too.
+    const self = await models.FamilyMember.create({ firstname: 'Ada', lastname: 'Lovelace', gender: 'Female' });
+    const coParent = await models.FamilyMember.create({ firstname: 'Co', lastname: 'Parent', gender: 'Male' });
+    const child = await models.FamilyMember.create({
+      firstname: 'Kid',
+      lastname: 'Lovelace',
+      gender: 'Female',
+      motherId: self.id,
+      fatherId: coParent.id
+    });
+    const actor = await createTestUser({ role: 'USER', familyMemberId: self.id });
+
+    const beforeCount = await models.FamilyMember.count();
+
+    const { data, errors } = await graphql(
+      ADD_SIBLING_MUTATION,
+      { memberId: String(child.id), newMember: { firstname: 'Smuggled', lastname: 'Child', gender: 'Male' } },
+      actor
+    );
+
+    expect(errors[0].message).toBe('You may only reference relatives already within your editable scope.');
+    expect(data).toBeNull();
+    expect(await models.FamilyMember.count()).toBe(beforeCount);
+  });
+
+  it("rejects (CR-02) inheriting a spouse's parent FKs, which lie outside the actor editable scope", async () => {
+    const self = await models.FamilyMember.create({ firstname: 'Ada', lastname: 'Lovelace', gender: 'Female' });
+    const spouseMother = await models.FamilyMember.create({ firstname: 'P1', lastname: 'InLaw', gender: 'Female' });
+    const spouse = await models.FamilyMember.create({
+      firstname: 'Spouse',
+      lastname: 'InLaw',
+      gender: 'Male',
+      motherId: spouseMother.id
+    });
+    await models.Spouse.create({ memberAId: self.id, memberBId: spouse.id });
+    const actor = await createTestUser({ role: 'USER', familyMemberId: self.id });
+
+    const beforeCount = await models.FamilyMember.count();
+
+    const { data, errors } = await graphql(
+      ADD_SIBLING_MUTATION,
+      { memberId: String(spouse.id), newMember: { firstname: 'Smuggled', lastname: 'InLaw', gender: 'Female' } },
+      actor
+    );
+
+    expect(errors[0].message).toBe('You may only reference relatives already within your editable scope.');
+    expect(data).toBeNull();
+    expect(await models.FamilyMember.count()).toBe(beforeCount);
+  });
+
+  it('still allows an ADMIN to add a sibling whose inherited parents are outside any scope', async () => {
+    const mother = await models.FamilyMember.create({ firstname: 'Mother', lastname: 'Far', gender: 'Female' });
+    const target = await models.FamilyMember.create({
+      firstname: 'Target',
+      lastname: 'Far',
+      gender: 'Male',
+      motherId: mother.id
+    });
+    const admin = await createTestUser({ role: 'ADMIN' });
+
+    const { data, errors } = await graphql(
+      ADD_SIBLING_MUTATION,
+      { memberId: String(target.id), newMember: { firstname: 'New', lastname: 'Far', gender: 'Female' } },
+      admin
+    );
+
+    expect(errors).toBeUndefined();
+    const sibling = await models.FamilyMember.findByPk(data.addSibling.id);
+    expect(sibling.motherId).toBe(mother.id);
+  });
+
   it('rejects (D-04) even for an ADMIN when the target has no parent recorded', async () => {
     const target = await models.FamilyMember.create({ firstname: 'Someone', lastname: 'Else', gender: 'Male' });
     const admin = await createTestUser({ role: 'ADMIN' });
