@@ -199,4 +199,31 @@ describe('linkUserToMember', () => {
     expect(created.address).toBeNull();
   });
 
+  it('rolls back the created FamilyMember if linking the user afterwards fails (WR-01)', async () => {
+    const admin = await createTestUser({ role: 'ADMIN' });
+    const target = await createTestUser({ role: 'USER' });
+
+    const beforeCount = await models.FamilyMember.count();
+
+    const updateSpy = vi
+      .spyOn(models.User.prototype, 'update')
+      .mockRejectedValueOnce(new Error('simulated update failure'));
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      {
+        userId: String(target.id),
+        newMember: { firstname: 'Ada', lastname: 'Byron', gender: 'Female' }
+      },
+      admin
+    );
+
+    updateSpy.mockRestore();
+
+    expect(data).toBeNull();
+    expect(errors[0].message).toBe('simulated update failure');
+
+    const afterCount = await models.FamilyMember.count();
+    expect(afterCount).toBe(beforeCount);
+  });
 });
