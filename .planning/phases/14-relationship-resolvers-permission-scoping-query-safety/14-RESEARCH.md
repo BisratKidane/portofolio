@@ -538,12 +538,12 @@ This is a MEDIUM-confidence recommendation (no official Sequelize/Vitest doc nam
 
 ## Open Questions
 
-1. **Exact GraphQL field names for the new recursive relationships (`mother`/`father` singular vs. a `parents: [FamilyMember!]!` list)?**
+1. **RESOLVED (in plan 14-03): ship `mother`/`father` as separate nullable fields; combined `parents` list deferred to Phase 15.** — Exact GraphQL field names for the new recursive relationships (`mother`/`father` singular vs. a `parents: [FamilyMember!]!` list)?
    - What we know: the model uses two named FK columns (`motherId`/`fatherId`), so singular `mother`/`father` fields (nullable, matching column semantics) are the natural mapping.
    - What's unclear: whether the schema should also expose a combined `parents: [FamilyMember!]!` convenience field for UI consumption (Phase 15's `/manage` dropdowns) — not required by any Phase 14 success criterion.
    - Recommendation: ship `mother`/`father` as separate nullable fields this phase (matches the DB shape exactly, simplest to test); defer any combined `parents` list field to Phase 15 if the UI needs it, since it's pure sugar over the same DataLoader.
 
-2. **Should `myEditableMembers` (a read-only query, Claude's Discretion item) ship this phase?**
+2. **RESOLVED (in plan 14-06 task 3): yes — `myEditableMembers` ships this phase.** — Should `myEditableMembers` (a read-only query, Claude's Discretion item) ship this phase?
    - What we know: it's "useful but not required by any Phase 14 requirement" per CONTEXT.md.
    - What's unclear: whether Phase 15's `/manage` UI work will need it immediately, making it cheaper to add now (while `computeEditableScope` is fresh) than to retrofit later.
    - Recommendation: add it — it's a near-zero-marginal-cost wrapper around the already-required `computeEditableScope` utility (`myEditableMembers: async (_p,_a,{user}) => (await computeEditableScope(user.familyMemberId)).ids`-shaped resolver returning the member rows), and de-risks Phase 15 by proving the utility's output shape against a real query earlier.

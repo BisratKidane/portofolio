@@ -1,8 +1,8 @@
 ---
 phase: 14
 slug: relationship-resolvers-permission-scoping-query-safety
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-07-22
 ---
@@ -43,20 +43,25 @@ constructs its own `ApolloServer` and its own `contextValue`, bypassing the `con
 
 ## Per-Task Verification Map
 
-*Populated by the planner — every task in every PLAN.md must map to a row here or declare a
-Wave 0 dependency. Draft skeleton below reflects the phase success criteria; task IDs are
-filled in once plans exist.*
+*Synced to the 6 plans (14-01 … 14-06) after plan verification. Every task is TDD RED-first
+(D-09) and carries a targeted automated verify command. All test files are created by their
+own task, so "File Exists" is ❌ W0 until that task runs.*
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD | 01 | 0 | PERM-05 | — | Shared server config + `createLoaders` used by both `server.js` and `test/helpers.js` | integration | `npm test --workspace backend` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | PERM-05 | T-14-scope | Editable set = {self, mother, father, spouses, children, either-parent siblings}; grandparent / cousin / sibling-of-sibling excluded | unit | `npm test --workspace backend -- <scope util test>` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | MEM-04, REL-04 | — | Member adds parent/spouse/child/sibling; sibling derived from shared parent, never stored as an edge | integration | `npm test --workspace backend -- <mutation test>` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | PERM-02 | T-14-escalate | Referencing an existing node outside the actor's editable set is rejected (D-02 invariant); existing edges cannot be rewired (D-05) | integration (adversarial) | `npm test --workspace backend -- <escalation test>` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | PERM-03, PERM-04 | T-14-delete | Member delete rejected; admin add/edit/remove permitted tree-wide | integration | `npm test --workspace backend -- <perm test>` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | PERM-01 | T-14-gate | Every family-domain resolver gated by `requireFamilyAccess`; `dashboard` brought in line (WR-04) | integration | `npm test --workspace backend -- src/resolvers/dashboard.test.js` | ✅ | ⬜ pending |
-| TBD | TBD | TBD | — (SC-5) | T-14-dos | Resolved SQL query count stays flat as fixture generation depth grows | integration | `npm test --workspace backend -- <query-count test>` | ❌ W0 | ⬜ pending |
-| TBD | TBD | TBD | — (SC-5) | T-14-depth | Over-depth query rejected as a GraphQL **validation** error before any resolver runs | integration | `npm test --workspace backend -- <depth-limit test>` | ❌ W0 | ⬜ pending |
+| 14-01-01 | 01 | 1 | PERM-05 | T-14-depth | Over-depth query rejected as a GraphQL **validation** error before any resolver runs; shared `serverConfig.js` consumed by both `server.js` and `test/helpers.js` | integration | `npm test --workspace backend -- src/graphql/queryDepth.test.js` | ❌ W0 | ⬜ pending |
+| 14-01-02 | 01 | 1 | PERM-05 | T-14-leak | Loaders constructed per-request inside `createLoaders()` only; no cache leak across instances | unit | `npm test --workspace backend -- src/loaders/familyMember.loaders.test.js` | ❌ W0 | ⬜ pending |
+| 14-02-01 | 02 | 1 | PERM-05, REL-04 | T-14-scope | Editable set = {self, mother, father, spouses, children, either-parent siblings}; grandparent / cousin / sibling-of-sibling excluded | unit | `npm test --workspace backend -- src/services/familyMember.scope.test.js` | ❌ W0 | ⬜ pending |
+| 14-02-02 | 02 | 1 | PERM-01 | T-14-gate | `dashboard` resolver gated by `requireFamilyAccess`, not `requireAuth` (WR-04) | integration | `npm test --workspace backend -- src/resolvers/dashboard.test.js` | ✅ | ⬜ pending |
+| 14-03-01 | 03 | 2 | REL-04, PERM-05 | T-14-dos | Recursive fields resolve via loaders; siblings derived from shared parent, never stored as an edge | integration | `npm test --workspace backend -- src/resolvers/familyMember.relationships.test.js` | ❌ W0 | ⬜ pending |
+| 14-03-02 | 03 | 2 | — (SC-5) | T-14-dos | Resolved SQL query count stays flat as fixture generation depth grows | integration | `npm test --workspace backend -- src/services/familyMember.queryCount.test.js` | ❌ W0 | ⬜ pending |
+| 14-04-01 | 04 | 3 | PERM-01, PERM-02, PERM-04 | T-14-escalate | `addParent` creates a new node for members; existing-node references rejected unless already in scope (D-01/D-02) | integration | `npm test --workspace backend -- src/resolvers/familyMember.addParent.test.js` | ❌ W0 | ⬜ pending |
+| 14-04-02 | 04 | 3 | PERM-01, PERM-02, PERM-04 | T-14-escalate | `addSpouse` same invariant; canonical spouse-row ordering preserved (P12 D-01) | integration | `npm test --workspace backend -- src/resolvers/familyMember.addSpouse.test.js` | ❌ W0 | ⬜ pending |
+| 14-05-01 | 05 | 4 | PERM-01, PERM-02, PERM-04 | T-14-escalate | **SC-4 adversarial core:** `otherParentId` pointing at a stranger's linked member or the actor's grandparent is rejected before the transaction opens | integration (adversarial) | `npm test --workspace backend -- src/resolvers/familyMember.addChild.test.js` | ❌ W0 | ⬜ pending |
+| 14-05-02 | 05 | 4 | REL-04, PERM-01 | T-14-escalate | `addSibling` creates a member sharing an existing parent; rejected with guidance when no parent recorded (D-04) | integration | `npm test --workspace backend -- src/resolvers/familyMember.addSibling.test.js` | ❌ W0 | ⬜ pending |
+| 14-06-01 | 06 | 5 | MEM-04, PERM-02 | T-14-fieldlock | Fields editable on in-scope relatives; record field-locked when target has a linked user (D-06); existing edges not rewirable (D-05) | integration | `npm test --workspace backend -- src/resolvers/familyMember.editMember.test.js` | ❌ W0 | ⬜ pending |
+| 14-06-02 | 06 | 5 | PERM-03, PERM-04 | T-14-delete | Member delete rejected; admin delete permitted tree-wide | integration | `npm test --workspace backend -- src/resolvers/familyMember.deleteMember.test.js` | ❌ W0 | ⬜ pending |
+| 14-06-03 | 06 | 5 | PERM-05 | T-14-scope | `myEditableMembers` returns exactly the server-computed scope; no client-supplied scope trusted | integration | `npm test --workspace backend -- src/resolvers/familyMember.myEditableMembers.test.js` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -90,11 +95,11 @@ backend-only; no UI surface ships here.*
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags (`vitest run`, never `vitest --watch`)
-- [ ] Feedback latency < 60s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies — 13/13 tasks mapped
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references — no `<automated>MISSING</automated>` in any plan
+- [x] No watch-mode flags (`vitest run`, never `vitest --watch`)
+- [x] Feedback latency < 60s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-07-22 (gsd-plan-checker: VERIFICATION PASSED, no blockers)
