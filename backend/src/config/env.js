@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import { assertProductionMailConfig } from './assertProductionMailConfig.js';
 import { assertProductionSecrets } from './assertProductionSecrets.js';
+import { requiredPositiveInt } from './requiredPositiveInt.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,7 +24,12 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET || 'change-me',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1d',
   resetTokenExpiresMinutes: Number(process.env.RESET_TOKEN_EXPIRES_MINUTES || 30),
-  maxQueryDepth: Number(process.env.MAX_QUERY_DEPTH || 100),
+  // CR-03: 12 selection levels comfortably covers realistic family-tree
+  // traversals while bounding the exponential amplification available on a
+  // schema where mother/father/children/spouses/siblings are mutually
+  // recursive. Parsed strictly so a malformed value fails at startup
+  // instead of silently disabling the rule (CR-04).
+  maxQueryDepth: requiredPositiveInt(process.env.MAX_QUERY_DEPTH, 12, 'MAX_QUERY_DEPTH'),
   smtpHost: process.env.SMTP_HOST || '',
   smtpPort: Number(process.env.SMTP_PORT || 587),
   smtpUser: process.env.SMTP_USER || '',

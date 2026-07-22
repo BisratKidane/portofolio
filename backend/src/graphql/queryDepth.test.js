@@ -13,7 +13,7 @@ const ME_QUERY = `
   }
 `;
 
-// env.maxQueryDepth defaults to 100; 110 ofType nestings comfortably exceeds
+// env.maxQueryDepth is 12 (CR-03); 110 ofType nestings comfortably exceeds
 // it regardless of how the leading __schema { types { fields { type { ... } } } }
 // levels are counted.
 function buildDeepIntrospectionQuery(ofTypeDepth) {
