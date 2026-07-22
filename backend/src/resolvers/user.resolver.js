@@ -234,6 +234,15 @@ export const userResolvers = {
       const targetUser = await models.User.findByPk(userId);
       if (!targetUser) throw new Error('User not found.');
 
+      // WR-03: the mutation is the security/data-integrity boundary, so it
+      // must enforce "already linked" itself rather than relying on the
+      // admin UI only listing unlinked users. Without this, re-linking an
+      // already-linked user would silently re-point them and orphan the
+      // previous member's linkedUser.
+      if (targetUser.familyMemberId != null) {
+        throw new Error('This account is already linked to a family member.');
+      }
+
       // Member resolution/creation and the user link are wrapped in a single
       // transaction (WR-01): if linking the user fails after a new
       // FamilyMember row was just created, the whole thing rolls back
