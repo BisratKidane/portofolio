@@ -1,0 +1,7 @@
+# Deferred Items — Phase 14
+
+## Plan 14-02
+
+| Item | Status | Note |
+|------|--------|------|
+| Full backend suite (`npm test --workspace backend`) intermittently reports failures unrelated to this plan's files (`linkUserToMember.test.js`, `rateLimit.test.js`, `resendVerificationEmail.test.js`, `resetPassword.test.js`, `sessionRevocation.test.js`, `verifyEmail.test.js`, `database.test.js`, `familyMember.resolver.test.js` ordering case) | Out of scope, not fixed | Root cause observed during this execution: a sibling worktree agent (`agent-a340e5535e2a4fbe9`, running a different Phase 14 plan in parallel) was executing `vitest` against the **same shared MySQL test database** at the same time (`ps aux` showed a concurrent `vitest run` / forks worker process). This produces real races — `resetTables()` truncating tables mid-test, `SequelizeForeignKeyConstraintError`, and even a transient "Table 'portofolio_test.spouses' doesn't exist" during a concurrent `sequelize.sync({ force: true })`/`drop()` from the other agent's own test run. This is parallel-worktree test-database contention, not a defect introduced by this plan's changes. This plan's two owned test files (`familyMember.scope.test.js`, `dashboard.test.js`) pass reliably and repeatably in isolation. Re-running the full suite once all parallel Phase 14 agents have finished (serialized) should confirm green; if it does not, that is a new, separately-scoped issue. |
