@@ -49,5 +49,6 @@ export const familyMemberTypeDefs = `#graphql
 
   extend type Mutation {
     addParent(memberId: ID!, role: ParentRole!, newMember: NewFamilyMemberInput!): FamilyMember!
+    addSpouse(memberId: ID!, newMember: NewFamilyMemberInput!): FamilyMember!
   }
 `;
