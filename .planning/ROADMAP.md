@@ -139,7 +139,7 @@ Plans:
 
 **Wave 2** *(blocked on 14-01 completion)*
 
-- [ ] 14-03-PLAN.md — Recursive FamilyMember schema fields wired to DataLoaders + SC-5 flat-query-count/depth-limit proof (REL-04, PERM-05)
+- [x] 14-03-PLAN.md — Recursive FamilyMember schema fields wired to DataLoaders + SC-5 flat-query-count/depth-limit proof (REL-04, PERM-05)
 
 **Wave 3** *(blocked on 14-02 and 14-03 completion)*
 
@@ -219,7 +219,7 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 11. Email Verification & ADMIN Race Fix | v1.1 | 8/8 | Complete | 2026-07-21 |
 | 12. Family Data Model Foundation | v2.0 | 4/4 | Complete   | 2026-07-22 |
 | 13. Membership Gating & Account Linking | v2.0 | 4/4 | Complete   | 2026-07-22 |
-| 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 2/6 | In Progress|  |
+| 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 3/6 | In Progress|  |
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 0/TBD | Not started | - |
 | 16. Photo Upload | v2.0 | 0/TBD | Not started | - |
 | 17. /family Deep Tree Visualization | v2.0 | 0/TBD | Not started | - |
