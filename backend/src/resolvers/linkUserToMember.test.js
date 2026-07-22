@@ -226,4 +226,23 @@ describe('linkUserToMember', () => {
     const afterCount = await models.FamilyMember.count();
     expect(afterCount).toBe(beforeCount);
   });
+
+  it('rejects linking a user that is already linked to a different member (WR-03)', async () => {
+    const admin = await createTestUser({ role: 'ADMIN' });
+    const memberA = await models.FamilyMember.create({ firstname: 'Ada', lastname: 'Lovelace', gender: 'Female' });
+    const memberB = await models.FamilyMember.create({ firstname: 'Grace', lastname: 'Hopper', gender: 'Female' });
+    const target = await createTestUser({ role: 'USER', familyMemberId: memberA.id });
+
+    const { data, errors } = await graphql(
+      LINK_USER_TO_MEMBER_MUTATION,
+      { userId: String(target.id), memberId: String(memberB.id) },
+      admin
+    );
+
+    expect(errors[0].message).toBe('This account is already linked to a family member.');
+    expect(data).toBeNull();
+
+    await target.reload();
+    expect(target.familyMemberId).toBe(memberA.id);
+  });
 });
