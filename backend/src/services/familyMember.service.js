@@ -45,8 +45,8 @@ export async function linkParent(childId, { motherId, fatherId } = {}, { transac
   return models.FamilyMember.update(updates, { where: { id: childId }, transaction });
 }
 
-export async function addChild(attrs) {
-  return models.FamilyMember.create(attrs);
+export async function addChild(attrs, { transaction } = {}) {
+  return models.FamilyMember.create(attrs, { transaction });
 }
 
 async function createOrFindSpouseRow(memberAId, memberBId, transaction) {
