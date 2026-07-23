@@ -33,7 +33,10 @@ findings:
   warning: 12
   info: 0
   total: 16
-status: issues_found
+critical_resolved: 4
+critical_open: 0
+warning_open: 12
+status: blockers_resolved
 ---
 
 # Phase 14: Code Review Report
@@ -563,3 +566,30 @@ and `linkedUser`.
 _Reviewed: 2026-07-22_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+---
+
+## Resolution — Blockers (added by orchestrator after fix pass)
+
+All 4 BLOCKER findings were fixed test-first (RED → GREEN) on `family-tree`.
+The 12 WARNING findings remain **open** and are candidates for gap closure.
+
+| ID | Status | Fix |
+|----|--------|-----|
+| CR-01 | Fixed | `linkedUser` resolves only for an ADMIN or when `linked.id === user.id`; otherwise `null`. Identity is checked on the linked *user's* id rather than the acting user's `familyMemberId`, so a stale/dangling `familyMemberId` cannot be trusted into access. |
+| CR-02 | Fixed | `addSibling` hoists `scope` and rejects any inherited `motherId`/`fatherId` outside `scope.ids`, reusing `addChild`'s message so both write paths enforce one control. Admin bypass retained and pinned by test. |
+| CR-03 | Fixed | Depth default lowered 100 → 12; `MAX_QUERY_DEPTH=12` added explicitly to all four `env/` files. |
+| CR-04 | Fixed | New `backend/src/config/requiredPositiveInt.js` parses strictly and throws at module load, matching the `assertProductionSecrets` fail-fast convention. `'unlimited'` (→ NaN) and `'0'` (→ falsy→100) both now fail closed at startup. |
+
+Fix commits: `9e3f3b5`, `15af328`, `f79a3a9`, `318476c`, `28123c6`, `c3edeb3`.
+Suite after fixes: backend 270/270 (260 baseline + 10 new), frontend 34/34.
+
+No pre-existing test assertion was changed; one stale comment in `queryDepth.test.js` was corrected.
+
+### Still open — recommended for `/gsd:plan-phase 14 --gaps`
+
+Highest-value remaining warnings:
+- **WR-01** — `computeEditableScope`'s `{ transaction }` option is accepted but no caller passes one, so every permission check runs on a different connection than the write it authorizes.
+- **WR-05** — `wouldCreateCycle` returns `false` ("no cycle") when its 100-iteration budget is exhausted — another fail-open safety check.
+- **WR-02** — `editMember` uses no transaction; the D-06 field-lock read is racy.
+- **WR-03** — `addChild` permits `otherParentId === memberId`, yielding `motherId === fatherId`.
