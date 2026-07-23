@@ -5,6 +5,7 @@ import { graphqlRequest } from '../api/graphqlClient.js';
 import { colors } from '../theme.js';
 import RelationshipGroupedPanel from '../components/manage/RelationshipGroupedPanel.jsx';
 import AddRelativeDialog from '../components/manage/AddRelativeDialog.jsx';
+import EditMemberDialog from '../components/manage/EditMemberDialog.jsx';
 
 const MY_EDITABLE_MEMBERS_QUERY = `
   query MyEditableMembers {
@@ -40,9 +41,7 @@ function MemberBranch({ user }) {
   const [pageLoading, setPageLoading] = useState(true);
   const [pageError, setPageError] = useState('');
   const [dialogState, setDialogState] = useState(EMPTY_DIALOG_STATE);
-  // TODO(Task 2 of this plan): setEditTarget is a placeholder no-op until
-  // EditMemberDialog is wired in; no dialog renders from it yet.
-  const setEditTarget = () => {};
+  const [editTarget, setEditTarget] = useState(null);
 
   const refetch = useCallback(() => {
     setPageLoading(true);
@@ -102,6 +101,13 @@ function MemberBranch({ user }) {
         inScopeMembers={inScopeMembers}
         onClose={() => setDialogState(EMPTY_DIALOG_STATE)}
         onCreated={refetch}
+      />
+
+      <EditMemberDialog
+        open={Boolean(editTarget)}
+        member={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={refetch}
       />
     </Stack>
   );

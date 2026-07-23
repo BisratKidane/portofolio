@@ -196,4 +196,28 @@ describe('ManagePage (member branch)', () => {
 
     expect(await screen.findByText('New Child')).toBeInTheDocument();
   });
+
+  it('opens EditMemberDialog pre-filled when Edit is clicked on the self card, and refetches after save', async () => {
+    graphqlRequest.mockResolvedValueOnce({ myEditableMembers: ALL_ROWS });
+    graphqlRequest.mockResolvedValueOnce({ editMember: { id: '1', firstname: 'Augusta' } });
+    graphqlRequest.mockResolvedValueOnce({ myEditableMembers: ALL_ROWS });
+
+    renderPage();
+    await screen.findByText('Parents');
+
+    const editButtons = screen.getAllByRole('button', { name: 'Edit' });
+    await userEvent.click(editButtons[0]);
+
+    expect(await screen.findByText('Edit member')).toBeInTheDocument();
+    expect(screen.getByLabelText('First name', { exact: false })).toHaveValue('Ada');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => {
+      expect(graphqlRequest).toHaveBeenCalledWith(
+        expect.stringContaining('editMember'),
+        expect.objectContaining({ id: '1' })
+      );
+    });
+  });
 });
