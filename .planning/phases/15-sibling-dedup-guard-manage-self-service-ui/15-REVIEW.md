@@ -15,10 +15,13 @@ files_reviewed_list:
   - frontend/src/pages/ManagePage.jsx
 findings:
   critical: 1
+  critical_resolved: 1
   warning: 4
   info: 4
   total: 9
-status: issues_found
+status: critical_resolved
+resolved:
+  - CR-01
 ---
 
 # Phase 15: Code Review Report
@@ -55,6 +58,16 @@ these are security-critical but they degrade robustness/UX and should be fixed.
 ## Critical Issues
 
 ### CR-01: REL-06's TOCTOU guard is defeated by a plain read earlier in the same transaction on the real GraphQL call path
+
+> **✅ RESOLVED (2026-07-23, test-first).** The guard's duplicate-check `findOne` now
+> uses `lock: t.LOCK.UPDATE`, so it reads the latest-committed rows regardless of any
+> plain read that fixed the transaction snapshot earlier (as the addChild/addSibling
+> resolvers do via `findByPk`). A deterministic regression test reproducing the exact
+> resolver-path race was added to `familyMember.dedup.test.js` (RED before the fix,
+> GREEN after). The `mother`/`father` `include` was dropped from the check (FOR UPDATE +
+> outer join would lock parent rows); the shared parent's name is fetched separately
+> only when a conflict exists. Commits: `test(15-01): reproduce CR-01 …` → `fix(15-01):
+> make REL-06 dedup check a locking read (CR-01)`. Full backend suite: 281/281 green.
 
 **File:** `backend/src/services/familyMember.service.js:52-94` (the `run` function implementing the guard), read together with the call sites in `backend/src/resolvers/familyMember.resolver.js:131-145` (`addChild` mutation) and `:165-192` (`addSibling` mutation).
 
