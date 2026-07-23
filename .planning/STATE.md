@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: Collaborative Family Tree
 status: executing
 stopped_at: Phase 15 UI-SPEC approved
-last_updated: "2026-07-23T18:22:24.749Z"
-last_activity: 2026-07-23 -- Phase 15 planning complete
+last_updated: "2026-07-23T18:31:15.690Z"
+last_activity: 2026-07-23 -- Phase 15 execution started
 progress:
   total_phases: 6
   completed_phases: 3
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 15 — sibling dedup guard & /manage self service ui
+**Current focus:** Phase 15 — sibling-dedup-guard-manage-self-service-ui
 
 ## Current Position
 
-Phase: 15
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-23 -- Phase 15 planning complete
+Phase: 15 (sibling-dedup-guard-manage-self-service-ui) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 15
+Last activity: 2026-07-23 -- Phase 15 execution started
 
 Progress: [██████████] 100%
 

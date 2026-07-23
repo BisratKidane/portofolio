@@ -170,10 +170,10 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 15-01-PLAN.md — REL-06 sibling/child dedup guard, row-locked, TDD (REL-06)
-- [ ] 15-02-PLAN.md — MemberCard + RelationshipGroupedPanel (D-01/D-02/D-06 shared building blocks) (MNG-01)
-- [ ] 15-03-PLAN.md — AddRelativeDialog, all four relation types (D-04/D-05) (MNG-02)
-- [ ] 15-04-PLAN.md — AdminMemberTable, searchable/paginated (D-03 table half) (MNG-03)
+- [x] 15-01-PLAN.md — REL-06 sibling/child dedup guard, row-locked, TDD (REL-06)
+- [x] 15-02-PLAN.md — MemberCard + RelationshipGroupedPanel (D-01/D-02/D-06 shared building blocks) (MNG-01)
+- [x] 15-03-PLAN.md — AddRelativeDialog, all four relation types (D-04/D-05) (MNG-02)
+- [x] 15-04-PLAN.md — AdminMemberTable, searchable/paginated (D-03 table half) (MNG-03)
 
 **Wave 2** *(blocked on 15-02 and 15-03 completion)*
 
@@ -237,6 +237,6 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 12. Family Data Model Foundation | v2.0 | 4/4 | Complete   | 2026-07-22 |
 | 13. Membership Gating & Account Linking | v2.0 | 4/4 | Complete   | 2026-07-22 |
 | 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 6/6 | Complete    | 2026-07-23 |
-| 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 0/TBD | Not started | - |
+| 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 4/6 | In Progress|  |
 | 16. Photo Upload | v2.0 | 0/TBD | Not started | - |
 | 17. /family Deep Tree Visualization | v2.0 | 0/TBD | Not started | - |
