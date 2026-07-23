@@ -232,9 +232,16 @@ describe('AddRelativeDialog - child', () => {
     expect(onCreated).toHaveBeenCalled();
   });
 
-  it('binds the Autocomplete options strictly to the inScopeMembers prop', () => {
-    const { container } = renderDialog({ relationType: 'child', inScopeMembers: IN_SCOPE_MEMBERS });
-    expect(container.querySelector('[class*=MuiAutocomplete-root]')).toBeInTheDocument();
+  it('binds the Autocomplete options strictly to the inScopeMembers prop', async () => {
+    renderDialog({ relationType: 'child', inScopeMembers: IN_SCOPE_MEMBERS });
+    await userEvent.click(screen.getByRole('button', { name: 'or pick someone already in your family' }));
+    const picker = screen.getByLabelText('Other parent (optional)', { exact: false });
+    await userEvent.click(picker);
+    await userEvent.type(picker, 'William');
+    expect(await screen.findByText('William King')).toBeInTheDocument();
+    await userEvent.clear(picker);
+    await userEvent.type(picker, 'Someone Not In Scope');
+    expect(screen.queryByText('Someone Not In Scope')).not.toBeInTheDocument();
   });
 
   it('renders the exact REL-06 dedup rejection message inside role="alert"', async () => {

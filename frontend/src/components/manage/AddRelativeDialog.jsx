@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { Alert, Button, Dialog, DialogContent, DialogTitle, MenuItem, Stack, TextField } from '@mui/material';
+import {
+  Alert,
+  Autocomplete,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  Stack,
+  TextField
+} from '@mui/material';
 import { graphqlRequest } from '../../api/graphqlClient.js';
 
 const ADD_PARENT_MUTATION = `
@@ -11,6 +21,18 @@ const ADD_PARENT_MUTATION = `
 const ADD_SPOUSE_MUTATION = `
   mutation AddSpouse($memberId: ID!, $newMember: NewFamilyMemberInput!) {
     addSpouse(memberId: $memberId, newMember: $newMember) { id fullname }
+  }
+`;
+
+const ADD_CHILD_MUTATION = `
+  mutation AddChild($memberId: ID!, $role: ParentRole!, $newMember: NewFamilyMemberInput!, $otherParentId: ID) {
+    addChild(memberId: $memberId, role: $role, newMember: $newMember, otherParentId: $otherParentId) { id fullname }
+  }
+`;
+
+const ADD_SIBLING_MUTATION = `
+  mutation AddSibling($memberId: ID!, $newMember: NewFamilyMemberInput!) {
+    addSibling(memberId: $memberId, newMember: $newMember) { id fullname }
   }
 `;
 
@@ -26,11 +48,13 @@ const EMPTY_FORM = {
   address: ''
 };
 
-const NEEDS_ROLE = new Set(['parent']);
+const NEEDS_ROLE = new Set(['parent', 'child']);
 
-export default function AddRelativeDialog({ open, relationType, targetId, onClose, onCreated }) {
+export default function AddRelativeDialog({ open, relationType, targetId, inScopeMembers, onClose, onCreated }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [role, setRole] = useState('');
+  const [showPicker, setShowPicker] = useState(false);
+  const [otherParent, setOtherParent] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,6 +65,8 @@ export default function AddRelativeDialog({ open, relationType, targetId, onClos
   const resetState = () => {
     setForm(EMPTY_FORM);
     setRole('');
+    setShowPicker(false);
+    setOtherParent(null);
     setError('');
   };
 
@@ -57,6 +83,15 @@ export default function AddRelativeDialog({ open, relationType, targetId, onClos
         await graphqlRequest(ADD_PARENT_MUTATION, { memberId: targetId, role, newMember: form });
       } else if (relationType === 'spouse') {
         await graphqlRequest(ADD_SPOUSE_MUTATION, { memberId: targetId, newMember: form });
+      } else if (relationType === 'child') {
+        await graphqlRequest(ADD_CHILD_MUTATION, {
+          memberId: targetId,
+          role,
+          newMember: form,
+          otherParentId: otherParent?.id ?? null
+        });
+      } else if (relationType === 'sibling') {
+        await graphqlRequest(ADD_SIBLING_MUTATION, { memberId: targetId, newMember: form });
       }
       resetState();
       onCreated();
@@ -135,6 +170,21 @@ export default function AddRelativeDialog({ open, relationType, targetId, onClos
               fullWidth
             />
           </Stack>
+
+          {relationType === 'child' &&
+            (showPicker ? (
+              <Autocomplete
+                options={inScopeMembers}
+                getOptionLabel={(member) => member.fullname}
+                value={otherParent}
+                onChange={(_event, value) => setOtherParent(value)}
+                renderInput={(params) => <TextField {...params} label="Other parent (optional)" />}
+              />
+            ) : (
+              <Button variant="text" onClick={() => setShowPicker(true)} sx={{ alignSelf: 'flex-start' }}>
+                or pick someone already in your family
+              </Button>
+            ))}
 
           <Stack direction="row" spacing={2}>
             <Button variant="contained" disabled={disableSubmit} onClick={handleSubmit}>
