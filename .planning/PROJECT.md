@@ -123,6 +123,8 @@ Changes to the app can be made with confidence — auth and core flows are prote
 
 **In progress: v2.0 Collaborative Family Tree.** Phase 12 (Family Data Model Foundation) complete — the family-tree data model exists and is provably correct before any resolver/permission/UI logic is built on it: `FamilyMember` model (required firstname/lastname/gender, derived `fullname`, optional fields), self-referencing `motherId`/`fatherId` FKs with `ON DELETE SET NULL`, a symmetric `Spouse` join model with canonical ordered-pair hashing, a hand-rolled cycle-prevention ancestor-walk, and transactional `deleteMember` with married-in one-hop delete semantics (D-03/D-04). Verified 5/5; backend suite 171/171 green; TDD red-green throughout. Requirements MEM-01/02/03/05 and REL-01/02/03/05 validated. Advisory code review (12-REVIEW.md) flagged latent ID string/number coercion (WR-01) and a founding-couple delete edge case (WR-02) to revisit when resolvers land in Phase 14.
 
+**Phase 15 (Sibling Dedup Guard & /manage Self-Service UI) complete (2026-07-23).** Members now have a working `/manage` page — grouped relationship panels, real add/edit forms via a single relationType-parameterized `AddRelativeDialog` and an `EditMemberDialog` — and admins manage the whole tree (searchable paginated table, delete-with-confirm, account linking re-homed into `/manage`). The REL-06 duplicate-child guard is enforced for every `addChild` caller. Executed as 6 plans across 3 waves (parallel worktree agents), TDD throughout. Code review found one Critical TOCTOU race (CR-01): the guard's plain duplicate-check `SELECT` read a stale REPEATABLE-READ snapshot because the resolvers `findByPk` the target before the guard; fixed test-first with a deterministic resolver-path race repro and a `LOCK.UPDATE` locking read. Verified 9/9 must-haves; backend 281/281, frontend 90/90 green. Requirements REL-06 and MNG-01..04 validated. 4 Warnings + 4 Info remain advisory (self-not-found crash path, proactive D-05 message, pagination clamp, admin self-delete UX).
+
 ## Next Milestone Goals
 
 Candidate directions after v1.1 (to be refined via `/gsd:new-milestone`):
@@ -148,4 +150,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-21 — Phase 12 (Family Data Model Foundation) complete*
+*Last updated: 2026-07-23 — Phase 15 (Sibling Dedup Guard & /manage Self-Service UI) complete*
