@@ -45,8 +45,64 @@ export async function linkParent(childId, { motherId, fatherId } = {}, { transac
   return models.FamilyMember.update(updates, { where: { id: childId }, transaction });
 }
 
+// REL-06 (D-08/D-09/D-10/D-11): the single, unconditional dedup guard for
+// every addChild caller (member add, admin add, addSibling -- which routes
+// through this function -- and any future caller). No role/admin-override
+// parameter exists here by design (D-08 -- no admin override).
+async function run(attrs, t) {
+  const parentIds = [attrs.motherId, attrs.fatherId].filter((id) => id != null);
+
+  if (parentIds.length > 0) {
+    // Lock the shared-parent row(s) FIRST, before the duplicate-name read --
+    // this is what closes the TOCTOU race a bare SELECT-then-INSERT would
+    // leave open (D-10). Two concurrent addChild calls targeting the same
+    // parent serialize on this lock, one at a time.
+    await models.FamilyMember.findAll({
+      where: { id: parentIds },
+      lock: t.LOCK.UPDATE,
+      transaction: t
+    });
+
+    // Normalize INSIDE the guard itself -- never assume the caller already
+    // normalized firstname (belt-and-suspenders on top of sanitizeNewMember).
+    const normalizedFirstname = attrs.firstname.trim().toLowerCase();
+
+    const conflict = await models.FamilyMember.findOne({
+      where: {
+        [Op.and]: [
+          { [Op.or]: parentIds.flatMap((pid) => [{ motherId: pid }, { fatherId: pid }]) },
+          sequelize.where(
+            sequelize.fn('LOWER', sequelize.fn('TRIM', sequelize.col('FamilyMember.firstname'))),
+            normalizedFirstname
+          )
+        ]
+      },
+      include: [{ association: 'mother' }, { association: 'father' }],
+      transaction: t
+    });
+
+    if (conflict) {
+      const sharedParent = parentIds.includes(conflict.motherId) ? conflict.mother : conflict.father;
+      throw new Error(
+        `A child named '${conflict.firstname}' already exists under ${sharedParent.fullname}. ` +
+          `Pick a different name, or edit the existing member.`
+      );
+    }
+  }
+
+  return models.FamilyMember.create(attrs, { transaction: t });
+}
+
 export async function addChild(attrs, { transaction } = {}) {
-  return models.FamilyMember.create(attrs, { transaction });
+  // Mirrors setSpouse's exact convention: run directly against a
+  // caller-supplied transaction (never nest a second sequelize.transaction(...)
+  // inside an existing one); when no transaction is supplied, open one here
+  // so the guard is never silently skipped by a caller that forgets to pass
+  // one (Pitfall 2/A3).
+  if (transaction) {
+    return run(attrs, transaction);
+  }
+  return sequelize.transaction((t) => run(attrs, t));
 }
 
 async function createOrFindSpouseRow(memberAId, memberBId, transaction) {

@@ -188,4 +188,96 @@ describe('addChild (SC-4 primary target, D-01/D-02, PERM-01/PERM-02, REL-04)', (
     expect(argsSignature).toContain('newMember: NewFamilyMemberInput!');
     expect(argsSignature).not.toMatch(/childId/i);
   });
+
+  it('(REL-06, D-09 motherId-only) rejects a duplicate-firstname child sharing the same mother', async () => {
+    const self = await models.FamilyMember.create({ firstname: 'Almaz', lastname: 'Kidane', gender: 'Female' });
+    await models.FamilyMember.create({
+      firstname: 'Sara',
+      lastname: 'Kidane',
+      gender: 'Female',
+      motherId: self.id
+    });
+    const actor = await createTestUser({ role: 'USER', familyMemberId: self.id });
+
+    const beforeCount = await models.FamilyMember.count();
+
+    const { data, errors } = await graphql(
+      ADD_CHILD_MUTATION,
+      {
+        memberId: String(self.id),
+        role: 'MOTHER',
+        newMember: { firstname: ' sara ', lastname: 'Kidane', gender: 'Female' },
+        otherParentId: null
+      },
+      actor
+    );
+
+    expect(errors[0].message).toBe(
+      "A child named 'Sara' already exists under Almaz Kidane. Pick a different name, or edit the existing member."
+    );
+    expect(data).toBeNull();
+    expect(await models.FamilyMember.count()).toBe(beforeCount);
+  });
+
+  it('(REL-06, D-09 fatherId-only) rejects a duplicate-firstname child sharing the same father', async () => {
+    const self = await models.FamilyMember.create({ firstname: 'Kebede', lastname: 'Tesfaye', gender: 'Male' });
+    const otherMother = await models.FamilyMember.create({ firstname: 'MomB', lastname: 'Tesfaye', gender: 'Female' });
+    await models.FamilyMember.create({
+      firstname: 'Sara',
+      lastname: 'Tesfaye',
+      gender: 'Female',
+      fatherId: self.id,
+      motherId: otherMother.id
+    });
+    const actor = await createTestUser({ role: 'USER', familyMemberId: self.id });
+
+    const beforeCount = await models.FamilyMember.count();
+
+    const { data, errors } = await graphql(
+      ADD_CHILD_MUTATION,
+      {
+        memberId: String(self.id),
+        role: 'FATHER',
+        newMember: { firstname: 'Sara', lastname: 'Tesfaye', gender: 'Female' },
+        otherParentId: null
+      },
+      actor
+    );
+
+    expect(errors[0].message).toBe(
+      "A child named 'Sara' already exists under Kebede Tesfaye. Pick a different name, or edit the existing member."
+    );
+    expect(data).toBeNull();
+    expect(await models.FamilyMember.count()).toBe(beforeCount);
+  });
+
+  it('(REL-06, Pitfall 4) rejects a duplicate-firstname child for an ADMIN too -- no admin override', async () => {
+    const target = await models.FamilyMember.create({ firstname: 'Almaz', lastname: 'Kidane', gender: 'Female' });
+    await models.FamilyMember.create({
+      firstname: 'Sara',
+      lastname: 'Kidane',
+      gender: 'Female',
+      motherId: target.id
+    });
+    const admin = await createTestUser({ role: 'ADMIN' });
+
+    const beforeCount = await models.FamilyMember.count();
+
+    const { data, errors } = await graphql(
+      ADD_CHILD_MUTATION,
+      {
+        memberId: String(target.id),
+        role: 'MOTHER',
+        newMember: { firstname: 'Sara', lastname: 'Kidane', gender: 'Female' },
+        otherParentId: null
+      },
+      admin
+    );
+
+    expect(errors[0].message).toBe(
+      "A child named 'Sara' already exists under Almaz Kidane. Pick a different name, or edit the existing member."
+    );
+    expect(data).toBeNull();
+    expect(await models.FamilyMember.count()).toBe(beforeCount);
+  });
 });
