@@ -1,11 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Box, CircularProgress, Paper, Stack, Typography } from '@mui/material';
+import {
+  Alert,
+  Autocomplete,
+  Avatar,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  MenuItem,
+  Paper,
+  Stack,
+  TextField,
+  Typography
+} from '@mui/material';
 import { useAuth } from '../context/AuthContext.jsx';
 import { graphqlRequest } from '../api/graphqlClient.js';
-import { colors } from '../theme.js';
+import { colors, getInitials } from '../theme.js';
 import RelationshipGroupedPanel from '../components/manage/RelationshipGroupedPanel.jsx';
 import AddRelativeDialog from '../components/manage/AddRelativeDialog.jsx';
 import EditMemberDialog from '../components/manage/EditMemberDialog.jsx';
+import AdminMemberTable from '../components/manage/AdminMemberTable.jsx';
 
 const MY_EDITABLE_MEMBERS_QUERY = `
   query MyEditableMembers {
@@ -17,6 +33,59 @@ const MY_EDITABLE_MEMBERS_QUERY = `
     }
   }
 `;
+
+const FAMILY_MEMBERS_QUERY = `
+  query FamilyMembersTable {
+    familyMembers { id firstname lastname fullname gender linkedUser { id name email } }
+  }
+`;
+
+// Deviation (Rule 1): the plan's <interfaces> block wrote `mother { id } father { id }`
+// (copy-pasted from MY_EDITABLE_MEMBERS_QUERY's shape), but 15-RESEARCH.md's "Admin table
+// + focus query shape" section -- the canonical source this task's read_first points to --
+// specifies `mother { id fullname }` / `father { id fullname }`. Without fullname these
+// flattened parent rows would render blank names in the Parents section, so this follows
+// RESEARCH.md.
+const FAMILY_MEMBER_FOCUS_QUERY = `
+  query FamilyMemberFocus($id: ID!) {
+    familyMember(id: $id) {
+      id firstname lastname fullname gender birthdate deathdate phone email address
+      mother { id fullname } father { id fullname }
+      spouses { id fullname } children { id fullname } siblings { id fullname }
+      linkedUser { id name email }
+    }
+  }
+`;
+
+const DELETE_MEMBER_MUTATION = `
+  mutation DeleteMember($id: ID!) { deleteMember(id: $id) }
+`;
+
+// Re-homed verbatim from AdminLinkMembers.jsx (pre-15-05-redirect, commit 9082440) --
+// MNG-03: account-linking moves into /manage, /admin/link-members no longer hosts it.
+const UNLINKED_USERS_QUERY = `
+  query UnlinkedUsers {
+    unlinkedUsers { id name email createdAt }
+  }
+`;
+
+const LINK_USER_TO_MEMBER_MUTATION = `
+  mutation LinkUserToMember($userId: ID!, $memberId: ID, $newMember: NewFamilyMemberInput) {
+    linkUserToMember(userId: $userId, memberId: $memberId, newMember: $newMember) { id familyMemberId }
+  }
+`;
+
+const EMPTY_LINK_FORM = {
+  firstname: '',
+  lastname: '',
+  gender: '',
+  mothersname: '',
+  email: '',
+  birthdate: '',
+  deathdate: '',
+  phone: '',
+  address: ''
+};
 
 function groupByRelation(rows, self) {
   const parentIds = new Set([self.mother?.id, self.father?.id].filter(Boolean));
@@ -31,6 +100,20 @@ function groupByRelation(rows, self) {
     children: rows.filter((row) => childIds.has(row.id)),
     siblings: rows.filter((row) => siblingIds.has(row.id))
   };
+}
+
+// Flattens a familyMember(id) focus response into the same "array of rows" shape
+// myEditableMembers already returns, so the SAME groupByRelation helper above can group
+// it -- one grouping function, two entry points (D-03).
+function flattenFocusedRow(focusedRow) {
+  return [
+    focusedRow,
+    focusedRow.mother,
+    focusedRow.father,
+    ...(focusedRow.spouses ?? []),
+    ...(focusedRow.children ?? []),
+    ...(focusedRow.siblings ?? [])
+  ].filter(Boolean);
 }
 
 const EMPTY_DIALOG_STATE = { open: false, relationType: '', targetId: null };
@@ -113,7 +196,231 @@ function MemberBranch({ user }) {
   );
 }
 
-function AdminPlaceholder() {
+// Re-homed verbatim from AdminLinkMembers.jsx (pre-15-05-redirect, commit 9082440).
+function UnlinkedUserRow({ user, familyMembers, onLinked }) {
+  const [mode, setMode] = useState('pick');
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [form, setForm] = useState(EMPTY_LINK_FORM);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleFormChange = (field) => (event) => {
+    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const handleLink = async () => {
+    setError('');
+    setSubmitting(true);
+    try {
+      await graphqlRequest(LINK_USER_TO_MEMBER_MUTATION, {
+        userId: user.id,
+        memberId: selectedMember.id,
+        newMember: undefined
+      });
+      onLinked(user.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateAndLink = async () => {
+    setError('');
+    setSubmitting(true);
+    try {
+      await graphqlRequest(LINK_USER_TO_MEMBER_MUTATION, {
+        userId: user.id,
+        memberId: undefined,
+        newMember: form
+      });
+      onLinked(user.id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Stack spacing={2} sx={{ px: { xs: 3, md: 4 }, py: 3 }}>
+      <Stack direction="row" alignItems="center" spacing={2}>
+        <Avatar sx={{ width: 42, height: 42, bgcolor: '#eef1f8', color: colors.slate }}>
+          {getInitials(user.name)}
+        </Avatar>
+        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 600 }} noWrap>
+            {user.name}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" noWrap>
+            {user.email}
+          </Typography>
+        </Box>
+      </Stack>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {mode === 'pick' ? (
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
+          <Autocomplete
+            options={familyMembers}
+            getOptionLabel={(member) => member.fullname}
+            value={selectedMember}
+            onChange={(_event, value) => setSelectedMember(value)}
+            sx={{ minWidth: 260, flexGrow: 1 }}
+            renderInput={(params) => <TextField {...params} label="Family member" />}
+          />
+          <Button variant="contained" disabled={!selectedMember || submitting} onClick={handleLink}>
+            {submitting ? 'Linking…' : 'Link'}
+          </Button>
+          <Button variant="text" disabled={submitting} onClick={() => setMode('create')}>
+            Create new member instead
+          </Button>
+        </Stack>
+      ) : (
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="First name"
+              required
+              value={form.firstname}
+              onChange={handleFormChange('firstname')}
+              fullWidth
+            />
+            <TextField
+              label="Last name"
+              required
+              value={form.lastname}
+              onChange={handleFormChange('lastname')}
+              fullWidth
+            />
+            <TextField
+              select
+              label="Gender"
+              required
+              value={form.gender}
+              onChange={handleFormChange('gender')}
+              fullWidth
+            >
+              <MenuItem value="Male">Male</MenuItem>
+              <MenuItem value="Female">Female</MenuItem>
+              <MenuItem value="Other">Other</MenuItem>
+            </TextField>
+          </Stack>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField label="Email" value={form.email} onChange={handleFormChange('email')} fullWidth />
+            <TextField label="Phone" value={form.phone} onChange={handleFormChange('phone')} fullWidth />
+            <TextField label="Address" value={form.address} onChange={handleFormChange('address')} fullWidth />
+          </Stack>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField label="Birthdate" value={form.birthdate} onChange={handleFormChange('birthdate')} fullWidth />
+            <TextField label="Deathdate" value={form.deathdate} onChange={handleFormChange('deathdate')} fullWidth />
+            <TextField
+              label="Mother's name"
+              value={form.mothersname}
+              onChange={handleFormChange('mothersname')}
+              fullWidth
+            />
+          </Stack>
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="contained"
+              disabled={!form.firstname || !form.lastname || !form.gender || submitting}
+              onClick={handleCreateAndLink}
+            >
+              {submitting ? 'Creating…' : 'Create & link'}
+            </Button>
+            <Button
+              variant="text"
+              disabled={submitting}
+              onClick={() => {
+                setMode('pick');
+                setForm(EMPTY_LINK_FORM);
+              }}
+            >
+              Back
+            </Button>
+          </Stack>
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
+function AdminBranch({ user }) {
+  const [members, setMembers] = useState([]);
+  const [unlinkedUsers, setUnlinkedUsers] = useState([]);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [pageError, setPageError] = useState('');
+  const [focusedScope, setFocusedScope] = useState(null);
+  const [dialogState, setDialogState] = useState(EMPTY_DIALOG_STATE);
+  const [editTarget, setEditTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const refetchMembers = useCallback(() => {
+    return graphqlRequest(FAMILY_MEMBERS_QUERY).then((data) => setMembers(data.familyMembers));
+  }, []);
+
+  useEffect(() => {
+    setPageLoading(true);
+    Promise.all([graphqlRequest(FAMILY_MEMBERS_QUERY), graphqlRequest(UNLINKED_USERS_QUERY)])
+      .then(([membersData, unlinkedData]) => {
+        setMembers(membersData.familyMembers);
+        setUnlinkedUsers(unlinkedData.unlinkedUsers);
+      })
+      .catch((err) => setPageError(err.message))
+      .finally(() => setPageLoading(false));
+  }, []);
+
+  const handleLinked = (userId) => {
+    setUnlinkedUsers((prev) => prev.filter((u) => u.id !== userId));
+  };
+
+  const handleFocus = useCallback((member) => {
+    return graphqlRequest(FAMILY_MEMBER_FOCUS_QUERY, { id: member.id })
+      .then((data) => {
+        const focusedRow = data.familyMember;
+        setFocusedScope(groupByRelation(flattenFocusedRow(focusedRow), focusedRow));
+      })
+      .catch((err) => setPageError(err.message));
+  }, []);
+
+  const refetchFocused = useCallback(() => {
+    if (focusedScope) return handleFocus(focusedScope.self);
+    return Promise.resolve();
+  }, [focusedScope, handleFocus]);
+
+  const handleDeleteConfirm = async () => {
+    setDeleteError('');
+    setDeleting(true);
+    try {
+      await graphqlRequest(DELETE_MEMBER_MUTATION, { id: deleteTarget.id });
+      await refetchMembers();
+      setDeleteTarget(null);
+      setFocusedScope(null);
+    } catch (err) {
+      setDeleteError(err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (pageLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (pageError) return <Alert severity="error">{pageError}</Alert>;
+
+  const inScopeMembers = focusedScope
+    ? members.filter((member) => member.id !== focusedScope.self.id).map(({ id, fullname }) => ({ id, fullname }))
+    : [];
+
   return (
     <Stack spacing={4}>
       <Box>
@@ -122,11 +429,88 @@ function AdminPlaceholder() {
           Search the whole tree and manage any member.
         </Typography>
       </Box>
-      <Paper elevation={0} sx={{ borderRadius: 5, border: `1px solid ${colors.line}`, p: { xs: 3, md: 4 } }}>
-        <Typography color="text.secondary" variant="body2">
-          Admin tree search and management tools are added in a later plan.
-        </Typography>
-      </Paper>
+
+      <AdminMemberTable members={members} onSelect={handleFocus} />
+
+      {focusedScope && (
+        <RelationshipGroupedPanel
+          scope={focusedScope}
+          isAdmin
+          actingUserId={user.id}
+          onAddRelative={(relationType) =>
+            setDialogState({ open: true, relationType, targetId: focusedScope.self.id })
+          }
+          onEdit={(member) => setEditTarget(member)}
+          onDelete={(member) => setDeleteTarget(member)}
+        />
+      )}
+
+      <Box>
+        <Typography variant="h6">Link accounts</Typography>
+        <Paper
+          elevation={0}
+          sx={{ borderRadius: 5, border: `1px solid ${colors.line}`, overflow: 'hidden', mt: 2 }}
+        >
+          {unlinkedUsers.length === 0 ? (
+            <Box sx={{ px: { xs: 3, md: 4 }, py: 4 }}>
+              <Typography>No accounts are waiting to be linked.</Typography>
+            </Box>
+          ) : (
+            <Stack divider={<Box sx={{ borderBottom: `1px solid ${colors.line}` }} />}>
+              {unlinkedUsers.map((unlinkedUser) => (
+                <UnlinkedUserRow
+                  key={unlinkedUser.id}
+                  user={unlinkedUser}
+                  familyMembers={members}
+                  onLinked={handleLinked}
+                />
+              ))}
+            </Stack>
+          )}
+        </Paper>
+      </Box>
+
+      <AddRelativeDialog
+        open={dialogState.open}
+        relationType={dialogState.relationType}
+        targetId={dialogState.targetId}
+        inScopeMembers={inScopeMembers}
+        onClose={() => setDialogState(EMPTY_DIALOG_STATE)}
+        onCreated={() => {
+          refetchMembers();
+          refetchFocused();
+        }}
+      />
+
+      <EditMemberDialog
+        open={Boolean(editTarget)}
+        member={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => {
+          refetchMembers();
+          refetchFocused();
+        }}
+      />
+
+      <Dialog open={Boolean(deleteTarget)} onClose={() => (deleting ? null : setDeleteTarget(null))}>
+        <DialogTitle>Remove member?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            {deleteError && <Alert severity="error">{deleteError}</Alert>}
+            <Typography>
+              {`Remove ${deleteTarget?.fullname} from the family tree? Blood relatives are preserved. This can't be undone.`}
+            </Typography>
+            <Stack direction="row" spacing={2} justifyContent="flex-end">
+              <Button variant="text" disabled={deleting} onClick={() => setDeleteTarget(null)}>
+                Cancel
+              </Button>
+              <Button variant="contained" color="error" disabled={deleting} onClick={handleDeleteConfirm}>
+                {deleting ? 'Removing…' : 'Remove'}
+              </Button>
+            </Stack>
+          </Stack>
+        </DialogContent>
+      </Dialog>
     </Stack>
   );
 }
@@ -135,7 +519,7 @@ export default function ManagePage() {
   const { user } = useAuth();
 
   if (user.role === 'ADMIN') {
-    return <AdminPlaceholder />;
+    return <AdminBranch user={user} />;
   }
 
   return <MemberBranch user={user} />;
