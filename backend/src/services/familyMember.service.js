@@ -67,6 +67,19 @@ async function run(attrs, t) {
     // normalized firstname (belt-and-suspenders on top of sanitizeNewMember).
     const normalizedFirstname = attrs.firstname.trim().toLowerCase();
 
+    // CR-01 (D-10, revised): the duplicate-name check MUST be a LOCKING read,
+    // not a plain SELECT. Under InnoDB REPEATABLE READ a caller that did any
+    // plain read earlier in this same transaction -- the addChild AND addSibling
+    // resolvers both findByPk the target before handing us the transaction --
+    // has already frozen the transaction's consistent-read snapshot. A plain
+    // SELECT here would read from that stale snapshot and miss a sibling a
+    // concurrent request committed while we were blocked on the parent lock
+    // above, reopening the exact TOCTOU race D-10 closes. A locking read
+    // bypasses the snapshot and sees the latest committed rows, so the guard is
+    // correct for EVERY caller path, not just the ones whose first read happens
+    // to be the lock. No `include` here: FOR UPDATE with an outer join would
+    // lock the joined parent rows too -- the shared parent's name is fetched
+    // separately below only when a conflict actually exists.
     const conflict = await models.FamilyMember.findOne({
       where: {
         [Op.and]: [
@@ -77,12 +90,15 @@ async function run(attrs, t) {
           )
         ]
       },
-      include: [{ association: 'mother' }, { association: 'father' }],
+      lock: t.LOCK.UPDATE,
       transaction: t
     });
 
     if (conflict) {
-      const sharedParent = parentIds.includes(conflict.motherId) ? conflict.mother : conflict.father;
+      const sharedParentId = parentIds.includes(conflict.motherId)
+        ? conflict.motherId
+        : conflict.fatherId;
+      const sharedParent = await models.FamilyMember.findByPk(sharedParentId, { transaction: t });
       throw new Error(
         `A child named '${conflict.firstname}' already exists under ${sharedParent.fullname}. ` +
           `Pick a different name, or edit the existing member.`
