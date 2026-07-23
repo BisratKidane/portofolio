@@ -198,4 +198,35 @@ describe('addSibling (D-03/D-04, REL-04, PERM-01/PERM-02)', () => {
 
     expect(await models.FamilyMember.count()).toBe(beforeCount);
   });
+
+  it('(REL-06, D-11) rejects a new sibling whose firstname duplicates an existing child of the shared parent', async () => {
+    const mother = await models.FamilyMember.create({ firstname: 'Almaz', lastname: 'Kidane', gender: 'Female' });
+    const self = await models.FamilyMember.create({
+      firstname: 'Ada',
+      lastname: 'Kidane',
+      gender: 'Female',
+      motherId: mother.id
+    });
+    await models.FamilyMember.create({
+      firstname: 'Sara',
+      lastname: 'Kidane',
+      gender: 'Female',
+      motherId: mother.id
+    });
+    const actor = await createTestUser({ role: 'USER', familyMemberId: self.id });
+
+    const beforeCount = await models.FamilyMember.count();
+
+    const { data, errors } = await graphql(
+      ADD_SIBLING_MUTATION,
+      { memberId: String(self.id), newMember: { firstname: 'Sara', lastname: 'Kidane', gender: 'Female' } },
+      actor
+    );
+
+    expect(errors[0].message).toBe(
+      "A child named 'Sara' already exists under Almaz Kidane. Pick a different name, or edit the existing member."
+    );
+    expect(data).toBeNull();
+    expect(await models.FamilyMember.count()).toBe(beforeCount);
+  });
 });
