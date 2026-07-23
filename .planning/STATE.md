@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Collaborative Family Tree
-status: ready_to_plan
-stopped_at: Phase 14 complete (6/6) — ready to discuss Phase 15
-last_updated: 2026-07-23T04:51:12.058Z
-last_activity: 2026-07-22 -- Phase 14 execution started
+status: planning
+stopped_at: Phase 15 context gathered
+last_updated: "2026-07-23T17:37:50.198Z"
+last_activity: 2026-07-23
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 14
-  completed_plans: 33
-  percent: 33
+  completed_plans: 14
+  percent: 50
 ---
 
 # Project State
@@ -116,9 +116,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-22T17:16:03.840Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-relationship-resolvers-permission-scoping-query-safety/14-CONTEXT.md
+Last session: 2026-07-23T17:37:50.193Z
+Stopped at: Phase 15 context gathered
+Resume file: .planning/phases/15-sibling-dedup-guard-manage-self-service-ui/15-CONTEXT.md
 
 ## Operator Next Steps
 
