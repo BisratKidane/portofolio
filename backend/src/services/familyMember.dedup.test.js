@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { models } from '../models/index.js';
+import { models, sequelize } from '../models/index.js';
 import { resetTables } from '../../test/helpers.js';
 import { addChild } from './familyMember.service.js';
 
@@ -108,6 +108,42 @@ describe('addChild REL-06 dedup guard (D-08/D-09/D-10/D-11)', () => {
     ).rejects.toThrow(
       "A child named 'Sara' already exists under Almaz Kidane. Pick a different name, or edit the existing member."
     );
+  });
+
+  it('(D-10 resolver-path TOCTOU, CR-01) detects a duplicate even when a plain read earlier in the SAME transaction froze the REPEATABLE READ snapshot — mirrors addChild/addSibling resolvers findByPk-ing the target before the guard runs', async () => {
+    const mother = await models.FamilyMember.create({ firstname: 'Almaz', lastname: 'Kidane', gender: 'Female' });
+
+    const t1 = await sequelize.transaction();
+    try {
+      // Mirror the resolver: a plain (non-locking) read of the target BEFORE
+      // the transaction is handed to the guard. Under InnoDB REPEATABLE READ
+      // this fixes t1's consistent-read snapshot right here, before any sibling
+      // a concurrent request is about to commit exists.
+      await models.FamilyMember.findByPk(mother.id, { transaction: t1 });
+
+      // A concurrent request commits a sibling AFTER t1's snapshot was frozen
+      // but BEFORE the guard runs (autocommit — no transaction — so it commits).
+      await models.FamilyMember.create({
+        firstname: 'Sara',
+        lastname: 'Kidane',
+        gender: 'Female',
+        motherId: mother.id
+      });
+
+      // The guard must STILL see 'Sara' and reject. A plain SELECT inside the
+      // guard reads t1's stale snapshot and misses it, reopening the D-10 race
+      // on the real resolver call path (which the direct-call tests never hit).
+      await expect(
+        addChild(
+          { firstname: 'Sara', lastname: 'Kidane', gender: 'Female', motherId: mother.id },
+          { transaction: t1 }
+        )
+      ).rejects.toThrow(
+        "A child named 'Sara' already exists under Almaz Kidane. Pick a different name, or edit the existing member."
+      );
+    } finally {
+      await t1.rollback();
+    }
   });
 
   it('(Pitfall 2/A3) still enforces the guard when no transaction is supplied by the caller', async () => {
