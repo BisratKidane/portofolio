@@ -165,7 +165,24 @@ Plans:
   3. An admin can manage the whole tree from `/manage`, including linking user accounts to member nodes.
   4. `/manage` is reachable only by linked members (scoped view) and admins (full view); unlinked users are gated out.
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 15-01-PLAN.md — REL-06 sibling/child dedup guard, row-locked, TDD (REL-06)
+- [ ] 15-02-PLAN.md — MemberCard + RelationshipGroupedPanel (D-01/D-02/D-06 shared building blocks) (MNG-01)
+- [ ] 15-03-PLAN.md — AddRelativeDialog, all four relation types (D-04/D-05) (MNG-02)
+- [ ] 15-04-PLAN.md — AdminMemberTable, searchable/paginated (D-03 table half) (MNG-03)
+
+**Wave 2** *(blocked on 15-02 and 15-03 completion)*
+
+- [ ] 15-05-PLAN.md — ManagePage member branch, EditMemberDialog, /manage routing (MNG-01, MNG-02, MNG-04)
+
+**Wave 3** *(blocked on 15-04 and 15-05 completion)*
+
+- [ ] 15-06-PLAN.md — ManagePage admin branch: table→focus→panel, delete confirm, re-homed account-linking (MNG-03)
+
 **UI hint**: yes
 
 ### Phase 16: Photo Upload
