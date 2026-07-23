@@ -44,7 +44,7 @@ Full detail archived in [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - [x] **Phase 12: Family Data Model Foundation** - Self-referencing parent/child FKs, symmetric spouse join table, cycle/cascade safety, and a fresh-DB sync smoke test. (completed 2026-07-21)
 - [x] **Phase 13: Membership Gating & Account Linking** - Registered users are gated behind admin-linking to a family member node, with a carve-out so the first admin isn't locked out. (completed 2026-07-21)
 - [x] **Phase 14: Relationship Resolvers, Permission Scoping & Query Safety** - Members can only add/edit their immediate relatives — enforced server-side, resistant to privilege escalation, safe against N+1/DoS. (completed 2026-07-22)
-- [ ] **Phase 15: Sibling Dedup Guard & /manage Self-Service UI** - `/manage` lets members edit their scope and admins manage the whole tree, with duplicate-child creation guarded.
+- [x] **Phase 15: Sibling Dedup Guard & /manage Self-Service UI** - `/manage` lets members edit their scope and admins manage the whole tree, with duplicate-child creation guarded. (completed 2026-07-23)
 - [ ] **Phase 16: Photo Upload** - Users upload a member's profile picture to a durable, security-hardened backend route.
 - [ ] **Phase 17: /family Deep Tree Visualization** - Linked members explore the whole family as a pannable, zoomable tree.
 
@@ -181,7 +181,7 @@ Plans:
 
 **Wave 3** *(blocked on 15-04 and 15-05 completion)*
 
-- [ ] 15-06-PLAN.md — ManagePage admin branch: table→focus→panel, delete confirm, re-homed account-linking (MNG-03)
+- [x] 15-06-PLAN.md — ManagePage admin branch: table→focus→panel, delete confirm, re-homed account-linking (MNG-03)
 
 **UI hint**: yes
 
@@ -237,6 +237,6 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 12. Family Data Model Foundation | v2.0 | 4/4 | Complete   | 2026-07-22 |
 | 13. Membership Gating & Account Linking | v2.0 | 4/4 | Complete   | 2026-07-22 |
 | 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 6/6 | Complete    | 2026-07-23 |
-| 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 5/6 | In Progress|  |
+| 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 6/6 | Complete   | 2026-07-23 |
 | 16. Photo Upload | v2.0 | 0/TBD | Not started | - |
 | 17. /family Deep Tree Visualization | v2.0 | 0/TBD | Not started | - |
