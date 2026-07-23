@@ -104,3 +104,14 @@ None - no external service configuration required.
 ---
 *Phase: 15-sibling-dedup-guard-manage-self-service-ui*
 *Completed: 2026-07-23*
+
+## Self-Check: PASSED
+
+- FOUND: frontend/src/components/manage/MemberCard.jsx
+- FOUND: frontend/src/components/manage/MemberCard.test.jsx
+- FOUND: frontend/src/components/manage/RelationshipGroupedPanel.jsx
+- FOUND: frontend/src/components/manage/RelationshipGroupedPanel.test.jsx
+- FOUND: commit de70832 (test: MemberCard RED)
+- FOUND: commit 9f089d3 (feat: MemberCard GREEN)
+- FOUND: commit 87802fb (test: RelationshipGroupedPanel RED)
+- FOUND: commit 2f9606f (feat: RelationshipGroupedPanel GREEN)
