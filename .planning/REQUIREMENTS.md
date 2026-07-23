@@ -14,7 +14,7 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 - [x] **MEM-01**: A user can create a family member with required `firstname`, `lastname`, and `gender` (one of Male / Female / Other).
 - [x] **MEM-02**: A member record captures optional `mothersname`, `email`, `birthdate`, `deathdate`, `phone`, and `address`.
 - [x] **MEM-03**: A member's `fullname` is displayed as a derived combination of `firstname` + `lastname` (not entered or stored as separate input).
-- [ ] **MEM-04**: A user can edit the fields of a family member that is within their permitted scope.
+- [x] **MEM-04**: A user can edit the fields of a family member that is within their permitted scope.
 - [x] **MEM-05**: Family members are persisted in MySQL via a new Sequelize model that follows the existing barrel/model conventions.
 
 ### Relationships (REL)
@@ -36,10 +36,10 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 
 ### Permissions & Scoping (PERM)
 
-- [ ] **PERM-01**: A member-user can add their immediate relatives — parents, spouse, children, and siblings.
-- [ ] **PERM-02**: A member-user can edit the fields and relationships of members within their immediate-relative set.
-- [ ] **PERM-03**: A member-user cannot remove any member; removal is admin-only. (The member→admin removal-request flow is deferred — see v2.)
-- [ ] **PERM-04**: An admin can add, edit, and remove any member across the whole tree.
+- [x] **PERM-01**: A member-user can add their immediate relatives — parents, spouse, children, and siblings.
+- [x] **PERM-02**: A member-user can edit the fields and relationships of members within their immediate-relative set.
+- [x] **PERM-03**: A member-user cannot remove any member; removal is admin-only. (The member→admin removal-request flow is deferred — see v2.)
+- [x] **PERM-04**: An admin can add, edit, and remove any member across the whole tree.
 - [x] **PERM-05**: The backend computes each member-user's editable immediate-relative set and enforces it in resolvers (no client-supplied scope is trusted).
 
 ### Photos (PHOTO)
@@ -119,7 +119,7 @@ Which phase covers which requirement.
 | MEM-01 | Phase 12 | Complete |
 | MEM-02 | Phase 12 | Complete |
 | MEM-03 | Phase 12 | Complete |
-| MEM-04 | Phase 14 | Pending |
+| MEM-04 | Phase 14 | Complete |
 | MEM-05 | Phase 12 | Complete |
 | REL-01 | Phase 12 | Complete |
 | REL-02 | Phase 12 | Complete |
@@ -132,10 +132,10 @@ Which phase covers which requirement.
 | ACC-03 | Phase 13 | Complete |
 | ACC-04 | Phase 13 | Complete |
 | ACC-05 | Phase 13 | Complete |
-| PERM-01 | Phase 14 | Pending |
-| PERM-02 | Phase 14 | Pending |
-| PERM-03 | Phase 14 | Pending |
-| PERM-04 | Phase 14 | Pending |
+| PERM-01 | Phase 14 | Complete |
+| PERM-02 | Phase 14 | Complete |
+| PERM-03 | Phase 14 | Complete |
+| PERM-04 | Phase 14 | Complete |
 | PERM-05 | Phase 14 | Complete |
 | PHOTO-01 | Phase 16 | Pending |
 | PHOTO-02 | Phase 16 | Pending |

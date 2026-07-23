@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Collaborative Family Tree
-status: executing
-stopped_at: Phase 14 context gathered
-last_updated: "2026-07-22T18:03:37.133Z"
+status: ready_to_plan
+stopped_at: Phase 14 complete (6/6) — ready to discuss Phase 15
+last_updated: 2026-07-23T04:51:12.058Z
 last_activity: 2026-07-22 -- Phase 14 execution started
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 14
-  completed_plans: 8
+  completed_plans: 33
   percent: 33
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 14 — relationship-resolvers-permission-scoping-query-safety
+**Current focus:** Phase 15 — sibling dedup guard & /manage self service ui
 
 ## Current Position
 
-Phase: 14 (relationship-resolvers-permission-scoping-query-safety) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 14
-Last activity: 2026-07-22 -- Phase 14 execution started
+Phase: 15
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-23
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 28 (v1.0: 13, v1.1: 19) — none yet in v2.0
+- Total plans completed: 34 (v1.0: 13, v1.1: 19) — none yet in v2.0
 - Average duration: - min
 - Total execution time: 0 hours (v2.0)
 
@@ -48,6 +48,7 @@ Progress: [██████████] 100%
 | 07–11 (v1.1) | 19 | - | - |
 | 12–17 (v2.0) | TBD | - | - |
 | 12 | 4 | - | - |
+| 14 | 6 | - | - |
 
 **Recent Trend:**
 
