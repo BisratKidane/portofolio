@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ManagePage from './ManagePage.jsx';
@@ -220,6 +220,106 @@ describe('ManagePage (member branch)', () => {
         expect.stringContaining('editMember'),
         expect.objectContaining({ id: '1' })
       );
+    });
+  });
+});
+
+const ADMIN_TABLE_MEMBERS = [
+  { id: '1', firstname: 'Ada', lastname: 'Lovelace', fullname: 'Ada Lovelace', gender: 'Female', linkedUser: null }
+];
+
+const ADMIN_FOCUS_ROW = {
+  id: '1',
+  firstname: 'Ada',
+  lastname: 'Lovelace',
+  fullname: 'Ada Lovelace',
+  gender: 'Female',
+  birthdate: null,
+  deathdate: null,
+  phone: null,
+  email: null,
+  address: null,
+  mother: { id: '2', fullname: 'Grace Hopper' },
+  father: null,
+  spouses: [{ id: '3', fullname: 'John Doe' }],
+  children: [{ id: '4', fullname: 'Byron Lovelace' }],
+  siblings: [{ id: '5', fullname: 'Anna Lovelace' }],
+  linkedUser: { id: '1', name: 'Ada Lovelace', email: 'ada@example.com' }
+};
+
+describe('ManagePage (admin branch)', () => {
+  beforeEach(() => {
+    useAuthMock.mockReturnValue({
+      user: { id: 99, role: 'ADMIN' },
+      loading: false
+    });
+  });
+
+  it('fetches familyMembers and renders AdminMemberTable under the admin subtitle', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
+
+    renderPage();
+
+    expect(await screen.findByText('Search the whole tree and manage any member.')).toBeInTheDocument();
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('familyMembers'));
+  });
+
+  it('selecting a row fetches familyMember(id) and renders the grouped panel via the shared groupByRelation helper', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: ADMIN_FOCUS_ROW });
+
+    renderPage();
+
+    await userEvent.click(await screen.findByText('Ada Lovelace'));
+
+    expect(await screen.findByText('Grace Hopper')).toBeInTheDocument();
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByText('Byron Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('Anna Lovelace')).toBeInTheDocument();
+
+    expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('familyMember('), { id: '1' });
+  });
+
+  it('shows an active Edit button for every card in the admin-focused panel regardless of linkedUser (D-06 bypass)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: ADMIN_FOCUS_ROW });
+
+    renderPage();
+
+    await userEvent.click(await screen.findByText('Ada Lovelace'));
+    await screen.findByText('Grace Hopper');
+
+    // self + mother + spouse + child + sibling = 5 cards, every one editable for an admin
+    expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(5);
+  });
+
+  it('opens the two-step confirm dialog with UI-SPEC-exact copy and calls deleteMember on confirm, clearing focus and refetching', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: ADMIN_FOCUS_ROW });
+    graphqlRequest.mockResolvedValueOnce({ deleteMember: true });
+    graphqlRequest.mockResolvedValueOnce({ familyMembers: [] });
+
+    renderPage();
+
+    await userEvent.click(await screen.findByText('Ada Lovelace'));
+    await screen.findByText('Grace Hopper');
+
+    const removeButtons = screen.getAllByRole('button', { name: 'Remove' });
+    await userEvent.click(removeButtons[0]);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Remove member?')).toBeInTheDocument();
+    expect(within(dialog).getByText(/Blood relatives are preserved\. This can't be undone\./)).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+
+    await waitFor(() => {
+      expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('deleteMember'), { id: '1' });
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument();
     });
   });
 });
