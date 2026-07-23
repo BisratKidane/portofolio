@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import ManagePage from './ManagePage.jsx';
+import ProtectedRoute from '../components/ProtectedRoute.jsx';
 
 const useAuthMock = vi.fn();
 
@@ -219,5 +221,46 @@ describe('ManagePage (member branch)', () => {
         expect.objectContaining({ id: '1' })
       );
     });
+  });
+});
+
+describe('ManagePage route gating (MNG-04, T-15-09, real /manage path)', () => {
+  function renderManageRoute() {
+    return render(
+      <MemoryRouter initialEntries={['/manage']}>
+        <Routes>
+          <Route path="/pending" element={<div>Pending Sentinel</div>} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/manage" element={<ManagePage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+  }
+
+  it('redirects an unlinked, non-admin user to /pending instead of rendering ManagePage', () => {
+    useAuthMock.mockReturnValue({
+      loading: false,
+      user: { id: 1, role: 'USER', familyMemberId: null }
+    });
+
+    renderManageRoute();
+
+    expect(screen.getByText('Pending Sentinel')).toBeInTheDocument();
+    expect(screen.queryByText('Manage family')).not.toBeInTheDocument();
+    expect(graphqlRequest).not.toHaveBeenCalled();
+  });
+
+  it('renders ManagePage content for a linked, non-admin member', async () => {
+    graphqlRequest.mockResolvedValueOnce({ myEditableMembers: ALL_ROWS });
+    useAuthMock.mockReturnValue({
+      loading: false,
+      user: { id: 1, role: 'USER', familyMemberId: '1' }
+    });
+
+    renderManageRoute();
+
+    expect(await screen.findByText('Manage family')).toBeInTheDocument();
+    expect(screen.queryByText('Pending Sentinel')).not.toBeInTheDocument();
   });
 });
