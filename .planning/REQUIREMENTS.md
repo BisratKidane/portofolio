@@ -24,7 +24,7 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 - [x] **REL-03**: A user can add a child to a member, establishing the parent→child link.
 - [x] **REL-04**: Siblings are derived from shared parents (never stored) and presented as such.
 - [x] **REL-05**: The system rejects any relationship edit that would create a cycle (a member cannot become their own ancestor).
-- [ ] **REL-06**: The system blocks creating/linking a child whose `firstname` duplicates an existing child that shares **either** parent (any-shared-parent scope).
+- [x] **REL-06**: The system blocks creating/linking a child whose `firstname` duplicates an existing child that shares **either** parent (any-shared-parent scope).
 
 ### Access & Account Linking (ACC)
 
@@ -50,10 +50,10 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 
 ### Manage Page — /manage (MNG)
 
-- [ ] **MNG-01**: A member-user sees a visible list of the family members within their editable scope on `/manage`.
-- [ ] **MNG-02**: A user can add/edit members and wire relationships (parents, spouse, children) through forms that pick existing members from dropdowns.
-- [ ] **MNG-03**: An admin can manage the whole tree from `/manage`, including linking user accounts to member nodes.
-- [ ] **MNG-04**: `/manage` is reachable only by linked members (scoped view) and admins (full view); unlinked users are gated out.
+- [x] **MNG-01**: A member-user sees a visible list of the family members within their editable scope on `/manage`.
+- [x] **MNG-02**: A user can add/edit members and wire relationships (parents, spouse, children) through forms that pick existing members from dropdowns.
+- [x] **MNG-03**: An admin can manage the whole tree from `/manage`, including linking user accounts to member nodes.
+- [x] **MNG-04**: `/manage` is reachable only by linked members (scoped view) and admins (full view); unlinked users are gated out.
 
 ### Family Visualization — /family (TREE)
 
@@ -126,7 +126,7 @@ Which phase covers which requirement.
 | REL-03 | Phase 12 | Complete |
 | REL-04 | Phase 14 | Complete |
 | REL-05 | Phase 12 | Complete |
-| REL-06 | Phase 15 | Pending |
+| REL-06 | Phase 15 | Complete |
 | ACC-01 | Phase 13 | Complete |
 | ACC-02 | Phase 13 | Complete |
 | ACC-03 | Phase 13 | Complete |
@@ -140,10 +140,10 @@ Which phase covers which requirement.
 | PHOTO-01 | Phase 16 | Pending |
 | PHOTO-02 | Phase 16 | Pending |
 | PHOTO-03 | Phase 16 | Pending |
-| MNG-01 | Phase 15 | Pending |
-| MNG-02 | Phase 15 | Pending |
-| MNG-03 | Phase 15 | Pending |
-| MNG-04 | Phase 15 | Pending |
+| MNG-01 | Phase 15 | Complete |
+| MNG-02 | Phase 15 | Complete |
+| MNG-03 | Phase 15 | Complete |
+| MNG-04 | Phase 15 | Complete |
 | TREE-01 | Phase 17 | Pending |
 | TREE-02 | Phase 17 | Pending |
 | TREE-03 | Phase 17 | Pending |
