@@ -44,7 +44,7 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 
 ### Photos (PHOTO)
 
-- [ ] **PHOTO-01**: A user can upload a `profilePicture` for a member within their scope.
+- [x] **PHOTO-01**: A user can upload a `profilePicture` for a member within their scope.
 - [ ] **PHOTO-02**: Uploaded photos are stored on a mounted Docker volume and served via a backend route, persisting across container rebuilds.
 - [ ] **PHOTO-03**: Uploads are validated for content-type and size, and stored with safely generated filenames (no path traversal).
 
@@ -137,7 +137,7 @@ Which phase covers which requirement.
 | PERM-03 | Phase 14 | Complete |
 | PERM-04 | Phase 14 | Complete |
 | PERM-05 | Phase 14 | Complete |
-| PHOTO-01 | Phase 16 | Pending |
+| PHOTO-01 | Phase 16 | Complete |
 | PHOTO-02 | Phase 16 | Pending |
 | PHOTO-03 | Phase 16 | Pending |
 | MNG-01 | Phase 15 | Complete |
