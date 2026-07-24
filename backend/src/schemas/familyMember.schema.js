@@ -22,6 +22,7 @@ export const familyMemberTypeDefs = `#graphql
     deathdate: String
     phone: String
     address: String
+    photoUrl: String
     mother: FamilyMember
     father: FamilyMember
     spouses: [FamilyMember!]!

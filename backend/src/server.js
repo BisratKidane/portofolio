@@ -9,6 +9,7 @@ import { typeDefs, resolvers, validationRules } from './graphql/serverConfig.js'
 import { createLoaders } from './loaders/familyMember.loaders.js';
 import { getUserFromRequest } from './utils/auth.js';
 import { rateLimitPlugin } from './plugins/rateLimitPlugin.js';
+import { photoRouter } from './routes/photo.routes.js';
 
 const app = express();
 
@@ -39,6 +40,9 @@ app.use(
     })
   })
 );
+
+// No express.json() on this path -- the body is multipart, not JSON.
+app.use('/api', photoRouter);
 
 if (env.nodeEnv !== 'test') {
   app.listen(env.port, () => {
