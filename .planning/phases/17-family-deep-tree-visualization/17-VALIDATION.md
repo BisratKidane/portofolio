@@ -43,15 +43,15 @@ created: 2026-07-24
 | 17-02-01 | 02 | 1 | TREE-01 | — | `buildForest` derives full graph client-side, one union per pair, no N+1 | unit (TDD) | `npm test --workspace frontend -- familyTree.assembly` | ❌ W0 | ⬜ pending |
 | 17-02-02 | 02 | 1 | TREE-01 | — | `layoutWithDagre` positions person/union nodes deterministically | unit (TDD) | `npm test --workspace frontend -- familyTree.layout` | ❌ W0 | ⬜ pending |
 | 17-02-03 | 02 | 1 | TREE-01 | — | SC-1 spike: spouse pairing renders paired at ~15–20 gen depth without overlap/jank (D-11 hard gate) | checkpoint:human-verify | manual (see Manual-Only Verifications) | ❌ W0 | ⬜ pending |
-| 17-03-01 | 03 | 2 | TREE-01 | — | `MemberNode` (viewer ring + You label, descent & ancestor reveal badges) / `UnionNode` render | render-smoke | `npm test --workspace frontend -- MemberNode` | ❌ W0 | ⬜ pending |
-| 17-03-02 | 03 | 2 | TREE-01, TREE-02 | — | `FamilyTreeCanvas`: collapsed-by-default, expand/collapse toggles `hidden`, pan/zoom + 4 D-05 nav aids | render-smoke | `npm test --workspace frontend -- FamilyTreeCanvas` | ❌ W0 | ⬜ pending |
+| 17-03-01 | 03 | 2 | TREE-01 | — | `MemberNode` (viewer ring + You label, gender tint, descent & ancestor reveal badges) / `UnionNode` render | render-smoke | `npm test --workspace frontend -- MemberNode` | ❌ W0 | ⬜ pending |
+| 17-03-02 | 03 | 2 | TREE-01, TREE-02 | — | `FamilyTreeCanvas`: collapsed-by-default, expand/collapse toggles `hidden` in both the descendant and ancestor direction, pan/zoom + 4 D-05 nav aids | render-smoke | `npm test --workspace frontend -- FamilyTreeCanvas` | ❌ W0 | ⬜ pending |
 | 17-03-03 | 03 | 2 | TREE-02 | — | Render-smoke suite passes under `mockReactFlow()` jsdom polyfill | render-smoke | `npm test --workspace frontend -- FamilyTreeCanvas` | ❌ W0 | ⬜ pending |
 | 17-04-01 | 04 | 3 | QUAL-02 | — | `MemberDetailPanel` read-only (no edit affordances), closed renders nothing, open shows member | component | `npm test --workspace frontend -- MemberDetailPanel` | ❌ W0 | ⬜ pending |
 | 17-04-02 | 04 | 3 | TREE-02, QUAL-02 | — | `FamilyTreePage` single flat fetch on mount, orchestrates canvas + detail panel | component | `npm test --workspace frontend -- FamilyTreePage` | ❌ W0 | ⬜ pending |
 | 17-04-03 | 04 | 3 | TREE-04, QUAL-03 | T-17-10 / T-17-11 | `/family` gated like `/manage` (unlinked non-admin → `/pending`); full `npm test --workspaces` green, no new CI config | component (route) + CI gate | `npm test --workspaces` | ✅ (extends ProtectedRoute) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
-*Filled from RESEARCH.md "## Validation Architecture" (TREE-01..04, QUAL-02/03) and the 17-01..17-04 PLAN.md task breakdown. "❌ W0" = file is net-new, created during the phase (Wave 0 dependency covers package install + `mockReactFlow()` polyfill). No 3-consecutive-task gap: the only non-automated task (17-02-03, human-verify) is flanked by automated tasks.*
+*Filled from RESEARCH.md "## Validation Architecture" (TREE-01..04, QUAL-02/03) and the 17-01..17-04 PLAN.md task breakdown. "❌ W0" = file is net-new, created during the phase (Wave 0 dependency covers package install + `mockReactFlow()` polyfill). 17-03-01's `npm test --workspace frontend -- MemberNode` command targets the dedicated `MemberNode.test.jsx` file created in 17-03-PLAN.md's Task 1 — that same file also carries a `describe('UnionNode', ...)` render-smoke block, so no separate `UnionNode.test.jsx` file exists or is required for this row to be accurate. No 3-consecutive-task gap: the only non-automated task (17-02-03, human-verify) is flanked by automated tasks.*
 
 ---
 

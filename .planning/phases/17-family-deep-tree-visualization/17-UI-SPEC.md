@@ -109,7 +109,8 @@ The icon carries the meaning; the tint is reinforcement only. Exact tints are ex
 | Empty state heading | **"Your family tree is empty"** |
 | Empty state body | **"Family members added on the Manage page will appear here as a tree."** — links to `/manage` (linked members with edit scope) |
 | Error state | **"We couldn't load your family tree."** + secondary line **"Check your connection and try again."** + a **"Retry"** action (re-issues the single `familyMembers` query) |
-| Node hidden-branch affordance | **Count badge** on collapsible nodes (Claude's-discretion resolved to count over plain toggle): e.g. `+3`, with `aria-label="Show 3 hidden descendants of {name}"` (expand) / `"Hide descendants of {name}"` (collapse) |
+| Node hidden-descendant affordance | **Count badge** on collapsible nodes (Claude's-discretion resolved to count over plain toggle): e.g. `+3`, with `aria-label="Show 3 hidden descendants of {name}"` (expand) / `"Hide descendants of {name}"` (collapse) |
+| Node hidden-ancestor affordance (D-03) | **Count badge**, symmetric to the descendant badge, positioned near the TOP of the card: e.g. `+1`/`+2`, with `aria-label="Show {N} hidden ancestors of {name}"` (expand, N = 1 or 2) / `"Hide ancestors of {name}"` (collapse) — the discoverable path to disconnected apex roots (e.g. an in-married spouse's own separate parents) that D-03 keeps collapsed by default |
 | Detail panel — missing dates | **"Dates unknown"** when both birth/death are absent; a lone side renders as `1932–` or `–2001` |
 | Detail panel — empty relationship | **"No recorded {parents/spouse/children/siblings}"** for an empty relationship group |
 | Destructive confirmation | **None** — no destructive actions on this read-only surface |
@@ -127,10 +128,11 @@ Left-to-right / top-to-bottom within a `180×64px` card: `MemberAvatarImage` (re
 | State | Visual |
 |-------|--------|
 | Default | White card, `colors.line` border |
-| Viewer's own node (D-09a) | `2px solid colors.primary` ring + a small **"You"** chip/label (not color-only) |
+| Viewer's own node (D-09a) | `2px solid colors.primary` ring + a small **"You"** chip/label (not color-only) — both the ring (structural style keyed on `isViewer`) AND the chip must render, not one alone |
 | Focus-visible (keyboard) | `2px solid colors.primary` outline, `outlineOffset: 2px` (matches `MemberCard.jsx`) |
 | Selected (detail open) | Accent edge emphasis on the node whose panel is open |
-| Collapsible (has hidden children) | Count-badge affordance (`+N`) per copywriting contract |
+| Collapsible (has hidden children) | Count-badge affordance (`+N`) near the BOTTOM of the card, per copywriting contract |
+| Collapsible (has a hidden ancestor, D-03) | Symmetric count-badge affordance (`+N`, N = 1 or 2) near the TOP of the card, per copywriting contract — visually and semantically distinct from the descendant badge; a node may show both simultaneously |
 | Not draggable | `nodesDraggable={false}` — read-only; no drag interactions (RESEARCH Pitfall 3) |
 
 ### Detail panel (`MemberDetailPanel` — D-08)
@@ -145,7 +147,7 @@ Node click opens a **read-only popover/side-panel** rendered from already-in-mem
 Controls sit in an xyflow `<Panel>` cluster on the white secondary surface, inset `lg` (24px) from the canvas edge.
 
 ### Initial render (D-03/D-04 — SC-3 performance)
-Collapsed-by-default via `node.hidden` (RESEARCH Pattern 3). Initial expand set = the ancestral spine (apex → viewer) **plus** the viewer's own direct line (direct ancestors, direct descendants, spouse, siblings). All collateral branches (cousins, aunts'/uncles' descendants) and other disconnected apex roots start collapsed behind expanders. On load, auto-pan to + highlight the viewer's node.
+Collapsed-by-default via `node.hidden` (RESEARCH Pattern 3). Initial expand set = the ancestral spine (apex → viewer) **plus** the viewer's own direct line (direct ancestors, direct descendants, spouse, siblings). All collateral branches (cousins, aunts'/uncles' descendants) and other disconnected apex roots start collapsed behind expanders. A visible node whose own mother/father falls outside this initial expand set exposes the ancestor-direction badge above so the collapsed branch stays discoverable, not just theoretically reachable via search. On load, auto-pan to + highlight the viewer's node.
 
 ### Layout & spouse pairing (D-10/D-11/D-12)
 Vertical top-down (`rankdir: TB`), apex ancestors at top. Spouses paired via **synthetic union node** (marriage edge `minlen:0` keeps couple same-rank; descent edge `minlen:1` to shared children). **Exact spouse-pairing visual and edge styling (marriage vs descent) are spike-driven (D-12)** — locked after the SC-1 spike proves what renders cleanly at ~10–23 generation depth. If the spike genuinely fails, fall back to `family-chart` (integration shape changes, per RESEARCH anti-pattern 4).
@@ -172,11 +174,11 @@ No shadcn registries are in play. New dependencies (`@xyflow/react`, `@dagrejs/d
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved — 17-03-PLAN.md's ancestor-reveal badge (D-03), viewer ring (D-09a), and gender-icon tint (D-09b) tasks are now in sync with this contract (revision closing plan-checker Blocker 1 / Warnings 1-3).
