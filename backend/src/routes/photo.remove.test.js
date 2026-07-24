@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import { httpClient, resetTables, createTestUser } from '../../test/helpers.js';
 import { models } from '../models/index.js';
@@ -76,5 +76,39 @@ describe('DELETE /api/family-members/:id/photo (D-11)', () => {
 
     await member.reload();
     expect(member.profilePicture).toBeNull();
+  });
+
+  it('an unauthenticated removal is rejected with 401, not a 500 (WR-01)', async () => {
+    const { member, token } = await createLinkedActor();
+    const filename = await uploadPhoto(member, token);
+    const filePath = resolvePhotoPath(filename);
+
+    const res = await httpClient().delete(`/api/family-members/${member.id}/photo`);
+
+    expect(res.status).toBe(401);
+    await member.reload();
+    expect(member.profilePicture).toBe(filename);
+    await expect(fs.access(filePath)).resolves.toBeUndefined();
+  });
+
+  it('if nulling the DB column fails during removal, the stored file is NOT deleted, so no dangling reference is created (WR-02)', async () => {
+    const { member, token } = await createLinkedActor();
+    const filename = await uploadPhoto(member, token);
+    const filePath = resolvePhotoPath(filename);
+
+    // The column-null write fails; a correct ordering nulls the column BEFORE
+    // deleting the file, so the file must survive when that write fails.
+    const spy = vi.spyOn(models.FamilyMember.prototype, 'update').mockRejectedValueOnce(new Error('db down'));
+
+    const res = await httpClient()
+      .delete(`/api/family-members/${member.id}/photo`)
+      .set('Authorization', `Bearer ${token}`);
+
+    spy.mockRestore();
+
+    expect(res.status).toBe(500);
+    await member.reload();
+    expect(member.profilePicture).toBe(filename);
+    await expect(fs.access(filePath)).resolves.toBeUndefined();
   });
 });

@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fs from 'node:fs/promises';
 import { httpClient, resetTables, createTestUser, graphql } from '../../test/helpers.js';
-import { models } from '../models/index.js';
+import { models, sequelize } from '../models/index.js';
 import { signToken } from '../utils/auth.js';
 import { resolvePhotoPath } from '../services/photoStorage.service.js';
 import { validJpegBuffer, validPngBuffer, nonImageBuffer, oversizedImageBuffer } from '../../test/fixtures/images.js';
@@ -142,5 +142,72 @@ describe('POST /api/family-members/:id/photo (happy path, outside-scope, replace
 
     await expect(fs.access(firstPath)).rejects.toThrow();
     await expect(fs.access(resolvePhotoPath(secondFilename))).resolves.toBeUndefined();
+  });
+});
+
+describe('POST /api/family-members/:id/photo (auth mapping + orphan safety, CR-01/WR-01)', () => {
+  it('an unauthenticated upload is rejected with 401, not a 500 (WR-01)', async () => {
+    const { member } = await createLinkedActor();
+
+    const res = await httpClient()
+      .post(`/api/family-members/${member.id}/photo`)
+      .attach('photo', validJpegBuffer, { filename: 'photo.jpg', contentType: 'image/jpeg' });
+
+    expect(res.status).toBe(401);
+
+    await member.reload();
+    expect(member.profilePicture).toBeNull();
+  });
+
+  it('if the DB commit fails during a replace, the previous photo file survives on disk and the DB still references it — no orphaned reference (CR-01)', async () => {
+    const { member, token } = await createLinkedActor();
+
+    // First upload establishes an existing photo to be replaced.
+    const firstRes = await httpClient()
+      .post(`/api/family-members/${member.id}/photo`)
+      .set('Authorization', `Bearer ${token}`)
+      .attach('photo', validJpegBuffer, { filename: 'a.jpg', contentType: 'image/jpeg' });
+    expect(firstRes.status).toBe(200);
+
+    await member.reload();
+    const firstFilename = member.profilePicture;
+    const firstPath = resolvePhotoPath(firstFilename);
+    await expect(fs.access(firstPath)).resolves.toBeUndefined();
+
+    // Force the transaction COMMIT to fail. Supports both the managed-transaction
+    // form (sequelize.transaction(cb)) and the unmanaged form
+    // (sequelize.transaction()) so this test is a legitimate RED->GREEN across
+    // the fix: with a pre-commit delete-old ordering the previous file is gone,
+    // with a post-commit ordering it survives.
+    const realTransaction = sequelize.transaction.bind(sequelize);
+    const spy = vi.spyOn(sequelize, 'transaction').mockImplementation(async (arg) => {
+      if (typeof arg === 'function') {
+        return realTransaction(async (t) => {
+          await arg(t);
+          throw new Error('simulated commit failure');
+        });
+      }
+      const t = await realTransaction();
+      t.commit = async () => {
+        await t.rollback();
+        throw new Error('simulated commit failure');
+      };
+      return t;
+    });
+
+    const secondRes = await httpClient()
+      .post(`/api/family-members/${member.id}/photo`)
+      .set('Authorization', `Bearer ${token}`)
+      .attach('photo', validPngBuffer, { filename: 'b.png', contentType: 'image/png' });
+
+    spy.mockRestore();
+
+    expect(secondRes.status).toBe(500);
+
+    // DB rolled back to the original filename...
+    await member.reload();
+    expect(member.profilePicture).toBe(firstFilename);
+    // ...and that original file must still be on disk (never deleted pre-commit).
+    await expect(fs.access(firstPath)).resolves.toBeUndefined();
   });
 });
