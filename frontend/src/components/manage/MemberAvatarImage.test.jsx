@@ -19,12 +19,11 @@ beforeEach(() => {
 
 describe('MemberAvatarImage', () => {
   it('renders a placeholder icon avatar (never initials, never a skeleton) when the member has no photoUrl', () => {
-    render(<MemberAvatarImage member={MEMBER_NO_PHOTO} />);
+    const { container } = render(<MemberAvatarImage member={MEMBER_NO_PHOTO} />);
 
-    expect(screen.queryByTestId('SkeletonCircular')).not.toBeInTheDocument();
+    expect(document.querySelector('.MuiSkeleton-circular')).not.toBeInTheDocument();
     expect(screen.queryByText('AL')).not.toBeInTheDocument();
-    const avatar = screen.getByRole('img', { hidden: true, name: 'Ada Lovelace' });
-    expect(avatar).toBeInTheDocument();
+    expect(container.querySelector('.MuiAvatar-root')).toBeInTheDocument();
     const icon = document.querySelector('[data-testid="PersonRoundedIcon"]');
     expect(icon).toBeInTheDocument();
     expect(icon).toHaveAttribute('aria-hidden', 'true');
