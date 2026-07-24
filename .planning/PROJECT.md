@@ -152,4 +152,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-23 — Phase 15 (Sibling Dedup Guard & /manage Self-Service UI) complete*
+*Last updated: 2026-07-24 — Phase 16 (Photo Upload) complete*
