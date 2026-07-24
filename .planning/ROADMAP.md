@@ -219,7 +219,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 16-06-PLAN.md — Frontend primitives: photoClient, MemberAvatarImage, PhotoCropDialog (PHOTO-01)
+- [x] 16-06-PLAN.md — Frontend primitives: photoClient, MemberAvatarImage, PhotoCropDialog (PHOTO-01)
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -265,5 +265,5 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 13. Membership Gating & Account Linking | v2.0 | 4/4 | Complete   | 2026-07-22 |
 | 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 6/6 | Complete    | 2026-07-23 |
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 6/6 | Complete    | 2026-07-23 |
-| 16. Photo Upload | v2.0 | 5/7 | In Progress|  |
+| 16. Photo Upload | v2.0 | 6/7 | In Progress|  |
 | 17. /family Deep Tree Visualization | v2.0 | 0/TBD | Not started | - |
