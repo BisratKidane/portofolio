@@ -202,7 +202,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 16-01-PLAN.md — Manual ALTER migration + profilePicture model column + photoStorage config + real image fixtures (QUAL-01)
+- [x] 16-01-PLAN.md — Manual ALTER migration + profilePicture model column + photoStorage config + real image fixtures (QUAL-01)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -265,5 +265,5 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 13. Membership Gating & Account Linking | v2.0 | 4/4 | Complete   | 2026-07-22 |
 | 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 6/6 | Complete    | 2026-07-23 |
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 6/6 | Complete    | 2026-07-23 |
-| 16. Photo Upload | v2.0 | 0/TBD | Not started | - |
+| 16. Photo Upload | v2.0 | 1/7 | In Progress|  |
 | 17. /family Deep Tree Visualization | v2.0 | 0/TBD | Not started | - |

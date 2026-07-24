@@ -4,8 +4,8 @@ milestone: v2.0
 milestone_name: Collaborative Family Tree
 status: executing
 stopped_at: Phase 16 UI-SPEC approved
-last_updated: "2026-07-24T17:54:27.695Z"
-last_activity: 2026-07-24 -- Phase 16 planning complete
+last_updated: "2026-07-24T17:57:00.047Z"
+last_activity: 2026-07-24 -- Phase 16 execution started
 progress:
   total_phases: 6
   completed_phases: 4
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 16 — photo upload
+**Current focus:** Phase 16 — photo-upload
 
 ## Current Position
 
-Phase: 16
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-24 -- Phase 16 planning complete
+Phase: 16 (photo-upload) — EXECUTING
+Plan: 1 of 7
+Status: Executing Phase 16
+Last activity: 2026-07-24 -- Phase 16 execution started
 
 Progress: [██████████] 100%
 
