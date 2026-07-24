@@ -11,6 +11,7 @@ import {
   TextField,
   Typography
 } from '@mui/material';
+import MemberAvatarImage from './MemberAvatarImage.jsx';
 
 export default function AdminMemberTable({ members, onSelect }) {
   const [search, setSearch] = useState('');
@@ -53,6 +54,7 @@ export default function AdminMemberTable({ members, onSelect }) {
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell sx={{ width: 56 }} />
                 <TableCell>Name</TableCell>
                 <TableCell>Gender</TableCell>
                 <TableCell>Linked account</TableCell>
@@ -66,6 +68,9 @@ export default function AdminMemberTable({ members, onSelect }) {
                   onClick={() => onSelect(member)}
                   sx={{ cursor: 'pointer' }}
                 >
+                  <TableCell>
+                    <MemberAvatarImage member={member} />
+                  </TableCell>
                   <TableCell>{member.fullname}</TableCell>
                   <TableCell>{member.gender}</TableCell>
                   <TableCell>{member.linkedUser ? member.linkedUser.name : '—'}</TableCell>

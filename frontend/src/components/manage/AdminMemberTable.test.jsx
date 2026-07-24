@@ -3,6 +3,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AdminMemberTable from './AdminMemberTable.jsx';
 
+vi.mock('../../api/photoClient.js', () => ({
+  fetchMemberPhotoBlob: vi.fn().mockRejectedValue(new Error('not needed in this test'))
+}));
+
 const MEMBERS = [
   { id: '1', firstname: 'Ada', lastname: 'Lovelace', fullname: 'Ada Lovelace', gender: 'Female', linkedUser: null },
   {
@@ -94,5 +98,11 @@ describe('AdminMemberTable', () => {
     await userEvent.click(screen.getByText('Ada Lovelace'));
 
     expect(handleSelect).toHaveBeenCalledWith(MEMBERS[0]);
+  });
+
+  it('renders a photo thumbnail avatar for every row', () => {
+    const { container } = render(<AdminMemberTable members={MEMBERS} onSelect={vi.fn()} />);
+
+    expect(container.querySelectorAll('.MuiAvatar-root')).toHaveLength(MEMBERS.length);
   });
 });
