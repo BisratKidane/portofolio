@@ -17,16 +17,18 @@ import {
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext.jsx';
 import { graphqlRequest } from '../api/graphqlClient.js';
+import { removeMemberPhoto } from '../api/photoClient.js';
 import { colors, getInitials } from '../theme.js';
 import RelationshipGroupedPanel from '../components/manage/RelationshipGroupedPanel.jsx';
 import AddRelativeDialog from '../components/manage/AddRelativeDialog.jsx';
 import EditMemberDialog from '../components/manage/EditMemberDialog.jsx';
 import AdminMemberTable from '../components/manage/AdminMemberTable.jsx';
+import PhotoCropDialog from '../components/manage/PhotoCropDialog.jsx';
 
 const MY_EDITABLE_MEMBERS_QUERY = `
   query MyEditableMembers {
     myEditableMembers {
-      id firstname lastname fullname gender birthdate deathdate phone email address
+      id firstname lastname fullname gender birthdate deathdate phone email address photoUrl
       mother { id } father { id }
       spouses { id fullname } children { id fullname } siblings { id fullname }
       linkedUser { id }
@@ -36,7 +38,7 @@ const MY_EDITABLE_MEMBERS_QUERY = `
 
 const FAMILY_MEMBERS_QUERY = `
   query FamilyMembersTable {
-    familyMembers { id firstname lastname fullname gender linkedUser { id name email } }
+    familyMembers { id firstname lastname fullname gender photoUrl linkedUser { id name email } }
   }
 `;
 
@@ -49,7 +51,7 @@ const FAMILY_MEMBERS_QUERY = `
 const FAMILY_MEMBER_FOCUS_QUERY = `
   query FamilyMemberFocus($id: ID!) {
     familyMember(id: $id) {
-      id firstname lastname fullname gender birthdate deathdate phone email address
+      id firstname lastname fullname gender birthdate deathdate phone email address photoUrl
       mother { id fullname } father { id fullname }
       spouses { id fullname } children { id fullname } siblings { id fullname }
       linkedUser { id name email }
@@ -117,6 +119,7 @@ function flattenFocusedRow(focusedRow) {
 }
 
 const EMPTY_DIALOG_STATE = { open: false, relationType: '', targetId: null };
+const EMPTY_CROP_STATE = { open: false, file: null, member: null };
 
 function MemberBranch({ user }) {
   const [rows, setRows] = useState([]);
@@ -125,6 +128,10 @@ function MemberBranch({ user }) {
   const [pageError, setPageError] = useState('');
   const [dialogState, setDialogState] = useState(EMPTY_DIALOG_STATE);
   const [editTarget, setEditTarget] = useState(null);
+  const [cropDialog, setCropDialog] = useState(EMPTY_CROP_STATE);
+  const [removePhotoTarget, setRemovePhotoTarget] = useState(null);
+  const [removingPhoto, setRemovingPhoto] = useState(false);
+  const [removePhotoError, setRemovePhotoError] = useState('');
 
   const refetch = useCallback(() => {
     setPageLoading(true);
@@ -142,6 +149,20 @@ function MemberBranch({ user }) {
   useEffect(() => {
     refetch();
   }, [refetch]);
+
+  const handleRemovePhotoConfirm = async () => {
+    setRemovePhotoError('');
+    setRemovingPhoto(true);
+    try {
+      await removeMemberPhoto(removePhotoTarget.id);
+      await refetch();
+      setRemovePhotoTarget(null);
+    } catch (err) {
+      setRemovePhotoError(err.message);
+    } finally {
+      setRemovingPhoto(false);
+    }
+  };
 
   if (pageLoading) {
     return (
@@ -175,6 +196,8 @@ function MemberBranch({ user }) {
         }
         onEdit={(member) => setEditTarget(member)}
         onDelete={undefined}
+        onPickPhoto={(member, file) => setCropDialog({ open: true, file, member })}
+        onRemovePhoto={(member) => setRemovePhotoTarget(member)}
       />
 
       <AddRelativeDialog
@@ -192,6 +215,34 @@ function MemberBranch({ user }) {
         onClose={() => setEditTarget(null)}
         onSaved={refetch}
       />
+
+      <PhotoCropDialog
+        open={cropDialog.open}
+        file={cropDialog.file}
+        member={cropDialog.member}
+        onClose={() => setCropDialog(EMPTY_CROP_STATE)}
+        onUploaded={refetch}
+      />
+
+      <Dialog open={Boolean(removePhotoTarget)} onClose={() => (removingPhoto ? null : setRemovePhotoTarget(null))}>
+        <DialogTitle>Remove photo?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            {removePhotoError && <Alert severity="error">{removePhotoError}</Alert>}
+            <Typography>
+              {`Remove ${removePhotoTarget?.fullname}'s photo? Their avatar goes back to the default icon. This can't be undone.`}
+            </Typography>
+            <Stack direction="row" spacing={2} justifyContent="flex-end">
+              <Button variant="text" disabled={removingPhoto} onClick={() => setRemovePhotoTarget(null)}>
+                Cancel
+              </Button>
+              <Button variant="contained" color="error" disabled={removingPhoto} onClick={handleRemovePhotoConfirm}>
+                {removingPhoto ? 'Removing…' : 'Remove photo'}
+              </Button>
+            </Stack>
+          </Stack>
+        </DialogContent>
+      </Dialog>
     </Stack>
   );
 }
@@ -358,6 +409,10 @@ function AdminBranch({ user }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [cropDialog, setCropDialog] = useState(EMPTY_CROP_STATE);
+  const [removePhotoTarget, setRemovePhotoTarget] = useState(null);
+  const [removingPhoto, setRemovingPhoto] = useState(false);
+  const [removePhotoError, setRemovePhotoError] = useState('');
 
   const refetchMembers = useCallback(() => {
     return graphqlRequest(FAMILY_MEMBERS_QUERY).then((data) => setMembers(data.familyMembers));
@@ -407,6 +462,21 @@ function AdminBranch({ user }) {
     }
   };
 
+  const handleRemovePhotoConfirm = async () => {
+    setRemovePhotoError('');
+    setRemovingPhoto(true);
+    try {
+      await removeMemberPhoto(removePhotoTarget.id);
+      await refetchMembers();
+      await refetchFocused();
+      setRemovePhotoTarget(null);
+    } catch (err) {
+      setRemovePhotoError(err.message);
+    } finally {
+      setRemovingPhoto(false);
+    }
+  };
+
   if (pageLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
@@ -442,6 +512,8 @@ function AdminBranch({ user }) {
           }
           onEdit={(member) => setEditTarget(member)}
           onDelete={(member) => setDeleteTarget(member)}
+          onPickPhoto={(member, file) => setCropDialog({ open: true, file, member })}
+          onRemovePhoto={(member) => setRemovePhotoTarget(member)}
         />
       )}
 
@@ -506,6 +578,37 @@ function AdminBranch({ user }) {
               </Button>
               <Button variant="contained" color="error" disabled={deleting} onClick={handleDeleteConfirm}>
                 {deleting ? 'Removing…' : 'Remove'}
+              </Button>
+            </Stack>
+          </Stack>
+        </DialogContent>
+      </Dialog>
+
+      <PhotoCropDialog
+        open={cropDialog.open}
+        file={cropDialog.file}
+        member={cropDialog.member}
+        onClose={() => setCropDialog(EMPTY_CROP_STATE)}
+        onUploaded={() => {
+          refetchMembers();
+          refetchFocused();
+        }}
+      />
+
+      <Dialog open={Boolean(removePhotoTarget)} onClose={() => (removingPhoto ? null : setRemovePhotoTarget(null))}>
+        <DialogTitle>Remove photo?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            {removePhotoError && <Alert severity="error">{removePhotoError}</Alert>}
+            <Typography>
+              {`Remove ${removePhotoTarget?.fullname}'s photo? Their avatar goes back to the default icon. This can't be undone.`}
+            </Typography>
+            <Stack direction="row" spacing={2} justifyContent="flex-end">
+              <Button variant="text" disabled={removingPhoto} onClick={() => setRemovePhotoTarget(null)}>
+                Cancel
+              </Button>
+              <Button variant="contained" color="error" disabled={removingPhoto} onClick={handleRemovePhotoConfirm}>
+                {removingPhoto ? 'Removing…' : 'Remove photo'}
               </Button>
             </Stack>
           </Stack>

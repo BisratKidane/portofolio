@@ -15,7 +15,17 @@ function SectionHeading({ title, onAdd, addLabel }) {
   );
 }
 
-function MemberRows({ members, self, isAdmin, actingUserId, isDerived, onEdit, onDelete }) {
+function MemberRows({
+  members,
+  self,
+  isAdmin,
+  actingUserId,
+  isDerived,
+  onEdit,
+  onDelete,
+  onPickPhoto,
+  onRemovePhoto
+}) {
   return (
     <Stack spacing={2} sx={{ mt: 2 }}>
       {members.map((member) => (
@@ -28,18 +38,29 @@ function MemberRows({ members, self, isAdmin, actingUserId, isDerived, onEdit, o
           isDerived={isDerived}
           onEdit={onEdit}
           onDelete={onDelete}
+          onPickPhoto={onPickPhoto}
+          onRemovePhoto={onRemovePhoto}
         />
       ))}
     </Stack>
   );
 }
 
-export default function RelationshipGroupedPanel({ scope, isAdmin, actingUserId, onAddRelative, onEdit, onDelete }) {
+export default function RelationshipGroupedPanel({
+  scope,
+  isAdmin,
+  actingUserId,
+  onAddRelative,
+  onEdit,
+  onDelete,
+  onPickPhoto,
+  onRemovePhoto
+}) {
   const { self, parents, spouses, children, siblings } = scope;
 
   const allCoreEmpty = parents.length === 0 && spouses.length === 0 && children.length === 0;
 
-  const rowProps = { self, isAdmin, actingUserId, onEdit, onDelete };
+  const rowProps = { self, isAdmin, actingUserId, onEdit, onDelete, onPickPhoto, onRemovePhoto };
 
   return (
     <Paper elevation={0} sx={{ borderRadius: 5, border: `1px solid ${colors.line}`, overflow: 'hidden' }}>
@@ -55,6 +76,8 @@ export default function RelationshipGroupedPanel({ scope, isAdmin, actingUserId,
               isDerived={false}
               onEdit={onEdit}
               onDelete={onDelete}
+              onPickPhoto={onPickPhoto}
+              onRemovePhoto={onRemovePhoto}
             />
           </Box>
         </Box>
