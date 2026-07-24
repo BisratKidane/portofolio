@@ -471,17 +471,19 @@ it('rejects a file over the 5 MB limit', async () => {
 | A2 | D-09's recommended mechanism (fetch-blob-to-objectURL) is the best fit for this specific codebase's existing stateless-JWT/no-cookie architecture, rather than a universally "correct" choice | Architecture Patterns, Summary | This is a judgment call weighing simplicity/consistency against the minor UX cost of extra client-side blob-lifecycle code; a reasonable planner could instead choose the token-query-param approach for less frontend code, accepting the tradeoff of a JWT appearing in a URL (server access logs, browser history). Flagged HIGH visibility in CONTEXT.md as "a research decision, not locked" — this recommendation should be confirmed, not silently accepted, before planning locks it in. |
 | A3 | `react-easy-crop` is preferable to `react-image-crop` for this app's single-avatar-crop use case | Standard Stack (Alternatives Considered) | Low risk either way — both are legitimate, actively maintained, MUI-compatible options; swapping later is a contained frontend-only change with no backend/schema impact. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact route base path (`/api/family-members/:id/photo` vs. something else)**
    - What we know: the phase needs two new plain-Express routes, mounted alongside the existing `/health` and `/graphql` in `backend/src/server.js`.
    - What's unclear: whether to use a fresh `/api/...` prefix (this app has none today — only `/health` and `/graphql` exist at the root) or nest under `/graphql`-adjacent naming.
    - Recommendation: use a `/api/family-members/:id/photo` prefix (both upload=POST and serve=GET on the same path) — clear, RESTful, and doesn't collide with the single GraphQL endpoint. Left as Claude's Discretion per CONTEXT.md.
+   - **RESOLVED:** 16-04-PLAN.md adopts `/api/family-members/:id/photo` for POST (upload), 16-05-PLAN.md adds DELETE (remove) and GET (serve) on the same path, exactly as recommended.
 
 2. **Whether `photoUrl` on the GraphQL `FamilyMember` type should be a relative or absolute path**
    - What we know: the frontend needs *some* URL to `axios.get(..., { responseType: 'blob' })` against, and the existing `graphqlClient.js` resolves its `baseURL` from `VITE_API_URL`/proxy config.
    - What's unclear: whether to reuse that resolved base or expose a separate `VITE_PHOTO_API_URL`-style config, given the dev-proxy (`vite.config.js`) currently only forwards `/graphql`.
    - Recommendation: extend the Vite dev-server proxy to also forward `/api` (mirroring the existing `/graphql` proxy rule), and have the backend emit `photoUrl` as a relative path (e.g. `/api/family-members/42/photo`) that resolves against whatever origin the SPA is already served from — consistent with how `VITE_API_URL`/proxying already works, no new env var needed.
+   - **RESOLVED:** 16-06-PLAN.md Task 1 adds the `/api` Vite proxy entry; 16-04-PLAN.md's `photoUrl` resolver emits a relative path exactly as recommended, no new env var introduced.
 
 ## Environment Availability
 
