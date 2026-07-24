@@ -240,7 +240,22 @@ Plans:
   4. `/family` is reachable only by linked members and admins.
   5. New frontend pages/components (`/manage`, `/family`, the pending gate) have component test coverage, and the family-tree suite runs and is enforced on every push/PR with CI green across the milestone.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 17-01-PLAN.md — Backend familyMembers guard relaxation requireAdmin -> requireFamilyAccess, red-green adversarial + D-14 regression test (TREE-03)
+- [ ] 17-02-PLAN.md — SC-1 spike: install @xyflow/react + @dagrejs/dagre, familyTree.assembly.js + familyTree.layout.js pure modules, human-verify checkpoint on synthetic-union-node pattern at depth (TREE-01)
+
+**Wave 2** *(blocked on 17-02 completion)*
+
+- [ ] 17-03-PLAN.md — FamilyTreeCanvas + MemberNode + UnionNode: production spouse-pairing render, collapse/expand, find-me/search/zoom/minimap, render-smoke tests (TREE-01, TREE-02)
+
+**Wave 3** *(blocked on 17-01 and 17-03 completion)*
+
+- [ ] 17-04-PLAN.md — MemberDetailPanel + FamilyTreePage flat-fetch orchestration, /family route + nav, full-suite gate (TREE-02, TREE-04, QUAL-02, QUAL-03)
+
 **UI hint**: yes
 
 ## Progress
@@ -266,4 +281,4 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 6/6 | Complete    | 2026-07-23 |
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 6/6 | Complete    | 2026-07-23 |
 | 16. Photo Upload | v2.0 | 7/7 | Complete    | 2026-07-24 |
-| 17. /family Deep Tree Visualization | v2.0 | 0/TBD | Not started | - |
+| 17. /family Deep Tree Visualization | v2.0 | 0/4 | Not started | - |
