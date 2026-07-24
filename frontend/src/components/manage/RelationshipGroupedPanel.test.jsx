@@ -3,6 +3,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import RelationshipGroupedPanel from './RelationshipGroupedPanel.jsx';
 
+vi.mock('../../api/photoClient.js', () => ({
+  fetchMemberPhotoBlob: vi.fn().mockRejectedValue(new Error('not needed in this test'))
+}));
+
 const SELF = { id: 1, fullname: 'Ada Lovelace', linkedUser: null };
 const MOTHER = { id: 2, fullname: 'Grace Hopper', linkedUser: null };
 const SPOUSE = { id: 3, fullname: 'John Doe', linkedUser: null };
@@ -19,10 +23,12 @@ function renderPanel(overrides = {}) {
     onAddRelative: vi.fn(),
     onEdit: vi.fn(),
     onDelete: vi.fn(),
+    onPickPhoto: vi.fn(),
+    onRemovePhoto: vi.fn(),
     ...overrides
   };
-  render(<RelationshipGroupedPanel {...props} />);
-  return props;
+  const utils = render(<RelationshipGroupedPanel {...props} />);
+  return { ...props, ...utils };
 }
 
 describe('RelationshipGroupedPanel', () => {
@@ -95,5 +101,42 @@ describe('RelationshipGroupedPanel', () => {
 
     // Self should always be editable (isSelf=true) -- Edit button present for the You row.
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+  });
+
+  it('threads onPickPhoto to both the self row (standalone render) and a MemberRows-rendered row (parent)', async () => {
+    const onPickPhoto = vi.fn();
+    const { container } = renderPanel({ scope: { ...EMPTY_SCOPE, parents: [MOTHER] }, onPickPhoto });
+
+    // Render order: self ("You" section) first, then Parents section (MOTHER).
+    const fileInputs = container.querySelectorAll('input[type="file"]');
+    expect(fileInputs).toHaveLength(2);
+
+    const file = new File(['bytes'], 'photo.jpg', { type: 'image/jpeg' });
+
+    await userEvent.upload(fileInputs[0], file);
+    expect(onPickPhoto).toHaveBeenCalledWith(SELF, file);
+
+    await userEvent.upload(fileInputs[1], file);
+    expect(onPickPhoto).toHaveBeenCalledWith(MOTHER, file);
+  });
+
+  it('threads onRemovePhoto to both the self row and a MemberRows-rendered row (parent), each with a photoUrl', async () => {
+    const onRemovePhoto = vi.fn();
+    const SELF_WITH_PHOTO = { ...SELF, photoUrl: '/api/family-members/1/photo' };
+    const MOTHER_WITH_PHOTO = { ...MOTHER, photoUrl: '/api/family-members/2/photo' };
+
+    renderPanel({
+      scope: { self: SELF_WITH_PHOTO, parents: [MOTHER_WITH_PHOTO], spouses: [], children: [], siblings: [] },
+      onRemovePhoto
+    });
+
+    const removeButtons = screen.getAllByRole('button', { name: 'Remove photo' });
+    expect(removeButtons).toHaveLength(2);
+
+    await userEvent.click(removeButtons[0]);
+    expect(onRemovePhoto).toHaveBeenCalledWith(SELF_WITH_PHOTO);
+
+    await userEvent.click(removeButtons[1]);
+    expect(onRemovePhoto).toHaveBeenCalledWith(MOTHER_WITH_PHOTO);
   });
 });

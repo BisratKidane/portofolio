@@ -3,6 +3,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MemberCard from './MemberCard.jsx';
 
+vi.mock('../../api/photoClient.js', () => ({
+  fetchMemberPhotoBlob: vi.fn().mockRejectedValue(new Error('not needed in this test'))
+}));
+
 const BASE_MEMBER = { id: 5, fullname: 'Ada Lovelace', linkedUser: null };
 
 function renderCard(overrides = {}) {
@@ -14,17 +18,20 @@ function renderCard(overrides = {}) {
     isDerived: false,
     onEdit: vi.fn(),
     onDelete: vi.fn(),
+    onPickPhoto: vi.fn(),
+    onRemovePhoto: vi.fn(),
     ...overrides
   };
-  render(<MemberCard {...props} />);
-  return props;
+  const utils = render(<MemberCard {...props} />);
+  return { ...props, ...utils };
 }
 
 describe('MemberCard', () => {
-  it('renders the member name and avatar initials', () => {
-    renderCard();
+  it('renders the member name and an icon placeholder avatar, never initials (D-10)', () => {
+    const { container } = renderCard();
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
-    expect(screen.getByText('AL')).toBeInTheDocument();
+    expect(screen.queryByText('AL')).not.toBeInTheDocument();
+    expect(container.querySelector('.MuiAvatar-root')).toBeInTheDocument();
   });
 
   it('hides the Edit button and shows the lock caption for a locked relative (D-06)', () => {
@@ -80,5 +87,60 @@ describe('MemberCard', () => {
     const member = { id: 5, fullname: 'Ada Lovelace', linkedUser: { id: 99 } };
     renderCard({ member, isAdmin: true });
     expect(screen.queryByText(/rewire/i)).not.toBeInTheDocument();
+  });
+
+  it('has aria-label "Add a photo for {fullname}" when the member has no photo', () => {
+    renderCard();
+    expect(screen.getByRole('button', { name: 'Add a photo for Ada Lovelace' })).toBeInTheDocument();
+  });
+
+  it('has aria-label "Change photo for {fullname}" when the member has a photo', () => {
+    const member = { ...BASE_MEMBER, photoUrl: '/api/family-members/5/photo' };
+    renderCard({ member });
+    expect(screen.getByRole('button', { name: 'Change photo for Ada Lovelace' })).toBeInTheDocument();
+  });
+
+  it('does not render an interactive avatar trigger when locked', () => {
+    const member = { id: 5, fullname: 'Ada Lovelace', linkedUser: { id: 99 } };
+    renderCard({ member, actingUserId: 1, isSelf: false, isAdmin: false });
+    expect(screen.queryByRole('button', { name: /photo for/i })).not.toBeInTheDocument();
+  });
+
+  it('calls onPickPhoto with the member and the picked file when a file is chosen', async () => {
+    const onPickPhoto = vi.fn();
+    const { container } = renderCard({ onPickPhoto });
+    const fileInput = container.querySelector('input[type="file"]');
+    const file = new File(['bytes'], 'photo.jpg', { type: 'image/jpeg' });
+
+    await userEvent.upload(fileInput, file);
+
+    expect(onPickPhoto).toHaveBeenCalledWith(BASE_MEMBER, file);
+  });
+
+  it('renders "Remove photo" only when unlocked with a photoUrl, and calls onRemovePhoto with the member', async () => {
+    const onRemovePhoto = vi.fn();
+    const member = { ...BASE_MEMBER, photoUrl: '/api/family-members/5/photo' };
+    renderCard({ member, onRemovePhoto });
+
+    const button = screen.getByRole('button', { name: 'Remove photo' });
+    await userEvent.click(button);
+
+    expect(onRemovePhoto).toHaveBeenCalledWith(member);
+  });
+
+  it('does not render "Remove photo" when the member has no photo', () => {
+    renderCard();
+    expect(screen.queryByRole('button', { name: 'Remove photo' })).not.toBeInTheDocument();
+  });
+
+  it('does not render "Remove photo" when locked, even with a photoUrl', () => {
+    const member = {
+      id: 5,
+      fullname: 'Ada Lovelace',
+      linkedUser: { id: 99 },
+      photoUrl: '/api/family-members/5/photo'
+    };
+    renderCard({ member, actingUserId: 1, isSelf: false, isAdmin: false });
+    expect(screen.queryByRole('button', { name: 'Remove photo' })).not.toBeInTheDocument();
   });
 });

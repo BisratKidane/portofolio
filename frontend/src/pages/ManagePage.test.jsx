@@ -15,7 +15,14 @@ vi.mock('../api/graphqlClient.js', () => ({
   graphqlRequest: vi.fn()
 }));
 
+vi.mock('../api/photoClient.js', () => ({
+  uploadMemberPhoto: vi.fn(),
+  removeMemberPhoto: vi.fn(),
+  fetchMemberPhotoBlob: vi.fn().mockRejectedValue(new Error('not needed in this test'))
+}));
+
 import { graphqlRequest } from '../api/graphqlClient.js';
+import { removeMemberPhoto } from '../api/photoClient.js';
 
 const SELF_ROW = {
   id: '1',
@@ -222,6 +229,40 @@ describe('ManagePage (member branch)', () => {
       );
     });
   });
+
+  it('opens the "Remove photo?" confirm dialog when Remove photo is clicked on the self card, and calls removeMemberPhoto on confirm', async () => {
+    const SELF_ROW_WITH_PHOTO = { ...SELF_ROW, photoUrl: '/api/family-members/1/photo' };
+    const ROWS_WITH_PHOTO = [SELF_ROW_WITH_PHOTO, MOTHER_ROW, SPOUSE_ROW, CHILD_ROW, SIBLING_ROW];
+
+    graphqlRequest.mockResolvedValueOnce({ myEditableMembers: ROWS_WITH_PHOTO });
+    removeMemberPhoto.mockResolvedValueOnce({});
+    graphqlRequest.mockResolvedValueOnce({ myEditableMembers: ALL_ROWS });
+
+    renderPage();
+    await screen.findByText('Parents');
+
+    const removePhotoButtons = screen.getAllByRole('button', { name: 'Remove photo' });
+    expect(removePhotoButtons).toHaveLength(1);
+    await userEvent.click(removePhotoButtons[0]);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Remove photo?')).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "Remove Ada Lovelace's photo? Their avatar goes back to the default icon. This can't be undone."
+      )
+    ).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Remove photo' }));
+
+    await waitFor(() => {
+      expect(removeMemberPhoto).toHaveBeenCalledWith('1');
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
 });
 
 const ADMIN_TABLE_MEMBERS = [
@@ -324,6 +365,35 @@ describe('ManagePage (admin branch)', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument();
+    });
+  });
+
+  it('opens the "Remove photo?" confirm dialog on the admin-focused panel and calls removeMemberPhoto, refetching after confirm', async () => {
+    const ADMIN_FOCUS_WITH_PHOTO = { ...ADMIN_FOCUS_ROW, photoUrl: '/api/family-members/1/photo' };
+
+    graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
+    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: [] });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: ADMIN_FOCUS_WITH_PHOTO });
+    removeMemberPhoto.mockResolvedValueOnce({});
+    graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: ADMIN_FOCUS_ROW });
+
+    renderPage();
+
+    await userEvent.click(await screen.findByText('Ada Lovelace'));
+    await screen.findByText('Grace Hopper');
+
+    const removePhotoButtons = screen.getAllByRole('button', { name: 'Remove photo' });
+    expect(removePhotoButtons).toHaveLength(1);
+    await userEvent.click(removePhotoButtons[0]);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('Remove photo?')).toBeInTheDocument();
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Remove photo' }));
+
+    await waitFor(() => {
+      expect(removeMemberPhoto).toHaveBeenCalledWith('1');
     });
   });
 });
