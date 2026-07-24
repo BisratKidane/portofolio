@@ -133,3 +133,16 @@ None - no external service configuration required.
 ---
 *Phase: 16-photo-upload*
 *Completed: 2026-07-24*
+
+## Self-Check: PASSED
+
+All claimed files verified present on disk; all commits verified present in git log:
+- `backend/src/routes/photo.remove.test.js` — FOUND
+- `backend/src/routes/photo.serve.test.js` — FOUND
+- `backend/src/routes/photo.routes.js` — FOUND (modified)
+- `.planning/phases/16-photo-upload/16-05-SUMMARY.md` — FOUND
+- `31ccc5b` (Task 1 RED) — FOUND
+- `e0bb0b7` (Task 1 GREEN) — FOUND
+- `97a9a3b` (Task 2 RED) — FOUND
+- `bed6ce2` (Task 2 GREEN) — FOUND
+- `cea87d3` (docs summary) — FOUND
