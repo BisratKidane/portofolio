@@ -115,6 +115,7 @@ describe('profilePicture column (PHOTO-02)', () => {
       lastname: 'Yet',
       gender: 'Male'
     });
+    await member.reload();
 
     expect(member.profilePicture).toBeNull();
   });
