@@ -1,10 +1,10 @@
 import express from 'express';
 import multer from 'multer';
 import { fileTypeFromBuffer } from 'file-type';
-import { models } from '../models/index.js';
+import { models, sequelize } from '../models/index.js';
 import { getUserFromRequest, requireFamilyAccess } from '../utils/auth.js';
 import { computeEditableScope } from '../services/familyMember.service.js';
-import { generatePhotoFilename, writePhotoFile } from '../services/photoStorage.service.js';
+import { finalizePhotoReplacement } from '../services/photoStorage.service.js';
 
 // First non-Apollo route in this codebase (PHOTO-01/PHOTO-03). Reuses the
 // exact same auth/scope primitives every Phase 14 mutation uses -- no new
@@ -48,13 +48,24 @@ photoRouter.post('/family-members/:id/photo', upload.single('photo'), async (req
     }
 
     // Server-generated filename only -- the multer-parsed upload filename is
-    // never read past this point (T-16-08). Replaced in Task 2 with the
-    // transaction-safe finalizePhotoReplacement orchestration.
-    const filename = generatePhotoFilename(detected.ext);
-    await writePhotoFile(req.file.buffer, filename);
-    await models.FamilyMember.update({ profilePicture: filename }, { where: { id: targetId } });
+    // never read past this point (T-16-08). Transaction-safe replace
+    // (T-16-12/D-11): write-new -> DB commit -> delete-old, discarding the
+    // new file on commit failure -- no photo is ever orphaned.
+    const photoUrl = await sequelize.transaction(async (t) => {
+      const target = await models.FamilyMember.findByPk(targetId, { transaction: t });
+      if (!target) throw new Error('Family member not found.');
 
-    return res.status(200).json({ photoUrl: `/api/family-members/${req.params.id}/photo` });
+      await finalizePhotoReplacement({
+        buffer: req.file.buffer,
+        ext: detected.ext,
+        previousFilename: target.profilePicture,
+        commit: (newFilename) => target.update({ profilePicture: newFilename }, { transaction: t })
+      });
+
+      return `/api/family-members/${targetId}/photo`;
+    });
+
+    return res.status(200).json({ photoUrl });
   } catch (err) {
     return next(err);
   }

@@ -242,6 +242,9 @@ export const familyMemberResolvers = {
     }
   },
   FamilyMember: {
+    // PHOTO-01: computed, never a raw column passthrough -- exposes only the
+    // route path clients fetch bytes from, never the stored filename itself.
+    photoUrl: (member) => (member.profilePicture ? `/api/family-members/${member.id}/photo` : null),
     mother: (member, _args, { loaders }) =>
       member.motherId != null ? loaders.memberById.load(Number(member.motherId)) : null,
     father: (member, _args, { loaders }) =>
