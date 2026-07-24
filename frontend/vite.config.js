@@ -11,6 +11,11 @@ export default defineConfig({
         target: proxyTarget,
         changeOrigin: true,
         secure: false
+      },
+      '/api': {
+        target: proxyTarget,
+        changeOrigin: true,
+        secure: false
       }
     }
   }
