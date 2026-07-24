@@ -4,7 +4,7 @@ import { fileTypeFromBuffer } from 'file-type';
 import { models, sequelize } from '../models/index.js';
 import { getUserFromRequest, requireFamilyAccess } from '../utils/auth.js';
 import { computeEditableScope } from '../services/familyMember.service.js';
-import { finalizePhotoReplacement } from '../services/photoStorage.service.js';
+import { finalizePhotoReplacement, deletePhotoFile } from '../services/photoStorage.service.js';
 
 // First non-Apollo route in this codebase (PHOTO-01/PHOTO-03). Reuses the
 // exact same auth/scope primitives every Phase 14 mutation uses -- no new
@@ -66,6 +66,41 @@ photoRouter.post('/family-members/:id/photo', upload.single('photo'), async (req
     });
 
     return res.status(200).json({ photoUrl });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+// Remove (D-11): scope-gated identically to upload -- reuses the exact same
+// requireFamilyAccess/computeEditableScope shape, never re-derives authz.
+// Idempotent by design: whether or not a photo currently exists, an in-scope
+// request always resolves to `{ photoUrl: null }`.
+photoRouter.delete('/family-members/:id/photo', async (req, res, next) => {
+  try {
+    const user = await getUserFromRequest(req, models);
+    requireFamilyAccess(user);
+
+    const targetId = Number(req.params.id);
+    const isAdmin = user.role === 'ADMIN';
+
+    if (!isAdmin) {
+      const scope = await computeEditableScope(user.familyMemberId);
+      if (!scope.ids.has(targetId)) {
+        return res.status(403).json({ error: 'This member is outside your editable scope.' });
+      }
+    }
+
+    const target = await models.FamilyMember.findByPk(targetId);
+    if (!target) {
+      return res.status(404).json({ error: 'Family member not found.' });
+    }
+
+    if (target.profilePicture) {
+      await deletePhotoFile(target.profilePicture);
+      await target.update({ profilePicture: null });
+    }
+
+    return res.status(200).json({ photoUrl: null });
   } catch (err) {
     return next(err);
   }
