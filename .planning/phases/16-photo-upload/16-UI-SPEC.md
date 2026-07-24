@@ -1,10 +1,11 @@
 ---
 phase: 16
 slug: photo-upload
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-07-24
+reviewed_at: 2026-07-24
 ---
 
 # Phase 16 — UI Design Contract
@@ -52,13 +53,15 @@ MUI base spacing unit = **8px**. Scale is carried forward verbatim from the Phas
 | lg | 24px | `3` | Crop-viewport-to-controls separation; dialog inner padding |
 | xl | 32px | `4` | Vertical break between the crop viewport block and the action row on `sm+` |
 
-Exceptions (all concrete, all multiples of 4):
+Exceptions (carried from the shipped theme; not all multiples of 4):
 
 - **Avatar sizes (established, unchanged):** 42×42 in `/manage` member rows and relationship panels, 48×48 in the crop dialog's "current photo" reference if rendered. Nav avatar (38×38) is the **account** avatar and is out of scope — it keeps `getInitials`, never a member photo.
 - **Touch target for the avatar trigger:** the 42×42 avatar is wrapped in a `ButtonBase` with `minWidth: 44, minHeight: 44` and `borderRadius: '50%'` — the hit area clears 44px while the avatar's rendered size stays 42px. This is the only place a non-`Button` element becomes interactive this phase.
 - **Crop viewport height:** `320px` on `xs`, `360px` on `sm+` (`sx={{ height: { xs: 320, sm: 360 } }}`), full dialog width, `position: relative` (required by `react-easy-crop`).
 - **Border radius:** inherited — dialog/paper **5px**, buttons/inputs **3px**. Crop shape is `round` with `aspect={1}` (avatar is always circular).
 - **Camera-overlay affordance:** full-bleed circular overlay on the 42px avatar; icon rendered at **20px** (`fontSize: 20`).
+
+**Focal point:** the crop viewport (320px `xs` / 360px `sm+`, full dialog width, on `colors.ink`) is the crop dialog's single visual anchor, with **Save photo** as the only gradient-filled action in view. Stated as explicit intent: a `MemberCard` row avatar must **not** become a competing focal point — its camera affordance is hover/focus-only and it carries no persistent accent fill.
 
 ---
 
@@ -174,11 +177,11 @@ No shadcn registry and no third-party UI registry is used or declared. Registry 
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved (2026-07-24)
