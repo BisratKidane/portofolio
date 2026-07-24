@@ -42,7 +42,10 @@ findings:
   warning: 4
   info: 2
   total: 7
-status: issues_found
+resolved:
+  critical: 1
+  warning: 2
+status: partially_resolved
 ---
 
 # Phase 16: Code Review Report
@@ -50,7 +53,33 @@ status: issues_found
 **Reviewed:** 2026-07-24
 **Depth:** standard
 **Files Reviewed:** 34
-**Status:** issues_found
+**Status:** partially_resolved
+
+## Resolution Log (2026-07-24, post-review remediation)
+
+Fixed during phase execution, TDD (RED tests first, commit `test(16): ... [RED]` → `fix(16): ... [GREEN]`):
+
+- **CR-01 — FIXED.** Upload route switched from a managed to an unmanaged
+  transaction so the `commit` handed to `finalizePhotoReplacement` is a genuine
+  durable commit; delete-old now runs strictly after the row is persisted.
+  New regression test forces a commit failure and asserts the previous file
+  survives + DB still references it.
+- **WR-01 — FIXED.** Added `mapAuthFailure()` mapping the auth guards' thrown
+  Errors to 401 (not logged in) / 403 (linked-account/role) on both write
+  routes. Regression tests assert unauthenticated upload/delete return 401.
+- **WR-02 — FIXED.** DELETE now nulls the `profilePicture` column before
+  unlinking the file. Regression test injects a column-write failure and
+  asserts the file survives.
+- **WR-04 — NOT A DEFECT (false positive).** The finding assumed a Node 18.x
+  runtime from stale CLAUDE.md/tech-stack docs. The repo is actually on Node 24
+  everywhere (`.nvmrc`=24, `engines: node 24.x`, `backend/Dockerfile`=
+  `node:24-alpine`, local v24.15.0), so `zlib.crc32` (Node 22.2+) is supported.
+  No code change; the documentation drift is the only real issue here.
+- **WR-03 — OPEN (tracked follow-up).** `photoClient` has no `baseURL`; the Vite
+  dev proxy masks it. Cross-origin production deployments need it wired to
+  `VITE_API_URL` like `graphqlClient`.
+- **IN-01 / IN-02 — OPEN (advisory).** Defense-in-depth path-containment check
+  on serve; dead `originalGenerate` capture in a service test.
 
 ## Summary
 
