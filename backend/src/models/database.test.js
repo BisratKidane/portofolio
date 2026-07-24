@@ -94,3 +94,29 @@ describe('familyMemberId link column (ACC-05)', () => {
     expect(user.familyMemberId).toBeNull();
   });
 });
+
+describe('profilePicture column (PHOTO-02)', () => {
+  it('persists and reloads a profilePicture filename', async () => {
+    const member = await models.FamilyMember.create({
+      firstname: 'Photo',
+      lastname: 'Owner',
+      gender: 'Female',
+      profilePicture: 'abc.jpg'
+    });
+
+    await member.reload();
+
+    expect(member.profilePicture).toBe('abc.jpg');
+  });
+
+  it('defaults profilePicture to null when not supplied (no backfill, D-10)', async () => {
+    const member = await models.FamilyMember.create({
+      firstname: 'NoPhoto',
+      lastname: 'Yet',
+      gender: 'Male'
+    });
+    await member.reload();
+
+    expect(member.profilePicture).toBeNull();
+  });
+});

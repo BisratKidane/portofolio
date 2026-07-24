@@ -48,6 +48,10 @@ export function initFamilyMember(sequelize) {
         type: DataTypes.STRING,
         allowNull: true
       },
+      profilePicture: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
       fullname: {
         type: DataTypes.VIRTUAL,
         get() {

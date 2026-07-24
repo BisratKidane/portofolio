@@ -146,5 +146,10 @@ vite.config.ts.timestamp-*
 frontend/dist/
 backend/dist/
 
+# Uploaded photo storage (Phase 16) -- server-generated filenames written at
+# runtime under photoStorageConfig.photosDir; not source, mirrors the mounted
+# Docker volume in real deployments.
+backend/storage/photos/
+
 # macOS
 .DS_Store
