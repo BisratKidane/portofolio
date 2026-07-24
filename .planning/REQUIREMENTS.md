@@ -45,8 +45,8 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 ### Photos (PHOTO)
 
 - [x] **PHOTO-01**: A user can upload a `profilePicture` for a member within their scope.
-- [ ] **PHOTO-02**: Uploaded photos are stored on a mounted Docker volume and served via a backend route, persisting across container rebuilds.
-- [ ] **PHOTO-03**: Uploads are validated for content-type and size, and stored with safely generated filenames (no path traversal).
+- [x] **PHOTO-02**: Uploaded photos are stored on a mounted Docker volume and served via a backend route, persisting across container rebuilds.
+- [x] **PHOTO-03**: Uploads are validated for content-type and size, and stored with safely generated filenames (no path traversal).
 
 ### Manage Page — /manage (MNG)
 
@@ -64,7 +64,7 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 
 ### Testing & CI (QUAL)
 
-- [ ] **QUAL-01**: New backend models, resolvers, and the upload route are covered by unit + integration tests, written test-first (TDD red-green).
+- [x] **QUAL-01**: New backend models, resolvers, and the upload route are covered by unit + integration tests, written test-first (TDD red-green).
 - [ ] **QUAL-02**: New frontend pages/components (`/manage`, `/family`, the pending gate) are covered by component tests.
 - [ ] **QUAL-03**: CI stays green across the milestone; the family-tree suite runs and is enforced on every push/PR.
 
@@ -138,8 +138,8 @@ Which phase covers which requirement.
 | PERM-04 | Phase 14 | Complete |
 | PERM-05 | Phase 14 | Complete |
 | PHOTO-01 | Phase 16 | Complete |
-| PHOTO-02 | Phase 16 | Pending |
-| PHOTO-03 | Phase 16 | Pending |
+| PHOTO-02 | Phase 16 | Complete |
+| PHOTO-03 | Phase 16 | Complete |
 | MNG-01 | Phase 15 | Complete |
 | MNG-02 | Phase 15 | Complete |
 | MNG-03 | Phase 15 | Complete |
@@ -148,7 +148,7 @@ Which phase covers which requirement.
 | TREE-02 | Phase 17 | Pending |
 | TREE-03 | Phase 17 | Pending |
 | TREE-04 | Phase 17 | Pending |
-| QUAL-01 | Phase 16 | Pending |
+| QUAL-01 | Phase 16 | Complete |
 | QUAL-02 | Phase 17 | Pending |
 | QUAL-03 | Phase 17 | Pending |
 
