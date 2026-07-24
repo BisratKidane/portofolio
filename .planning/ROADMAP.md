@@ -197,7 +197,34 @@ Plans:
   3. Adversarial uploads — a path-traversal filename, a mislabeled content-type, an oversized file — are rejected as the first red tests, before any happy-path upload test passes; stored filenames are server-generated, never derived from client input.
   4. All new backend models, resolvers, and the upload route have unit + integration test coverage, written test-first (TDD red-green), with the suite green in CI.
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 16-01-PLAN.md — Manual ALTER migration + profilePicture model column + photoStorage config + real image fixtures (QUAL-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 16-02-PLAN.md — photoStorage.service.js: filename gen, write/delete, transaction-safe replace (PHOTO-03, QUAL-01)
+- [ ] 16-03-PLAN.md — Named Docker volume + rebuild-persistence verification script (PHOTO-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 16-04-PLAN.md — Upload route: adversarial-first TDD, happy path, outside-scope, replace, photoUrl schema field (PHOTO-01, PHOTO-03, QUAL-01)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 16-05-PLAN.md — Remove (D-11) + serve (D-07) routes, full backend suite gate (PHOTO-01, PHOTO-02, QUAL-01)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 16-06-PLAN.md — Frontend primitives: photoClient, MemberAvatarImage, PhotoCropDialog (PHOTO-01)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 16-07-PLAN.md — Frontend wiring: MemberCard, ManagePage, AdminMemberTable (PHOTO-01)
+
 **UI hint**: yes
 
 ### Phase 17: /family Deep Tree Visualization
