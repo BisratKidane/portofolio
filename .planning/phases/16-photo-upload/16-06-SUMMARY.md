@@ -144,3 +144,19 @@ None - no external service configuration required.
 ---
 *Phase: 16-photo-upload*
 *Completed: 2026-07-24*
+
+## Self-Check: PASSED
+
+All claimed files verified present on disk; all commits verified present in git log:
+- `frontend/src/api/photoClient.js` — FOUND
+- `frontend/src/api/photoClient.test.js` — FOUND
+- `frontend/src/components/manage/MemberAvatarImage.jsx` — FOUND
+- `frontend/src/components/manage/MemberAvatarImage.test.jsx` — FOUND
+- `frontend/src/components/manage/PhotoCropDialog.jsx` — FOUND
+- `frontend/src/components/manage/PhotoCropDialog.test.jsx` — FOUND
+- `fddf576` (Task 1) — FOUND
+- `7b5fa10` (Task 2 RED) — FOUND
+- `e53af01` (Task 2 GREEN) — FOUND
+- `77f30e2` (Task 3 RED) — FOUND
+- `64baede` (Task 3 GREEN) — FOUND
+- `1caaf6d` (docs summary) — FOUND
