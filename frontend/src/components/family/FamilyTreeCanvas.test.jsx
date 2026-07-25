@@ -153,3 +153,121 @@ describe('FamilyTreeCanvas', () => {
     expect(onMemberClick).toHaveBeenCalledWith('4');
   });
 });
+
+// CR-01 (17-REVIEW.md): a two-parent relative connects to their parents ONLY
+// through a synthetic union node (marriage edges partner->union, descent
+// edge union->child). Revealing the relative via either interactive toggle
+// must also reveal the connecting union node and its edges, or the relative
+// renders with no visible line to its parents.
+describe('FamilyTreeCanvas — CR-01 union/edge reveal on interactive expand', () => {
+  it('reveals the connecting union node and its marriage/descent edges when a two-parent child is expanded from an already-visible couple', async () => {
+    const MONA = {
+      id: '10',
+      fullname: 'Mona Adams',
+      gender: 'Female',
+      mother: null,
+      father: null,
+      spouses: [{ id: '11' }],
+      children: [{ id: '13' }]
+    };
+    const DEREK = {
+      id: '11',
+      fullname: 'Derek Adams',
+      gender: 'Male',
+      mother: null,
+      father: null,
+      spouses: [{ id: '10' }],
+      children: [{ id: '13' }]
+    };
+    const CARA = {
+      id: '13',
+      fullname: 'Cara Adams',
+      gender: 'Female',
+      mother: { id: '10' },
+      father: { id: '11' },
+      children: []
+    };
+    const nodes = [
+      { id: '10', type: 'member', data: { member: MONA } },
+      { id: '11', type: 'member', data: { member: DEREK } },
+      { id: '13', type: 'member', data: { member: CARA } },
+      { id: 'union-10-11', type: 'union', data: {} }
+    ];
+    const edges = [
+      { id: 'union-10-11-marriage-10', source: '10', target: 'union-10-11', type: 'marriage' },
+      { id: 'union-10-11-marriage-11', source: '11', target: 'union-10-11', type: 'marriage' },
+      { id: 'union-10-11-descent-13', source: 'union-10-11', target: '13', type: 'descent' }
+    ];
+
+    renderCanvas({ nodes, edges, initialExpandedIds: new Set(['10', '11']), viewerId: '10' });
+
+    await waitFor(() => expect(screen.getByText('Mona Adams')).toBeInTheDocument());
+    expect(screen.queryByText('Cara Adams')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('union-node')).not.toBeInTheDocument();
+
+    const badge = screen.getByLabelText(/Show \d+ hidden descendants of Mona Adams/);
+    fireEvent.click(badge);
+
+    await waitFor(() => expect(screen.getByText('Cara Adams')).toBeInTheDocument());
+    expect(screen.getByTestId('union-node')).toBeInTheDocument();
+    expect(screen.getByTestId('rf__edge-union-10-11-marriage-10')).toBeInTheDocument();
+    expect(screen.getByTestId('rf__edge-union-10-11-marriage-11')).toBeInTheDocument();
+    expect(screen.getByTestId('rf__edge-union-10-11-descent-13')).toBeInTheDocument();
+  });
+
+  it('reveals the connecting union node and its marriage/descent edges when both parents are expanded via the ancestor badge', async () => {
+    const CODY = {
+      id: '30',
+      fullname: 'Cody Baker',
+      gender: 'Male',
+      mother: { id: '31' },
+      father: { id: '32' },
+      children: []
+    };
+    const MEG = {
+      id: '31',
+      fullname: 'Meg Baker',
+      gender: 'Female',
+      mother: null,
+      father: null,
+      spouses: [{ id: '32' }],
+      children: [{ id: '30' }]
+    };
+    const DAN = {
+      id: '32',
+      fullname: 'Dan Baker',
+      gender: 'Male',
+      mother: null,
+      father: null,
+      spouses: [{ id: '31' }],
+      children: [{ id: '30' }]
+    };
+    const nodes = [
+      { id: '30', type: 'member', data: { member: CODY } },
+      { id: '31', type: 'member', data: { member: MEG } },
+      { id: '32', type: 'member', data: { member: DAN } },
+      { id: 'union-31-32', type: 'union', data: {} }
+    ];
+    const edges = [
+      { id: 'union-31-32-marriage-31', source: '31', target: 'union-31-32', type: 'marriage' },
+      { id: 'union-31-32-marriage-32', source: '32', target: 'union-31-32', type: 'marriage' },
+      { id: 'union-31-32-descent-30', source: 'union-31-32', target: '30', type: 'descent' }
+    ];
+
+    renderCanvas({ nodes, edges, initialExpandedIds: new Set(['30']), viewerId: '30' });
+
+    await waitFor(() => expect(screen.getByText('Cody Baker')).toBeInTheDocument());
+    expect(screen.queryByText('Meg Baker')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('union-node')).not.toBeInTheDocument();
+
+    const badge = screen.getByLabelText(/Show \d+ hidden ancestors of Cody Baker/);
+    fireEvent.click(badge);
+
+    await waitFor(() => expect(screen.getByText('Meg Baker')).toBeInTheDocument());
+    expect(screen.getByText('Dan Baker')).toBeInTheDocument();
+    expect(screen.getByTestId('union-node')).toBeInTheDocument();
+    expect(screen.getByTestId('rf__edge-union-31-32-marriage-31')).toBeInTheDocument();
+    expect(screen.getByTestId('rf__edge-union-31-32-marriage-32')).toBeInTheDocument();
+    expect(screen.getByTestId('rf__edge-union-31-32-descent-30')).toBeInTheDocument();
+  });
+});
