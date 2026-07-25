@@ -46,7 +46,7 @@ Full detail archived in [milestones/v1.1-ROADMAP.md](milestones/v1.1-ROADMAP.md)
 - [x] **Phase 14: Relationship Resolvers, Permission Scoping & Query Safety** - Members can only add/edit their immediate relatives — enforced server-side, resistant to privilege escalation, safe against N+1/DoS. (completed 2026-07-22)
 - [x] **Phase 15: Sibling Dedup Guard & /manage Self-Service UI** - `/manage` lets members edit their scope and admins manage the whole tree, with duplicate-child creation guarded. (completed 2026-07-23)
 - [x] **Phase 16: Photo Upload** - Users upload a member's profile picture to a durable, security-hardened backend route. (completed 2026-07-24)
-- [ ] **Phase 17: /family Deep Tree Visualization** - Linked members explore the whole family as a pannable, zoomable tree.
+- [x] **Phase 17: /family Deep Tree Visualization** - Linked members explore the whole family as a pannable, zoomable tree. (completed 2026-07-25)
 
 ## Phase Details
 
@@ -254,7 +254,7 @@ Plans:
 
 **Wave 3** *(blocked on 17-01 and 17-03 completion)*
 
-- [ ] 17-04-PLAN.md — MemberDetailPanel + FamilyTreePage flat-fetch orchestration, /family route + nav, full-suite gate (TREE-02, TREE-04, QUAL-02, QUAL-03)
+- [x] 17-04-PLAN.md — MemberDetailPanel + FamilyTreePage flat-fetch orchestration, /family route + nav, full-suite gate (TREE-02, TREE-04, QUAL-02, QUAL-03)
 
 **UI hint**: yes
 
@@ -281,4 +281,4 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 6/6 | Complete    | 2026-07-23 |
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 6/6 | Complete    | 2026-07-23 |
 | 16. Photo Upload | v2.0 | 7/7 | Complete    | 2026-07-24 |
-| 17. /family Deep Tree Visualization | v2.0 | 3/4 | In Progress|  |
+| 17. /family Deep Tree Visualization | v2.0 | 4/4 | Complete   | 2026-07-25 |

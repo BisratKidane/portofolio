@@ -60,13 +60,13 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 - [x] **TREE-01**: A linked member can view the family as a tree on `/family`, with spouses shown paired.
 - [x] **TREE-02**: The tree supports pan/zoom and collapsible/expandable branches so a deep (~10–23 generation) lineage is navigable.
 - [x] **TREE-03**: The tree is populated by a single flat whole-graph query assembled client-side (no per-node N+1).
-- [ ] **TREE-04**: `/family` is reachable only by linked members and admins.
+- [x] **TREE-04**: `/family` is reachable only by linked members and admins.
 
 ### Testing & CI (QUAL)
 
 - [x] **QUAL-01**: New backend models, resolvers, and the upload route are covered by unit + integration tests, written test-first (TDD red-green).
-- [ ] **QUAL-02**: New frontend pages/components (`/manage`, `/family`, the pending gate) are covered by component tests.
-- [ ] **QUAL-03**: CI stays green across the milestone; the family-tree suite runs and is enforced on every push/PR.
+- [x] **QUAL-02**: New frontend pages/components (`/manage`, `/family`, the pending gate) are covered by component tests.
+- [x] **QUAL-03**: CI stays green across the milestone; the family-tree suite runs and is enforced on every push/PR.
 
 ## v2 Requirements
 
@@ -147,10 +147,10 @@ Which phase covers which requirement.
 | TREE-01 | Phase 17 | Complete |
 | TREE-02 | Phase 17 | Complete |
 | TREE-03 | Phase 17 | Complete |
-| TREE-04 | Phase 17 | Pending |
+| TREE-04 | Phase 17 | Complete |
 | QUAL-01 | Phase 16 | Complete |
-| QUAL-02 | Phase 17 | Pending |
-| QUAL-03 | Phase 17 | Pending |
+| QUAL-02 | Phase 17 | Complete |
+| QUAL-03 | Phase 17 | Complete |
 
 **Coverage:**
 - v1 requirements: 35 total (corrected from the initial "34" header count during roadmap creation — the actual requirement list below contains 35 IDs across MEM×5, REL×6, ACC×5, PERM×5, PHOTO×3, MNG×4, TREE×4, QUAL×3)
