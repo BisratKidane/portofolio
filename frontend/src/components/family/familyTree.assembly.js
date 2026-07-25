@@ -20,6 +20,18 @@ function idOrNull(ref) {
   return ref?.id != null ? String(ref.id) : null;
 }
 
+// Numeric-aware pair sort (member ids are numeric strings in practice) so a
+// pair like ('6', '14') sorts as [6, 14] rather than lexicographically as
+// ['14', '6']; falls back to string compare for any non-numeric id.
+function sortIdPair(idA, idB) {
+  const numA = Number(idA);
+  const numB = Number(idB);
+  if (Number.isFinite(numA) && Number.isFinite(numB) && numA !== numB) {
+    return numA < numB ? [idA, idB] : [idB, idA];
+  }
+  return [idA, idB].sort();
+}
+
 function buildMembersById(flatMembers) {
   return new Map(flatMembers.map((member) => [String(member.id), member]));
 }
@@ -202,10 +214,48 @@ export function buildForest(flatMembers, viewerId) {
     const motherId = idOrNull(member.mother);
     const fatherId = idOrNull(member.father);
     if (motherId != null && membersById.has(motherId)) {
-      edges.push({ id: `parent-${motherId}-${childId}`, source: motherId, target: childId, type: 'parent' });
+      edges.push({
+        id: `parent-${motherId}-${childId}`,
+        source: motherId,
+        target: childId,
+        type: 'parent',
+        sourceHandle: 'parent-source',
+        targetHandle: 'child-target'
+      });
     }
     if (fatherId != null && membersById.has(fatherId)) {
-      edges.push({ id: `parent-${fatherId}-${childId}`, source: fatherId, target: childId, type: 'parent' });
+      edges.push({
+        id: `parent-${fatherId}-${childId}`,
+        source: fatherId,
+        target: childId,
+        type: 'parent',
+        sourceHandle: 'parent-source',
+        targetHandle: 'child-target'
+      });
+    }
+  }
+
+  // Spouse connector edges (one per unordered pair, dedupe via sorted ids so
+  // a mutually-referenced pair — each side lists the other in `spouses` —
+  // yields a single edge, not two).
+  const seenSpousePairs = new Set();
+  for (const member of flatMembers) {
+    const memberId = String(member.id);
+    for (const spouse of member.spouses || []) {
+      const spouseId = idOrNull(spouse);
+      if (spouseId == null || !membersById.has(spouseId)) continue;
+      const [a, b] = sortIdPair(memberId, spouseId);
+      const pairKey = `${a}-${b}`;
+      if (seenSpousePairs.has(pairKey)) continue;
+      seenSpousePairs.add(pairKey);
+      edges.push({
+        id: `spouse-${a}-${b}`,
+        source: a,
+        target: b,
+        type: 'spouse',
+        sourceHandle: 'spouse-source',
+        targetHandle: 'spouse-target'
+      });
     }
   }
 

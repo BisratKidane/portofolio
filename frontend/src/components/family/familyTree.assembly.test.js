@@ -20,30 +20,54 @@ describe('buildForest', () => {
     expect(nodes.map((n) => n.id).sort()).toEqual(['1', '2', '3']);
   });
 
-  it('creates two direct parent->child edges when a child has both parents present', () => {
+  it('creates two direct parent->child edges when a child has both parents present, with the parent/child handle ids', () => {
     const flat = [
       { id: '1', mother: null, father: null, spouses: [{ id: '2' }], children: [{ id: '3' }] },
       { id: '2', mother: null, father: null, spouses: [{ id: '1' }], children: [{ id: '3' }] },
       { id: '3', mother: { id: '1' }, father: { id: '2' }, spouses: [], children: [] }
     ];
     const { edges } = buildForest(flat);
-    expect(edges).toHaveLength(2);
-    expect(edges).toEqual(
+    const parentEdges = edges.filter((e) => e.type === 'parent');
+    expect(parentEdges).toHaveLength(2);
+    expect(parentEdges).toEqual(
       expect.arrayContaining([
-        { id: 'parent-1-3', source: '1', target: '3', type: 'parent' },
-        { id: 'parent-2-3', source: '2', target: '3', type: 'parent' }
+        {
+          id: 'parent-1-3',
+          source: '1',
+          target: '3',
+          type: 'parent',
+          sourceHandle: 'parent-source',
+          targetHandle: 'child-target'
+        },
+        {
+          id: 'parent-2-3',
+          source: '2',
+          target: '3',
+          type: 'parent',
+          sourceHandle: 'parent-source',
+          targetHandle: 'child-target'
+        }
       ])
     );
   });
 
-  it('creates a single direct parent->child edge when a child has only one known parent', () => {
+  it('creates a single direct parent->child edge when a child has only one known parent, with handle ids', () => {
     const flat = [
       { id: '1', mother: null, father: null, spouses: [{ id: '2' }], children: [{ id: '3' }] },
       { id: '2', mother: null, father: null, spouses: [{ id: '1' }], children: [] },
       { id: '3', mother: { id: '1' }, father: null, spouses: [], children: [] }
     ];
     const { edges } = buildForest(flat);
-    expect(edges).toEqual([{ id: 'parent-1-3', source: '1', target: '3', type: 'parent' }]);
+    expect(edges.filter((e) => e.type === 'parent')).toEqual([
+      {
+        id: 'parent-1-3',
+        source: '1',
+        target: '3',
+        type: 'parent',
+        sourceHandle: 'parent-source',
+        targetHandle: 'child-target'
+      }
+    ]);
   });
 
   it('creates no edge for a parent reference that points outside the known member set', () => {
@@ -89,11 +113,79 @@ describe('buildForest', () => {
     const { edges } = buildForest(flat);
     expect(edges).toEqual(
       expect.arrayContaining([
-        { id: 'parent-1-2', source: '1', target: '2', type: 'parent' },
-        { id: 'parent-2-3', source: '2', target: '3', type: 'parent' }
+        {
+          id: 'parent-1-2',
+          source: '1',
+          target: '2',
+          type: 'parent',
+          sourceHandle: 'parent-source',
+          targetHandle: 'child-target'
+        },
+        {
+          id: 'parent-2-3',
+          source: '2',
+          target: '3',
+          type: 'parent',
+          sourceHandle: 'parent-source',
+          targetHandle: 'child-target'
+        }
       ])
     );
     expect(edges).toHaveLength(2);
+  });
+});
+
+describe('buildForest — spouse connector edges', () => {
+  it('emits exactly one spouse edge per unordered spouse pair, with sorted-id edge id and spouse handles', () => {
+    const flat = [
+      { id: '6', mother: null, father: null, spouses: [{ id: '14' }], children: [] },
+      { id: '14', mother: null, father: null, spouses: [{ id: '6' }], children: [] }
+    ];
+    const { edges } = buildForest(flat);
+    const spouseEdges = edges.filter((e) => e.type === 'spouse');
+    expect(spouseEdges).toEqual([
+      {
+        id: 'spouse-6-14',
+        source: '6',
+        target: '14',
+        type: 'spouse',
+        sourceHandle: 'spouse-source',
+        targetHandle: 'spouse-target'
+      }
+    ]);
+  });
+
+  it('dedupes a mutually-referenced spouse pair regardless of numeric id ordering (14 lists 6, 6 lists 14)', () => {
+    const flat = [
+      { id: '14', mother: null, father: null, spouses: [{ id: '6' }], children: [] },
+      { id: '6', mother: null, father: null, spouses: [{ id: '14' }], children: [] }
+    ];
+    const { edges } = buildForest(flat);
+    const spouseEdges = edges.filter((e) => e.type === 'spouse');
+    expect(spouseEdges).toHaveLength(1);
+    expect(spouseEdges[0].id).toBe('spouse-6-14');
+  });
+
+  it('ignores a spouse reference that points outside the known member set', () => {
+    const flat = [{ id: '1', mother: null, father: null, spouses: [{ id: 'unknown' }], children: [] }];
+    const { edges } = buildForest(flat);
+    expect(edges.filter((e) => e.type === 'spouse')).toEqual([]);
+  });
+
+  it('emits no spouse edges when no member has a spouse', () => {
+    const flat = [{ id: '1', mother: null, father: null, spouses: [], children: [] }];
+    const { edges } = buildForest(flat);
+    expect(edges.filter((e) => e.type === 'spouse')).toEqual([]);
+  });
+
+  it('includes the viewer spouse in initialExpandedIds so the connecting edge is visible on first paint', () => {
+    const flat = [
+      { id: '6', mother: null, father: null, spouses: [{ id: '14' }], children: [] },
+      { id: '14', mother: null, father: null, spouses: [{ id: '6' }], children: [] }
+    ];
+    const { initialExpandedIds } = buildForest(flat, '6');
+    expect(initialExpandedIds.has('6')).toBe(true);
+    expect(initialExpandedIds.has('14')).toBe(true);
   });
 });
 
