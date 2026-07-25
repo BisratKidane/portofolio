@@ -65,6 +65,14 @@ warnings.
 
 ### CR-01: Expand/collapse reveals member nodes but leaves union nodes and connecting edges hidden — interactively-revealed two-parent relatives render disconnected
 
+**Status: RESOLVED** — fixed via TDD (RED `5b824b3`, GREEN `3cb133c`). Both
+toggle handlers now derive union-node connections from the graph's own
+marriage/descent edges (`buildUnionConnections`) and reveal a union whenever
+its descent-child or both marriage partners are in the expanded set
+(`revealConnectingUnions`), applied in `handleToggleExpand`,
+`expandAncestorChainFrom` (also covering `findMe`/search), keeping
+`familyTree.assembly.js` and the layout module untouched.
+
 **File:** `frontend/src/components/family/FamilyTreeCanvas.jsx:108-122` (`handleToggleExpand`), `:53-85` (`expandAncestorChainFrom`), `:153-156` (`renderEdges`)
 
 **Issue:**
