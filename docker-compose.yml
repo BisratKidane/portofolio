@@ -31,11 +31,16 @@ services:
       # Required when NODE_ENV=production: the backend refuses to boot without
       # SMTP_HOST, SMTP_USER, and SMTP_PASS. Empty in dev, where the mailer
       # falls back to a no-op transport.
+      # Resend (or any SMTP provider). Setting RESEND_API_KEY alone is enough
+      # to send from local too — host/user default to Resend's SMTP. Explicit
+      # SMTP_* overrides for another provider. See resolveSmtpCredentials.js.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_REPLY_TO: ${SMTP_REPLY_TO:-}
     ports:
       - "${PORT:-4000}:4000"
     volumes:

@@ -9,9 +9,33 @@ const productionConfig = {
 };
 
 describe('buildTransportOptions', () => {
-  it('uses jsonTransport outside production so dev and test produce no network egress', () => {
+  it('uses jsonTransport in tests and when SMTP is unconfigured, so no email is sent', () => {
+    // Tests must never open a socket, even if credentials happen to be present.
     expect(buildTransportOptions({ nodeEnv: 'test' })).toEqual({ jsonTransport: true });
+    expect(buildTransportOptions({ nodeEnv: 'test', smtpHost: 'smtp.resend.com', smtpPass: 're_x' })).toEqual({
+      jsonTransport: true
+    });
+    // Unconfigured dev (no key yet) falls back to jsonTransport so the app still boots.
     expect(buildTransportOptions({ nodeEnv: 'development' })).toEqual({ jsonTransport: true });
+    expect(buildTransportOptions({ nodeEnv: 'development', smtpHost: 'smtp.resend.com' })).toEqual({
+      jsonTransport: true
+    });
+  });
+
+  it('builds a real SMTP transport in development once configured, so local sends via Resend', () => {
+    const options = buildTransportOptions({
+      nodeEnv: 'development',
+      smtpHost: 'smtp.resend.com',
+      smtpPort: 587,
+      smtpUser: 'resend',
+      smtpPass: 're_local_key'
+    });
+
+    expect(options.jsonTransport).toBeUndefined();
+    expect(options.host).toBe('smtp.resend.com');
+    expect(options.port).toBe(587);
+    expect(options.requireTLS).toBe(true);
+    expect(options.auth).toEqual({ user: 'resend', pass: 're_local_key' });
   });
 
   it('enforces STARTTLS on port 587 in production', () => {

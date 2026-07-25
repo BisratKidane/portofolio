@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { assertProductionMailConfig } from './assertProductionMailConfig.js';
 import { assertProductionSecrets } from './assertProductionSecrets.js';
 import { requiredPositiveInt } from './requiredPositiveInt.js';
+import { resolveSmtpCredentials } from './resolveSmtpCredentials.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,11 +31,10 @@ export const env = {
   // recursive. Parsed strictly so a malformed value fails at startup
   // instead of silently disabling the rule (CR-04).
   maxQueryDepth: requiredPositiveInt(process.env.MAX_QUERY_DEPTH, 12, 'MAX_QUERY_DEPTH'),
-  smtpHost: process.env.SMTP_HOST || '',
-  smtpPort: Number(process.env.SMTP_PORT || 587),
-  smtpUser: process.env.SMTP_USER || '',
-  smtpPass: process.env.SMTP_PASS || '',
-  smtpFrom: process.env.SMTP_FROM || 'no-reply@portfolio.local',
+  // SMTP is resolved via resolveSmtpCredentials so a single RESEND_API_KEY is
+  // enough to send from any environment (local included); explicit SMTP_*
+  // still overrides for other providers. See resolveSmtpCredentials.js.
+  ...resolveSmtpCredentials(process.env),
   database: {
     host: process.env.DB_HOST || '127.0.0.1',
     port: Number(process.env.DB_PORT || 3306),
