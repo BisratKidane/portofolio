@@ -53,6 +53,13 @@ export default function AppLayout() {
                 >
                   Family tree
                 </Button>
+                <Button
+                  component={RouterLink}
+                  to="/manage"
+                  sx={{ color: colors.slate, fontWeight: 600, display: { xs: 'none', sm: 'inline-flex' } }}
+                >
+                  Manage
+                </Button>
                 <Avatar
                   sx={{
                     width: 38,
