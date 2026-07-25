@@ -47,10 +47,47 @@ function computeAncestorHiddenCount(member, expandedIds) {
   return count;
 }
 
+// Maps each union node id to the member ids of its two marriage partners and
+// the id of the child it descends to (derived straight from the graph's own
+// marriage/descent edges -- CR-01 fix, keeps this correct as
+// familyTree.assembly.js evolves rather than re-deriving spouse pairs by
+// parsing union ids by hand). Exported for direct unit testing (pure, no
+// React/xyflow rendering required).
+export function buildUnionConnections(edges) {
+  const map = new Map();
+  for (const e of edges) {
+    if (e.type === 'marriage') {
+      const entry = map.get(e.target) || { partnerIds: [], childId: null };
+      entry.partnerIds.push(e.source);
+      map.set(e.target, entry);
+    } else if (e.type === 'descent') {
+      const entry = map.get(e.source) || { partnerIds: [], childId: null };
+      entry.childId = e.target;
+      map.set(e.source, entry);
+    }
+  }
+  return map;
+}
+
+// CR-01 fix: a union node (and thus its marriage + descent edges) must
+// become visible exactly when the members it connects are revealed, in
+// EITHER direction -- a descent-child now in `ids`, or both marriage
+// partners now in `ids`. Mutates and returns `ids`.
+export function revealConnectingUnions(ids, unionConnections) {
+  for (const [unionId, { partnerIds, childId }] of unionConnections) {
+    if (ids.has(unionId)) continue;
+    const childRevealed = childId != null && ids.has(childId);
+    const partnersRevealed = partnerIds.length === 2 && partnerIds.every((id) => ids.has(id));
+    if (childRevealed || partnersRevealed) ids.add(unionId);
+  }
+  return ids;
+}
+
 // Adds memberId's currently-hidden mother/father id(s), then walks each
 // newly-revealed ancestor's own hidden ancestor chain up to its apex
 // (mirrors onToggleExpand's descendant-reveal shape, but walking upward).
-function expandAncestorChainFrom(memberId, membersById, expandedIds) {
+// Also reveals any union node connecting newly-revealed members (CR-01).
+export function expandAncestorChainFrom(memberId, membersById, expandedIds, unionConnections) {
   const next = new Set(expandedIds);
   const queue = [];
   const seed = membersById.get(String(memberId));
@@ -81,7 +118,7 @@ function expandAncestorChainFrom(memberId, membersById, expandedIds) {
       queue.push(fatherId);
     }
   }
-  return next;
+  return revealConnectingUnions(next, unionConnections);
 }
 
 export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, viewerId, onMemberClick }) {
@@ -91,6 +128,7 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
   const didAutoFindMe = useRef(false);
 
   const membersById = useMemo(() => buildMembersById(nodes), [nodes]);
+  const unionConnections = useMemo(() => buildUnionConnections(edges), [edges]);
   const viewerNodeId = viewerId != null ? String(viewerId) : null;
 
   // Memo key = the visible id set only, NOT the full node/edge arrays --
@@ -115,17 +153,17 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
           const childId = idOrNull(child);
           if (childId != null) next.add(childId);
         }
-        return next;
+        return revealConnectingUnions(next, unionConnections);
       });
     },
-    [membersById]
+    [membersById, unionConnections]
   );
 
   const handleToggleAncestorExpand = useCallback(
     (memberId) => {
-      setExpandedIds((prev) => expandAncestorChainFrom(memberId, membersById, prev));
+      setExpandedIds((prev) => expandAncestorChainFrom(memberId, membersById, prev, unionConnections));
     },
-    [membersById]
+    [membersById, unionConnections]
   );
 
   const renderNodes = useMemo(
@@ -158,13 +196,13 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
   const findMe = useCallback(() => {
     if (viewerNodeId == null) return;
     if (!expandedIds.has(viewerNodeId)) {
-      setExpandedIds((prev) => expandAncestorChainFrom(viewerNodeId, membersById, prev));
+      setExpandedIds((prev) => expandAncestorChainFrom(viewerNodeId, membersById, prev, unionConnections));
       return; // becomes visible next render; the auto-find-me effect below reframes it
     }
     const node = getNode(viewerNodeId);
     if (!node) return;
     fitView({ nodes: [{ id: viewerNodeId }], duration: 400, maxZoom: 1.2 });
-  }, [viewerNodeId, expandedIds, membersById, getNode, fitView]);
+  }, [viewerNodeId, expandedIds, membersById, unionConnections, getNode, fitView]);
 
   // D-02: on load, auto-pan to and highlight the viewer's own node.
   useEffect(() => {
@@ -187,15 +225,15 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
       );
       if (!match) return;
       setExpandedIds((prev) => {
-        const withMatch = expandAncestorChainFrom(match.id, membersById, prev);
+        const withMatch = expandAncestorChainFrom(match.id, membersById, prev, unionConnections);
         withMatch.add(match.id);
-        return withMatch;
+        return revealConnectingUnions(withMatch, unionConnections);
       });
       requestAnimationFrame(() => {
         fitView({ nodes: [{ id: match.id }], duration: 400, maxZoom: 1.2 });
       });
     },
-    [searchTerm, nodes, membersById, fitView]
+    [searchTerm, nodes, membersById, unionConnections, fitView]
   );
 
   const handleNodeClick = useCallback(
