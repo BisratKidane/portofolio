@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MemberNode from './MemberNode.jsx';
-import UnionNode from './UnionNode.jsx';
 
 vi.mock('../../api/photoClient.js', () => ({
   fetchMemberPhotoBlob: vi.fn().mockRejectedValue(new Error('not needed in this test'))
@@ -121,16 +120,5 @@ describe('MemberNode', () => {
     expect(descendantBadge).toBeInTheDocument();
     expect(ancestorBadge).toBeInTheDocument();
     expect(descendantBadge).not.toBe(ancestorBadge);
-  });
-});
-
-describe('UnionNode', () => {
-  it('renders a small connector box with no text content and no clickable element', () => {
-    const { container } = render(<UnionNode />);
-    const node = screen.getByTestId('union-node');
-    expect(node).toBeInTheDocument();
-    expect(node.textContent).toBe('');
-    expect(container.querySelector('button')).not.toBeInTheDocument();
-    expect(container.querySelector('[role="button"]')).not.toBeInTheDocument();
   });
 });

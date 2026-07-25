@@ -1,15 +1,12 @@
-// Render-smoke suite for FamilyTreeCanvas (Phase 17, Plan 17-03). Requires
-// the RESEARCH Pitfall 2 mockReactFlow() jsdom polyfill set -- defined here,
-// colocated, NOT added to the global frontend/test/setup.js.
+// Render-smoke suite for FamilyTreeCanvas (Phase 17, Plan 17-03, revised for
+// the pure hierarchical model). Requires the RESEARCH Pitfall 2
+// mockReactFlow() jsdom polyfill set -- defined here, colocated, NOT added
+// to the global frontend/test/setup.js.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
-import FamilyTreeCanvas, {
-  buildUnionConnections,
-  revealConnectingUnions,
-  expandAncestorChainFrom
-} from './FamilyTreeCanvas.jsx';
+import FamilyTreeCanvas, { expandAncestorChainFrom } from './FamilyTreeCanvas.jsx';
 
 vi.mock('../../api/photoClient.js', () => ({
   fetchMemberPhotoBlob: vi.fn().mockRejectedValue(new Error('not needed in this test'))
@@ -67,7 +64,7 @@ mockReactFlow();
 // Ada (viewer, id '1') is visible; her mother Grace (id '2', hidden
 // ancestor) and her child Byron (id '3', hidden descendant) start outside
 // initialExpandedIds. John Doe (id '4') is a second visible, unrelated
-// member -- the "2 members, no union" base case for Tests 1/2/2b/4.
+// member -- the "2 members, no edge" base case for Tests 1/2/2b/4.
 const ADA = { id: '1', fullname: 'Ada Lovelace', gender: 'Female', mother: { id: '2' }, father: null, children: [{ id: '3' }] };
 const GRACE = { id: '2', fullname: 'Grace Hopper', gender: 'Female', mother: null, father: null, children: [{ id: '1' }] };
 const BYRON = { id: '3', fullname: 'Byron Lovelace', gender: 'Male', mother: { id: '1' }, father: null, children: [] };
@@ -79,7 +76,10 @@ const NODES = [
   { id: '3', type: 'member', data: { member: BYRON } },
   { id: '4', type: 'member', data: { member: JOHN } }
 ];
-const EDGES = [];
+const EDGES = [
+  { id: 'parent-2-1', source: '2', target: '1', type: 'parent' },
+  { id: 'parent-1-3', source: '1', target: '3', type: 'parent' }
+];
 const VIEWER_ID = '1';
 
 function renderCanvas(overrides = {}) {
@@ -158,13 +158,14 @@ describe('FamilyTreeCanvas', () => {
   });
 });
 
-// CR-01 (17-REVIEW.md): a two-parent relative connects to their parents ONLY
-// through a synthetic union node (marriage edges partner->union, descent
-// edge union->child). Revealing the relative via either interactive toggle
-// must also reveal the connecting union node and its edges, or the relative
-// renders with no visible line to its parents.
-describe('FamilyTreeCanvas — CR-01 union/edge reveal on interactive expand', () => {
-  it('reveals the connecting union node and its marriage/descent edges when a two-parent child is expanded from an already-visible couple', async () => {
+// Regression coverage for the pure hierarchical model: a member connects to
+// their parent(s) via direct parent->child edges (no synthetic union node).
+// Revealing the child via either interactive toggle must also reveal the
+// connecting edge(s) -- the edge-visibility gate
+// `hidden: !(expandedIds.has(e.source) && expandedIds.has(e.target))` must
+// flip to visible in the same DOM update that reveals both endpoints.
+describe('FamilyTreeCanvas — direct parent->child edge reveal on interactive expand', () => {
+  it('reveals the connecting parent->child edges when a two-parent child is expanded from an already-visible couple', async () => {
     const MONA = {
       id: '10',
       fullname: 'Mona Adams',
@@ -194,44 +195,25 @@ describe('FamilyTreeCanvas — CR-01 union/edge reveal on interactive expand', (
     const nodes = [
       { id: '10', type: 'member', data: { member: MONA } },
       { id: '11', type: 'member', data: { member: DEREK } },
-      { id: '13', type: 'member', data: { member: CARA } },
-      { id: 'union-10-11', type: 'union', data: {} }
+      { id: '13', type: 'member', data: { member: CARA } }
     ];
     const edges = [
-      { id: 'union-10-11-marriage-10', source: '10', target: 'union-10-11', type: 'marriage' },
-      { id: 'union-10-11-marriage-11', source: '11', target: 'union-10-11', type: 'marriage' },
-      { id: 'union-10-11-descent-13', source: 'union-10-11', target: '13', type: 'descent' }
+      { id: 'parent-10-13', source: '10', target: '13', type: 'parent' },
+      { id: 'parent-11-13', source: '11', target: '13', type: 'parent' }
     ];
 
     renderCanvas({ nodes, edges, initialExpandedIds: new Set(['10', '11']), viewerId: '10' });
 
     await waitFor(() => expect(screen.getByText('Mona Adams')).toBeInTheDocument());
     expect(screen.queryByText('Cara Adams')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('union-node')).not.toBeInTheDocument();
 
     const badge = screen.getByLabelText(/Show \d+ hidden descendants of Mona Adams/);
     fireEvent.click(badge);
 
     await waitFor(() => expect(screen.getByText('Cara Adams')).toBeInTheDocument());
-    // The union node itself must become visible in the same DOM update that
-    // reveals the child -- this is the exact regression CR-01 describes
-    // (child appears with no visible line to its parents).
-    expect(screen.getByTestId('union-node')).toBeInTheDocument();
-
-    // Pure-logic assertion for the edges' `hidden` flag (CR-01's required
-    // semantics: a union is revealed when its descent-child is in the
-    // expanded set OR both marriage partners are). jsdom + the mocked
-    // ResizeObserver do not reliably resolve xyflow's internal edge-path
-    // geometry for a node freshly mounted mid-test (a jsdom/xyflow
-    // measurement limitation unrelated to this fix), so the edge-visibility
-    // guarantee itself is verified directly against the exported reveal
-    // logic rather than by querying rendered SVG edge paths.
-    const unionConnections = buildUnionConnections(edges);
-    const revealed = revealConnectingUnions(new Set(['10', '11', '13']), unionConnections);
-    expect(revealed.has('union-10-11')).toBe(true);
   });
 
-  it('reveals the connecting union node and its marriage/descent edges when both parents are expanded via the ancestor badge', async () => {
+  it('reveals the connecting parent->child edges when both parents are expanded via the ancestor badge', async () => {
     const CODY = {
       id: '30',
       fullname: 'Cody Baker',
@@ -261,44 +243,36 @@ describe('FamilyTreeCanvas — CR-01 union/edge reveal on interactive expand', (
     const nodes = [
       { id: '30', type: 'member', data: { member: CODY } },
       { id: '31', type: 'member', data: { member: MEG } },
-      { id: '32', type: 'member', data: { member: DAN } },
-      { id: 'union-31-32', type: 'union', data: {} }
+      { id: '32', type: 'member', data: { member: DAN } }
     ];
     const edges = [
-      { id: 'union-31-32-marriage-31', source: '31', target: 'union-31-32', type: 'marriage' },
-      { id: 'union-31-32-marriage-32', source: '32', target: 'union-31-32', type: 'marriage' },
-      { id: 'union-31-32-descent-30', source: 'union-31-32', target: '30', type: 'descent' }
+      { id: 'parent-31-30', source: '31', target: '30', type: 'parent' },
+      { id: 'parent-32-30', source: '32', target: '30', type: 'parent' }
     ];
 
     renderCanvas({ nodes, edges, initialExpandedIds: new Set(['30']), viewerId: '30' });
 
     await waitFor(() => expect(screen.getByText('Cody Baker')).toBeInTheDocument());
     expect(screen.queryByText('Meg Baker')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('union-node')).not.toBeInTheDocument();
 
     const badge = screen.getByLabelText(/Show \d+ hidden ancestors of Cody Baker/);
     fireEvent.click(badge);
 
     await waitFor(() => expect(screen.getByText('Meg Baker')).toBeInTheDocument());
     expect(screen.getByText('Dan Baker')).toBeInTheDocument();
-    // The union node itself must become visible in the same DOM update that
-    // reveals both parents -- the exact regression CR-01 describes for the
-    // ancestor direction.
-    expect(screen.getByTestId('union-node')).toBeInTheDocument();
 
-    // Pure-logic assertion for the edges' `hidden` flag semantics, using the
-    // exact production function the ancestor badge calls (see rationale in
-    // the descendant-direction test above re: jsdom/xyflow edge-path
-    // measurement limitations).
-    const unionConnections = buildUnionConnections(edges);
+    // Pure-logic assertion using the exact production function the ancestor
+    // badge calls: both newly-revealed parents must be present -- this is
+    // sufficient for the direct-edge model since the edge-visibility gate
+    // depends only on both endpoints being in expandedIds (no extra
+    // union-reveal step needed, unlike the old union model).
     const membersById = new Map([
       ['30', CODY],
       ['31', MEG],
       ['32', DAN]
     ]);
-    const revealed = expandAncestorChainFrom('30', membersById, new Set(['30']), unionConnections);
+    const revealed = expandAncestorChainFrom('30', membersById, new Set(['30']));
     expect(revealed.has('31')).toBe(true);
     expect(revealed.has('32')).toBe(true);
-    expect(revealed.has('union-31-32')).toBe(true);
   });
 });
