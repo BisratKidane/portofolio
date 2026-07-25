@@ -4,13 +4,13 @@ milestone: v2.0
 milestone_name: Collaborative Family Tree
 status: executing
 stopped_at: Phase 17 UI-SPEC approved
-last_updated: "2026-07-24T23:10:49.377Z"
-last_activity: 2026-07-24 -- Phase 17 planning complete
+last_updated: "2026-07-25T12:00:37.326Z"
+last_activity: 2026-07-25
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 31
-  completed_plans: 27
+  completed_plans: 28
   percent: 83
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-21)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 17 — /family deep tree visualization
+**Current focus:** Phase 17 — family-deep-tree-visualization
 
 ## Current Position
 
-Phase: 17
-Plan: Not started
+Phase: 17 (family-deep-tree-visualization) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-24 -- Phase 17 planning complete
+Last activity: 2026-07-25
 
-Progress: [██████████] 100%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [██████████] 100%
 | Phase 13 P02 | 10min | 2 tasks | 8 files |
 | Phase 13 P03 | 12min | 2 tasks | 7 files |
 | Phase 13 P04 | 12min | 2 tasks | 3 files |
+| Phase 17 P01 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 13]: Pending.jsx is deliberately static (no useEffect/polling/admin-contact link) per D-02, and bounces linked/ADMIN users to /dashboard, unauthenticated to /login
 - [Phase 13]: AdminLinkMembers.jsx wires page-level unlinkedUsers/familyMembers fetch to per-row pick-existing (Autocomplete) or create-and-link (bare-member form) submit handlers, calling linkUserToMember
 - [Phase 13]: /admin/link-members registered behind ProtectedRoute allowedRoles=['ADMIN'], reusing the existing role-gate mechanism unchanged
+- [Phase 17]: familyMembers query guard relaxed from requireAdmin to requireFamilyAccess (D-13); linkedUser field-level gate (Phase 14 CR-01) verified untouched via new D-14 regression test
 
 ### Pending Todos
 
@@ -118,9 +120,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-24T22:00:17.570Z
+Last session: 2026-07-25T11:59:46.775Z
 Stopped at: Phase 17 UI-SPEC approved
-Resume file: .planning/phases/17-family-deep-tree-visualization/17-UI-SPEC.md
+Resume file: None
 
 ## Operator Next Steps
 

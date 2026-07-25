@@ -59,7 +59,7 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 
 - [ ] **TREE-01**: A linked member can view the family as a tree on `/family`, with spouses shown paired.
 - [ ] **TREE-02**: The tree supports pan/zoom and collapsible/expandable branches so a deep (~10–23 generation) lineage is navigable.
-- [ ] **TREE-03**: The tree is populated by a single flat whole-graph query assembled client-side (no per-node N+1).
+- [x] **TREE-03**: The tree is populated by a single flat whole-graph query assembled client-side (no per-node N+1).
 - [ ] **TREE-04**: `/family` is reachable only by linked members and admins.
 
 ### Testing & CI (QUAL)
@@ -146,7 +146,7 @@ Which phase covers which requirement.
 | MNG-04 | Phase 15 | Complete |
 | TREE-01 | Phase 17 | Pending |
 | TREE-02 | Phase 17 | Pending |
-| TREE-03 | Phase 17 | Pending |
+| TREE-03 | Phase 17 | Complete |
 | TREE-04 | Phase 17 | Pending |
 | QUAL-01 | Phase 16 | Complete |
 | QUAL-02 | Phase 17 | Pending |
