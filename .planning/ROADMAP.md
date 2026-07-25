@@ -281,4 +281,4 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 6/6 | Complete    | 2026-07-23 |
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 6/6 | Complete    | 2026-07-23 |
 | 16. Photo Upload | v2.0 | 7/7 | Complete    | 2026-07-24 |
-| 17. /family Deep Tree Visualization | v2.0 | 4/4 | Complete   | 2026-07-25 |
+| 17. /family Deep Tree Visualization | v2.0 | 4/4 | Complete    | 2026-07-25 |
