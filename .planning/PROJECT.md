@@ -8,21 +8,21 @@ A full-stack authentication application built as a portfolio piece: a React + MU
 
 Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
 
-## Current Milestone: v2.0 Collaborative Family Tree
+## Shipped Milestone: v2.0 Collaborative Family Tree (2026-07-25)
 
-**Goal:** Add a family-tree domain where app access is gated on being an admin-linked member; members collaboratively edit their immediate relatives on `/manage`, and any linked member views a deep, pan/zoom tree on `/family` — built test-first (TDD) with CI staying green.
+**Goal (met):** Add a family-tree domain where app access is gated on being an admin-linked member; members collaboratively edit their immediate relatives on `/manage`, and any linked member views a deep, pan/zoom tree on `/family` — built test-first (TDD) with CI staying green. All 6 phases (12–17) verified; 35/35 v2.0 requirements delivered. Shipped as 31 plans / 68 tasks.
 
-**Target features:**
-- Family member model (Sequelize/MySQL): `firstname`\*, `lastname`\*, `gender`\* (required), derived `fullname`, plus `mothersname`, `email`, `birthdate`, `deathdate`, `phone`, `address`, `profilePicture`
-- Relationships: parent↔child + spouse; siblings derived from shared parents; sibling `firstname` uniqueness as the dedup guard
-- Photo upload stored on a mounted Docker volume, served via a backend file route
-- Membership-gated access: register → email-verify (v1.1) → account inactive until an admin links it to a member node; unlinked users hit a "pending" gate
-- `/manage`: member-users add/edit/remove their **immediate** relatives (parents, spouse, children, siblings) with a visible editable-members list; admins manage the **whole** tree and link accounts to member nodes
-- `/family`: deep pan/zoom tree visualization for any linked member (library selected in research)
-- GraphQL schema + resolvers for member CRUD, relationships, photo upload, and account↔member linking — role- and scope-guarded
-- Full test coverage: backend unit + integration, frontend component, TDD red-green, CI green
+**Delivered:**
+- Family-tree data model: FamilyMember (required identity + gender ENUM + derived `fullname`), self-referencing mother/father FKs (`ON DELETE SET NULL`), canonical-pair Spouse join, hand-rolled cycle-prevention ancestor-walk, and transactional married-in one-hop delete (D-03/D-04).
+- Membership-gated access: unlinked users hit a static `/pending` gate; admins link accounts to member nodes, with the first-admin carve-out preserved.
+- Server-side permission scoping (`computeEditableScope`, one-hop) + relationship mutations (add parent/spouse/child/sibling, edit, admin-only delete) with adversarial privilege-escalation tests, DataLoader batching, and GraphQL depth-limit query safety.
+- `/manage`: members edit their immediate relatives, admins manage the whole tree; row-locked duplicate-child guard (REL-06) closing a TOCTOU race.
+- Photo upload: hardened non-GraphQL route (magic-byte sniffing, UUID filenames, 5 MB cap, durable `photo_uploads` Docker volume), authenticated blob-fetch avatars, client-side 512×512 crop.
+- `/family`: pannable/zoomable deep tree with bidirectional collapse/expand and the four D-05 nav aids.
 
-**Deferred to a later milestone:** invitation/registration links (email + WhatsApp), automated WhatsApp, full genealogy (multiple marriages / half-siblings / adoptions), inline tree-editing, GEDCOM import/export, object-storage photos, browser E2E.
+**Post-milestone adjustments (user-requested, outside the phase flow):** `/family` edge model switched from union-node "spouses-paired" rendering to a pure parent→child hierarchy with a dashed spouse connector; node gender shown by card colour instead of an icon; full-window canvas; Manage nav link added; and the mailer upgraded to a real Resend SMTP transport usable in local dev (reply-to + HTML). See Current State + Key Decisions.
+
+**Deferred to a later milestone:** invitation/registration links (email + WhatsApp), automated WhatsApp, full genealogy (multiple marriages / half-siblings / adoptions), inline tree-editing, GEDCOM import/export, object-storage photos, browser E2E. Two Phase 16 browser-manual UAT checks (photo crop walkthrough, remove-photo flow) remain deferred (see STATE.md Deferred Items).
 
 ## Shipped Milestone: v1.1 Security Remediation (2026-07-21)
 
@@ -157,4 +157,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-25 — Phase 17 complete; v2.0 milestone execution complete; /family edge model amended to pure parent→child hierarchy*
+*Last updated: 2026-07-25 — after v2.0 Collaborative Family Tree milestone (shipped; archived)*

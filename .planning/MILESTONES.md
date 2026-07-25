@@ -1,5 +1,45 @@
 # Milestones
 
+## v2.0 Collaborative Family Tree (Shipped: 2026-07-25)
+
+**Phases completed:** 6 phases, 31 plans, 68 tasks
+
+**Key accomplishments:**
+
+- FamilyMember Sequelize model — required identity fields, gender ENUM, derived fullname VIRTUAL, and full cross-field date validation — built test-first and registered in the models barrel.
+- Self-referencing motherId/fatherId associations with ON DELETE SET NULL cascade-safety, plus a canonical-pair Spouse join model enforcing one row per couple and symmetric reads — built test-first, full backend suite 157/157 green.
+- Batched-per-depth ancestor-chain BFS walk (`wouldCreateCycle`, MAX_DEPTH=100) guarding `linkParent`/backing `addChild` — the codebase's first hand-rolled graph algorithm, built test-first, full backend suite 166/166 green.
+- Transactional `deleteMember` enforcing the married-in one-hop cascade-safety rule (D-03/D-04) — blood relatives always survive, a married-in-only spouse is removed one hop alongside their partner with no recursion — plus `setSpouse`/`getSpouseRows` completing REL-02; full backend suite 171/171 green, closing Phase 12.
+- `requireFamilyAccess` guard (linked-member OR ADMIN) and `users.familyMemberId` link column (nullable, UNIQUE, `ON DELETE SET NULL`) added via a tracked manual migration + `User<->FamilyMember` association, both TDD'd and proven against the sync'd test schema.
+- First guarded family-domain GraphQL surface (`familyMember`/`familyMembers`) proving the SC5 locked adversarial rejection test against a real resolver, plus the `linkUserToMember` admin mutation that links existing-or-newly-created bare members to any user account, including admin self-link.
+- ProtectedRoute now redirects any authenticated, non-admin, unlinked user to a static `/pending` screen, and `AuthContext`'s login/verifyEmail/me operations all carry `familyMemberId` so a freshly-linked user is never misrouted there without a page refresh.
+- The minimal, admin-only `/admin/link-members` screen ACC-02 requires: an admin sees every unlinked account and links each to an existing family member (MUI Autocomplete picker) or creates a bare member and links in one step, backed by the Plan 13-02 `linkUserToMember` mutation.
+- Task 1 -- Shared Apollo server config + GraphQL depth-limit validation (D-08):
+- Single reused `computeEditableScope` service utility (self/parents/spouses/children/either-parent-siblings, bounded to one hop) proven against all three SC-3 exclusion fixtures, plus the dashboard resolver now gated by `requireFamilyAccess` closing WR-04.
+- FamilyMember's mother/father/spouses/children/siblings/linkedUser fields now resolve over GraphQL through the Wave-1 DataLoader factory, with a 255-node/8-generation fixture proving both halves of SC-5: flat/bounded SQL query count and real recursive-field depth-limit rejection.
+- First two member-facing relationship mutations — `addParent` and `addSpouse` — each always creating a brand-new `FamilyMember` node and linking it via the extended, reused Phase 12 service helpers (`linkParent`, `setSpouse`), gated by `requireFamilyAccess` and the `computeEditableScope` scope check from 14-02.
+- `addChild` and `addSibling` mutations — `addChild`'s optional `otherParentId` carries the phase's primary SC-4 adversarial security-boundary test (an existing-node reference checked against the actor's own `computeEditableScope`), and `addSibling` mirrors REL-04's read-side derivation on the write side, including the mandatory D-04 no-fabricated-parent rejection.
+- Phase-closing plan: `editMember` (plain-field edits gated by scope + the D-06 field-lock identity check), `deleteMember` (admin-only by construction — zero `computeEditableScope` calls anywhere in the resolver, proving members have no delete capability structurally), and `myEditableMembers` (a zero-argument, fully server-derived read-only convenience query de-risking the Phase 15 `/manage` UI).
+- Row-locked REL-06 duplicate-child guard added to `addChild` in `familyMember.service.js`, closing the TOCTOU race with a `SELECT ... FOR UPDATE` on the shared-parent row(s) before the duplicate-name check, proven safe under genuine concurrency and unconditional for admins and members alike.
+- Presentational building blocks for `/manage`: MemberCard (D-06 locked/read-only branch, D-02 derived-sibling chip, admin bypass, no dead Rewire button) and RelationshipGroupedPanel (You/Parents/Spouse/Children/Siblings sections, one shared component for both the member and admin views)
+- AddRelativeDialog — one MUI Dialog component parameterized by relationType, covering all four Phase 14 add-relative mutations (addParent/addSpouse/addChild/addSibling) with an in-scope-only "other parent" picker for the child path
+- Searchable, client-side-paginated MUI Table over the full familyMembers list, with row-click handing the selected member to a callback for a later ManagePage wiring plan.
+- Member-facing `/manage` page wired end to end: `myEditableMembers` fetch + client-side relationship grouping, add-relative dialog, plain-field `EditMemberDialog`, and `/manage` routed behind the unchanged `ProtectedRoute` gate with `/admin/link-members` retired to a redirect.
+- Task 1 — Admin branch: table, focus-into-panel, delete confirm
+- multer + file-type installed (backend-scoped), photoStorageConfig resolved via __dirname, family_members.profilePicture added via manual-ALTER + TDD boot-verify test, and hand-built spec-valid JPEG/PNG/WebP fixtures for every later upload test
+- TDD-built photoStorage.service.js: server-generated UUID filenames, real byte-exact file I/O, and an orphan-free write-then-commit-then-cleanup replace sequence (D-11) — the sole file-system surface later upload/replace routes depend on
+- Added a `photo_uploads` named Docker volume mounted into the backend service at the exact path `photoStorageConfig.photosDir` resolves to, plus a repeatable rebuild-and-verify script proving persistence (script written, syntax-validated, and shape-verified; not executed live due to a concurrent worktree sharing the host's mysql container)
+- POST /api/family-members/:id/photo — the app's first non-GraphQL route, with magic-byte-only file-type sniffing (file-type/fileTypeFromBuffer), server-generated UUID filenames, transaction-safe orphan-free replace (finalizePhotoReplacement), and a computed FamilyMember.photoUrl field — adversarial tests (path-traversal, content-type spoofing x2, oversized file) written and GREEN before any happy-path test existed
+- DELETE (scope-gated, idempotent, D-11) and GET (any-valid-JWT, deliberately no scope check, D-07) added to the existing photo.routes.js — the serve handler is the one place in this phase structurally incapable of an editable-scope check, verified by a grep scoped to just that handler's body
+- photoClient.js (Bearer-auth axios client for the non-GraphQL photo routes), MemberAvatarImage.jsx (the app's first authenticated-blob-fetch `<img>` replacement, icon-only placeholder per D-10), and PhotoCropDialog.jsx (client-side square-crop to a 512x512 JPEG blob via `react-easy-crop` + off-screen canvas, mirroring `EditMemberDialog`'s shell) — three standalone, fully tested frontend primitives built ahead of their 16-07 wiring
+- MemberCard's avatar is now the live D-01 upload trigger (ButtonBase + hidden file input + camera overlay, D-10 icon placeholder replacing initials everywhere), RelationshipGroupedPanel explicitly threads onPickPhoto/onRemovePhoto through every MemberCard render path, ManagePage wires PhotoCropDialog and a distinct "Remove photo?" confirm dialog into both the member and admin branches, and AdminMemberTable gains a photo thumbnail column — completing every UI-SPEC-declared surface for PHOTO-01
+- The `familyMembers` GraphQL query moved from admin-only to linked-member-or-admin (D-13) via a one-line guard swap, proven safe by a TDD red-green cycle and a new regression test showing the per-field `linkedUser` gate (Phase 14 CR-01) is untouched.
+- Pure forest-assembly (`buildForest`/`computeInitialExpandSet`/`deriveSiblings`) and a dagre TB layout wrapper for the `/family` tree, with the D-11 SC-1 spike human-approved at ~18-generation synthetic depth — using a working union-node midpoint mechanism in place of RESEARCH.md's dagre-crashing `minlen: 0` approach.
+- Built the production `/family` tree canvas -- `MemberNode`/`UnionNode` custom xyflow node types and the `FamilyTreeCanvas` wrapper owning dagre layout-on-visible-subset, bidirectional collapse/expand (descendant + ancestor, D-03), and all four D-05 navigation aids -- removing the temporary SC-1 spike harness now that Plan 17-02's human checkpoint approved the underlying union-node pattern.
+- Wired the flat GraphQL fetch, read-only detail panel, route registration, and nav placement that turn Plan 17-03's canvas into the live `/family` page -- closing out the v2.0 Collaborative Family Tree milestone with a full green `npm test --workspaces` run (backend 321/321, frontend 165/165).
+
+---
+
 ## v1.1 Security Remediation (Shipped: 2026-07-21)
 
 **Phases completed:** 5 phases (7–11), 19 plans, 42 tasks

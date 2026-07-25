@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Collaborative Family Tree
-status: milestone_complete
-stopped_at: Milestone complete (Phase 17 was final phase)
-last_updated: 2026-07-25T15:24:35.527Z
-last_activity: 2026-07-25
+status: Awaiting next milestone
+stopped_at: Completed 17-04-PLAN.md
+last_updated: "2026-07-25T19:21:45.785Z"
+last_activity: 2026-07-25 — Milestone v2.0 completed and archived
 progress:
   total_phases: 6
   completed_phases: 6
   total_plans: 31
-  completed_plans: 50
+  completed_plans: 31
   percent: 100
 ---
 
@@ -25,12 +25,21 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 
 ## Current Position
 
-Phase: 17
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-07-25
+Phase: Milestone v2.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-25 — Milestone v2.0 completed and archived
 
-Progress: [██████████] 100%
+## Deferred Items
+
+Items acknowledged and deferred at the v2.0 milestone close on 2026-07-25:
+
+| Category | Item | Status |
+|----------|------|--------|
+| uat | Phase 16 — full browser walkthrough of the upload + crop flow | pending |
+| uat | Phase 16 — remove-photo confirm flow end-to-end in a real browser | pending |
+
+Both are browser-only manual checks from Phase 16 (Photo Upload); the underlying code is verified and unit/component-tested. Close them via `/gsd:verify-work 16` when convenient.
 
 ## Performance Metrics
 
@@ -138,4 +147,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Review and approve the v2.0 roadmap, then run `/gsd:plan-phase 12` to begin Family Data Model Foundation.
+- Start the next milestone with /gsd-new-milestone
