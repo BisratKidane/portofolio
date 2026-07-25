@@ -85,6 +85,39 @@
 
 ---
 
+## Milestone: v2.0 — Collaborative Family Tree
+
+**Shipped:** 2026-07-25
+**Phases:** 6 (12–17) | **Plans:** 31 | **Tasks:** 68
+
+### What Was Built
+A full family-tree domain on the existing auth foundation: a cycle/cascade-safe FamilyMember + Spouse data model, membership-gated access with admin account-linking, server-side one-hop permission scoping with adversarial-tested relationship mutations, a `/manage` self-service + admin UI, a hardened photo-upload route on a durable Docker volume, and a pannable/zoomable `/family` tree. Backend 321→326, frontend 165→180 tests at close.
+
+### What Worked
+- Wave-based parallel executors with a hard human checkpoint (Phase 17 SC-1 spike) caught a library dead-end (dagre `minlen:0` crash) before the production canvas was built.
+- Adversarial-first TDD on every security boundary (privilege escalation, TOCTOU duplicate-child, path traversal, content-type spoofing) — each critical code-review finding was reproduced RED before the fix.
+- Verifier independently re-running the suite and tracing fix commits (not trusting SUMMARY claims) repeatedly paid off.
+
+### What Was Inefficient
+- **Test fixtures that mock the real integration point hid true blockers.** The tree's render-smoke tests mocked React Flow, so a *green* suite still shipped a canvas that drew **zero edges** (no node handles) — only surfaced by the user in the running app. Same class of miss as Phase 14's untested authz paths.
+- **Baked Docker images with no source bind-mount** meant every code change silently required a rebuild; several "it's still broken" rounds were stale-container artifacts, not code.
+- The union-node spouse-pairing model (spike-approved, verified) didn't match real data (0 spouses, 0 two-parent children) and was scrapped post-milestone for a pure parent→child hierarchy — a sign the spike fixture wasn't representative of the actual dataset.
+
+### Patterns Established
+- Post-phase enhancements driven by real-data feedback (edge model, gender-as-colour, full-window, spouse connector) handled as focused TDD executors with atomic commits + container rebuilds.
+- Secrets kept out of git via a gitignored `env/*.secrets.env` override loaded as a second `--env-file`, tracked `.example` documenting it.
+
+### Key Lessons
+- A green suite only means as much as its fixtures are real — when a test mocks the exact seam that can fail (edge/handle rendering, DB race, live SMTP), it verifies nothing about that seam. Prefer one un-mocked integration check over many mocked smoke tests.
+- Confirm the deployment loop (does the running artifact actually reflect the change?) before debugging the code — a stale baked image looks exactly like a broken fix.
+- Validate spike fixtures against the shape of the real data, not just against "realistic depth."
+
+### Cost Observations
+- Model mix: Opus orchestration + Sonnet executors/verifier/reviewer/auditor subagents across wave-parallel phases.
+- Notable: the code-review gate (finding the union-reveal blocker) and the user's own hands-on testing (missing edges, no spouse link) caught what the automated suite structurally could not.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
