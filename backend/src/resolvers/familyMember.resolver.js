@@ -11,7 +11,7 @@ import {
 export const familyMemberResolvers = {
   Query: {
     familyMembers: async (_parent, _args, { models, user }) => {
-      requireAdmin(user);
+      requireFamilyAccess(user);
       return models.FamilyMember.findAll({ order: [['lastname', 'ASC'], ['firstname', 'ASC']] });
     },
     familyMember: async (_parent, { id }, { models, user }) => {
