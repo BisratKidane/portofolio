@@ -8,7 +8,22 @@ overrides_applied: 0
 
 # Phase 17: Family Deep Tree Visualization Verification Report
 
-**Phase Goal:** Any linked member can explore the whole family as a pannable, zoomable tree with spouses shown paired, navigable at real (~10–23 generation) depth — closing out the milestone with full frontend coverage and a green, enforced CI suite.
+> **⚠ POST-VERIFICATION AMENDMENT (2026-07-25) — edge model superseded.**
+> This report verified the phase as originally built: a synthetic **union-node** model where
+> two married parents route to a shared child via `marriage` + `descent` edges (TREE-01 "spouses
+> shown paired", D-11/D-12). After verification, the user found the `/family` tree rendered with
+> **no edges** — the real data has 0 registered spouse pairs and 0 two-parent children, so the
+> union-only model produced zero edges. At the user's explicit request the edge model was replaced
+> with a **pure parent→child hierarchy**: each present parent gets a direct edge to each child, no
+> union nodes. This removed `UnionNode.jsx`, the `buildUnions`/marriage/descent machinery, and the
+> CR-01 `buildUnionConnections`/`revealConnectingUnions` reveal logic (CR-01 no longer applies —
+> member→child edges reveal directly via the existing both-endpoints-expanded gate).
+> Refactor commits: `305dfa6` (assembly), `c23f8b8` (layout), `5c897e2` (canvas + UnionNode removal).
+> Full suite green after the change: backend 321/321, frontend 169/169. Verified against real data:
+> 9 members → 7 direct parent→child edges (was 0). Rows below referencing union nodes / marriage /
+> descent / CR-01 describe the superseded implementation and are retained as the historical record.
+
+**Phase Goal:** Any linked member can explore the whole family as a pannable, zoomable tree with spouses shown paired, navigable at real (~10–23 generation) depth — closing out the milestone with full frontend coverage and a green, enforced CI suite. _(Goal's "spouses shown paired" clause superseded — see amendment above.)_
 **Verified:** 2026-07-25T17:30:00Z
 **Status:** passed
 **Re-verification:** No — initial verification

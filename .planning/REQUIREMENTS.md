@@ -57,7 +57,7 @@ Requirements for this milestone (v2.0). Each maps to exactly one roadmap phase (
 
 ### Family Visualization — /family (TREE)
 
-- [x] **TREE-01**: A linked member can view the family as a tree on `/family`, with spouses shown paired.
+- [x] **TREE-01**: A linked member can view the family as a tree on `/family`. _(Amended 2026-07-25: the original "spouses shown paired" union-node rendering was superseded post-phase by a pure parent→child hierarchical edge model at the user's request — direct edges from each parent to each child, no synthetic union nodes. The real data has no registered spouse pairs and no two-parent children, so the union model produced zero edges. See PROJECT.md Key Decisions and 17-VERIFICATION.md addendum. Refactor commits: 305dfa6, c23f8b8, 5c897e2.)_
 - [x] **TREE-02**: The tree supports pan/zoom and collapsible/expandable branches so a deep (~10–23 generation) lineage is navigable.
 - [x] **TREE-03**: The tree is populated by a single flat whole-graph query assembled client-side (no per-node N+1).
 - [x] **TREE-04**: `/family` is reachable only by linked members and admins.
