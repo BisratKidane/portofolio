@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from './components/AppLayout.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import FamilyTreePage from './pages/FamilyTreePage.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import Login from './pages/Login.jsx';
 import ManagePage from './pages/ManagePage.jsx';
@@ -24,6 +25,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="manage" element={<ManagePage />} />
+          <Route path="family" element={<FamilyTreePage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
           <Route path="admin/link-members" element={<Navigate to="/manage" replace />} />
