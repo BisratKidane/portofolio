@@ -1,10 +1,18 @@
 // Pure, DOM-free client-side forest-assembly module for the /family tree
-// (Phase 17, Plan 17-02). Consumes the flat FamilyMember payload shape
-// documented in 17-RESEARCH.md Pattern 1 ({ id, mother: {id}|null,
-// father: {id}|null, spouses: [{id}], children: [{id}] }) and produces the
-// xyflow-shaped { nodes, edges } plus generation ranks and the D-04 initial
-// expand set. No React, no dagre, no DOM — see familyTree.layout.js for the
-// dagre wrapper that consumes this module's output.
+// (Phase 17, Plan 17-02, revised for the pure hierarchical model). Consumes
+// the flat FamilyMember payload shape documented in 17-RESEARCH.md Pattern 1
+// ({ id, mother: {id}|null, father: {id}|null, spouses: [{id}],
+// children: [{id}] }) and produces the xyflow-shaped { nodes, edges } plus
+// generation ranks and the D-04 initial expand set. No React, no dagre, no
+// DOM — see familyTree.layout.js for the dagre wrapper that consumes this
+// module's output.
+//
+// Pure hierarchical model (supersedes the union/marriage/descent model,
+// D-11/D-12): the real data has 0 two-parent children and 0 spouse rows, so
+// the union-only edge model produced ZERO edges. There are only 'member'
+// nodes now — no synthetic union nodes — and one direct parent->child edge
+// per present, known parent (a single-parent child gets 1 edge; a two-parent
+// child gets 2 edges, mother->child and father->child).
 
 const MAX_GENERATION_DEPTH = 500; // defensive guard against a data-integrity cycle bug
 
@@ -12,41 +20,8 @@ function idOrNull(ref) {
   return ref?.id != null ? String(ref.id) : null;
 }
 
-function sortIdPair(idA, idB) {
-  const a = String(idA);
-  const b = String(idB);
-  const numA = Number(a);
-  const numB = Number(b);
-  if (!Number.isNaN(numA) && !Number.isNaN(numB)) {
-    return numA <= numB ? [a, b] : [b, a];
-  }
-  return a <= b ? [a, b] : [b, a];
-}
-
-function unionKey(idA, idB) {
-  const [a, b] = sortIdPair(idA, idB);
-  return `${a}-${b}`;
-}
-
 function buildMembersById(flatMembers) {
   return new Map(flatMembers.map((member) => [String(member.id), member]));
-}
-
-// One union node per distinct spouse pair, deduped via the sorted-pair key
-// (spouses reference each other symmetrically in the flat payload).
-function buildUnions(membersById) {
-  const unions = new Map();
-  for (const [id, member] of membersById) {
-    for (const spouse of member.spouses || []) {
-      const spouseId = idOrNull(spouse);
-      if (spouseId == null || !membersById.has(spouseId)) continue;
-      const key = unionKey(id, spouseId);
-      if (unions.has(key)) continue;
-      const [partnerA, partnerB] = sortIdPair(id, spouseId);
-      unions.set(key, { id: `union-${key}`, partnerIds: [partnerA, partnerB] });
-    }
-  }
-  return unions;
 }
 
 function resolveGeneration(id, membersById, generations, visiting, depth) {
@@ -85,10 +60,9 @@ function computeGenerations(membersById) {
 }
 
 // Walks up from the viewer, preferring the mother's chain at every step
-// (Open Question 1 resolution), collecting every id on the path plus every
-// union node connecting a couple to their child along that path, until an
-// apex ancestor (no mother, no father) is reached.
-function walkAncestralSpine(viewerId, membersById, unions) {
+// (Open Question 1 resolution), collecting every member id on the path,
+// until an apex ancestor (no mother, no father) is reached.
+function walkAncestralSpine(viewerId, membersById) {
   const spine = new Set();
   const visited = new Set();
   let currentId = viewerId;
@@ -102,11 +76,6 @@ function walkAncestralSpine(viewerId, membersById, unions) {
     const fatherId = idOrNull(member.father);
 
     if (motherId == null && fatherId == null) break; // reached an apex ancestor
-
-    if (motherId != null && fatherId != null) {
-      const union = unions.get(unionKey(motherId, fatherId));
-      if (union) spine.add(union.id);
-    }
 
     const nextId =
       motherId != null && membersById.has(motherId)
@@ -123,11 +92,11 @@ function walkAncestralSpine(viewerId, membersById, unions) {
 }
 
 // The viewer's direct 1-hop neighborhood: self, parents, spouses, children,
-// derived siblings — plus the union node(s) directly connecting the viewer
-// to each. Deliberately does NOT walk into a spouse's own parent chain
-// (D-03: a married-in spouse's separate/disconnected apex ancestry stays
-// collapsed behind 17-03's ancestor-reveal badge, not auto-expanded here).
-function directLineIds(viewerId, membersById, unions) {
+// derived siblings. Deliberately does NOT walk into a spouse's own parent
+// chain (D-03: a married-in spouse's separate/disconnected apex ancestry
+// stays collapsed behind 17-03's ancestor-reveal badge, not auto-expanded
+// here).
+function directLineIds(viewerId, membersById) {
   const ids = new Set([viewerId]);
   const viewer = membersById.get(viewerId);
   if (!viewer) return ids;
@@ -136,31 +105,17 @@ function directLineIds(viewerId, membersById, unions) {
   const fatherId = idOrNull(viewer.father);
   if (motherId != null && membersById.has(motherId)) ids.add(motherId);
   if (fatherId != null && membersById.has(fatherId)) ids.add(fatherId);
-  if (motherId != null && fatherId != null) {
-    const parentUnion = unions.get(unionKey(motherId, fatherId));
-    if (parentUnion) ids.add(parentUnion.id);
-  }
 
   for (const spouse of viewer.spouses || []) {
     const spouseId = idOrNull(spouse);
     if (spouseId == null || !membersById.has(spouseId)) continue;
     ids.add(spouseId);
-    const union = unions.get(unionKey(viewerId, spouseId));
-    if (union) ids.add(union.id);
   }
 
   for (const child of viewer.children || []) {
     const childId = idOrNull(child);
     if (childId == null || !membersById.has(childId)) continue;
     ids.add(childId);
-
-    const childMember = membersById.get(childId);
-    const childMotherId = idOrNull(childMember.mother);
-    const childFatherId = idOrNull(childMember.father);
-    if (childMotherId != null && childFatherId != null) {
-      const union = unions.get(unionKey(childMotherId, childFatherId));
-      if (union) ids.add(union.id);
-    }
   }
 
   for (const sibling of deriveSiblings(viewerId, membersById)) {
@@ -212,18 +167,17 @@ export function computeInitialExpandSet(flatMembers, viewerId) {
   const viewerIdStr = String(viewerId);
   if (!membersById.has(viewerIdStr)) return new Set();
 
-  const unions = buildUnions(membersById);
-  const spine = walkAncestralSpine(viewerIdStr, membersById, unions);
-  const direct = directLineIds(viewerIdStr, membersById, unions);
+  const spine = walkAncestralSpine(viewerIdStr, membersById);
+  const direct = directLineIds(viewerIdStr, membersById);
 
   return new Set([...spine, ...direct]);
 }
 
 /**
- * Assembles the flat FamilyMember payload into an xyflow-shaped forest:
- * one 'member' node per row, one synthetic 'union' node per distinct spouse
- * pair, 'marriage' edges (partner -> union) and 'descent' edges
- * (union -> shared child, only when BOTH parents match the pair).
+ * Assembles the flat FamilyMember payload into an xyflow-shaped forest: one
+ * 'member' node per row (no synthetic union nodes), and one direct
+ * parent->child 'parent' edge per present, known parent (a single-parent
+ * child yields 1 edge, a two-parent child yields 2 edges).
  */
 export function buildForest(flatMembers, viewerId) {
   if (!flatMembers || flatMembers.length === 0) {
@@ -239,29 +193,20 @@ export function buildForest(flatMembers, viewerId) {
   const membersById = buildMembersById(flatMembers);
   const apexIds = flatMembers.filter((member) => member.mother == null && member.father == null).map((member) => String(member.id));
   const generations = computeGenerations(membersById);
-  const unions = buildUnions(membersById);
 
-  const nodes = [
-    ...flatMembers.map((member) => ({ id: String(member.id), type: 'member', data: { member } })),
-    ...[...unions.values()].map((union) => ({ id: union.id, type: 'union', data: {} }))
-  ];
+  const nodes = flatMembers.map((member) => ({ id: String(member.id), type: 'member', data: { member } }));
 
   const edges = [];
-  for (const union of unions.values()) {
-    const [partnerA, partnerB] = union.partnerIds;
-    edges.push({ id: `${union.id}-marriage-${partnerA}`, source: partnerA, target: union.id, type: 'marriage' });
-    edges.push({ id: `${union.id}-marriage-${partnerB}`, source: partnerB, target: union.id, type: 'marriage' });
-  }
-
   for (const member of flatMembers) {
+    const childId = String(member.id);
     const motherId = idOrNull(member.mother);
     const fatherId = idOrNull(member.father);
-    if (motherId == null || fatherId == null) continue; // both parents required to route through a union
-
-    const union = unions.get(unionKey(motherId, fatherId));
-    if (!union) continue; // parents aren't a registered spouse pair — no descent edge in this pass
-
-    edges.push({ id: `${union.id}-descent-${String(member.id)}`, source: union.id, target: String(member.id), type: 'descent' });
+    if (motherId != null && membersById.has(motherId)) {
+      edges.push({ id: `parent-${motherId}-${childId}`, source: motherId, target: childId, type: 'parent' });
+    }
+    if (fatherId != null && membersById.has(fatherId)) {
+      edges.push({ id: `parent-${fatherId}-${childId}`, source: fatherId, target: childId, type: 'parent' });
+    }
   }
 
   const initialExpandedIds = computeInitialExpandSet(flatMembers, viewerId);

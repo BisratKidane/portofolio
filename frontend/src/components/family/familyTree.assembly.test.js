@@ -8,29 +8,48 @@ describe('buildForest', () => {
     expect(generations.get('1')).toBe(0);
   });
 
-  it('creates one union node per spouse pair and routes shared children to it', () => {
+  it('creates only member nodes, one per flat member (no union nodes)', () => {
     const flat = [
       { id: '1', mother: null, father: null, spouses: [{ id: '2' }], children: [{ id: '3' }] },
       { id: '2', mother: null, father: null, spouses: [{ id: '1' }], children: [{ id: '3' }] },
       { id: '3', mother: { id: '1' }, father: { id: '2' }, spouses: [], children: [] }
     ];
-    const { nodes, edges } = buildForest(flat);
-    const union = nodes.find((n) => n.type === 'union');
-    expect(union).toBeTruthy();
-    expect(edges.filter((e) => e.target === union.id && e.type === 'marriage')).toHaveLength(2);
-    expect(edges.some((e) => e.source === union.id && e.target === '3' && e.type === 'descent')).toBe(true);
+    const { nodes } = buildForest(flat);
+    expect(nodes).toHaveLength(3);
+    expect(nodes.every((n) => n.type === 'member')).toBe(true);
+    expect(nodes.map((n) => n.id).sort()).toEqual(['1', '2', '3']);
   });
 
-  it('does not create a descent edge when a child has only one known parent in the pair', () => {
+  it('creates two direct parent->child edges when a child has both parents present', () => {
+    const flat = [
+      { id: '1', mother: null, father: null, spouses: [{ id: '2' }], children: [{ id: '3' }] },
+      { id: '2', mother: null, father: null, spouses: [{ id: '1' }], children: [{ id: '3' }] },
+      { id: '3', mother: { id: '1' }, father: { id: '2' }, spouses: [], children: [] }
+    ];
+    const { edges } = buildForest(flat);
+    expect(edges).toHaveLength(2);
+    expect(edges).toEqual(
+      expect.arrayContaining([
+        { id: 'parent-1-3', source: '1', target: '3', type: 'parent' },
+        { id: 'parent-2-3', source: '2', target: '3', type: 'parent' }
+      ])
+    );
+  });
+
+  it('creates a single direct parent->child edge when a child has only one known parent', () => {
     const flat = [
       { id: '1', mother: null, father: null, spouses: [{ id: '2' }], children: [{ id: '3' }] },
       { id: '2', mother: null, father: null, spouses: [{ id: '1' }], children: [] },
       { id: '3', mother: { id: '1' }, father: null, spouses: [], children: [] }
     ];
-    const { nodes, edges } = buildForest(flat);
-    const union = nodes.find((n) => n.type === 'union');
-    expect(union).toBeTruthy();
-    expect(edges.some((e) => e.type === 'descent' && e.target === '3')).toBe(false);
+    const { edges } = buildForest(flat);
+    expect(edges).toEqual([{ id: 'parent-1-3', source: '1', target: '3', type: 'parent' }]);
+  });
+
+  it('creates no edge for a parent reference that points outside the known member set', () => {
+    const flat = [{ id: '3', mother: { id: 'unknown' }, father: null, spouses: [], children: [] }];
+    const { edges } = buildForest(flat);
+    expect(edges).toEqual([]);
   });
 
   it('returns an empty forest for an empty member list', () => {
@@ -58,6 +77,24 @@ describe('buildForest', () => {
     expect(generations.get('3')).toBe(2);
     expect(generations.get('4')).toBe(3);
   });
+
+  it('regression: real-data shape (single-parent chain of members) produces a connected chain of parent->child edges', () => {
+    // Mirrors the real data shape: 0 two-parent children, 0 spouse rows —
+    // every member has at most one known parent in the member set.
+    const flat = [
+      { id: '1', mother: null, father: null, spouses: [], children: [{ id: '2' }] },
+      { id: '2', mother: null, father: { id: '1' }, spouses: [], children: [{ id: '3' }] },
+      { id: '3', mother: null, father: { id: '2' }, spouses: [], children: [] }
+    ];
+    const { edges } = buildForest(flat);
+    expect(edges).toEqual(
+      expect.arrayContaining([
+        { id: 'parent-1-2', source: '1', target: '2', type: 'parent' },
+        { id: 'parent-2-3', source: '2', target: '3', type: 'parent' }
+      ])
+    );
+    expect(edges).toHaveLength(2);
+  });
 });
 
 describe('computeInitialExpandSet — multi-apex-path spine (Open Question 1)', () => {
@@ -76,11 +113,10 @@ describe('computeInitialExpandSet — multi-apex-path spine (Open Question 1)', 
   it('walks only the viewer mother chain up to its apex, not the father chain beyond the direct line', () => {
     const { initialExpandedIds } = buildForest(flat, '4');
 
-    // Direct line: viewer + both parents + the union connecting them.
+    // Direct line: viewer + both parents.
     expect(initialExpandedIds.has('4')).toBe(true);
     expect(initialExpandedIds.has('2')).toBe(true);
     expect(initialExpandedIds.has('3')).toBe(true);
-    expect(initialExpandedIds.has('union-2-3')).toBe(true);
 
     // Ancestral spine follows the mother's chain all the way to her apex.
     expect(initialExpandedIds.has('1')).toBe(true);
@@ -88,6 +124,11 @@ describe('computeInitialExpandSet — multi-apex-path spine (Open Question 1)', 
     // The father's own further ancestor (his apex, id 9) is NOT auto-expanded —
     // only his own direct id is part of the direct line.
     expect(initialExpandedIds.has('9')).toBe(false);
+
+    // No union ids anywhere in the pure hierarchical model.
+    for (const id of initialExpandedIds) {
+      expect(String(id).startsWith('union-')).toBe(false);
+    }
   });
 });
 
