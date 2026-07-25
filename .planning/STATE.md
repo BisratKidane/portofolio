@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Collaborative Family Tree
 status: executing
-stopped_at: Phase 17 UI-SPEC approved
-last_updated: "2026-07-25T12:00:37.326Z"
+stopped_at: Completed 17-02-PLAN.md (SC-1 gate passed, human-approved)
+last_updated: "2026-07-25T12:43:55.115Z"
 last_activity: 2026-07-25
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 31
-  completed_plans: 28
+  completed_plans: 29
   percent: 83
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 ## Current Position
 
 Phase: 17 (family-deep-tree-visualization) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-25
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [█████████░] 90%
 | Phase 13 P03 | 12min | 2 tasks | 7 files |
 | Phase 13 P04 | 12min | 2 tasks | 3 files |
 | Phase 17 P01 | 5min | 2 tasks | 2 files |
+| Phase 17 P02 | 16min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 13]: AdminLinkMembers.jsx wires page-level unlinkedUsers/familyMembers fetch to per-row pick-existing (Autocomplete) or create-and-link (bare-member form) submit handlers, calling linkUserToMember
 - [Phase 13]: /admin/link-members registered behind ProtectedRoute allowedRoles=['ADMIN'], reusing the existing role-gate mechanism unchanged
 - [Phase 17]: familyMembers query guard relaxed from requireAdmin to requireFamilyAccess (D-13); linkedUser field-level gate (Phase 14 CR-01) verified untouched via new D-14 regression test
+- [Phase 17]: D-11 SC-1 gate PASSED (human-approved): synthetic-union-node spouse-pairing renders cleanly at ~18-generation depth, unblocking Plan 17-03
+- [Phase 17]: D-12 locked with an implementation amendment: production spouse-pairing uses the union-node midpoint mechanism (familyTree.layout.js), not RESEARCH.md's minlen:0 dagre edge, since minlen:0 crashes @dagrejs/dagre (all versions tested); midpoint mechanism is what the SC-1 spike proved and the human approved
 
 ### Pending Todos
 
@@ -120,8 +123,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T11:59:46.775Z
-Stopped at: Phase 17 UI-SPEC approved
+Last session: 2026-07-25T12:43:55.109Z
+Stopped at: Completed 17-02-PLAN.md (SC-1 gate passed, human-approved)
 Resume file: None
 
 ## Operator Next Steps
