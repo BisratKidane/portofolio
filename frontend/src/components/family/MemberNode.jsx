@@ -9,14 +9,13 @@
 
 import { Handle, Position } from '@xyflow/react';
 import { Box, Chip, IconButton, Paper, Typography } from '@mui/material';
-import MaleRoundedIcon from '@mui/icons-material/MaleRounded';
-import FemaleRoundedIcon from '@mui/icons-material/FemaleRounded';
-import TransgenderRoundedIcon from '@mui/icons-material/TransgenderRounded';
 import { colors } from '../../theme.js';
 import MemberAvatarImage from '../manage/MemberAvatarImage.jsx';
 
-// UI-SPEC D-09b tints -- icon shape + aria-label carry the meaning, tint is
-// reinforcement only, never the sole channel.
+// Gender is now depicted by the card's COLOR (border + soft background tint)
+// rather than a gender icon. Because colour is a single perceptual channel,
+// the gender is also exposed to assistive tech via `data-gender` + the node's
+// aria-label so it is not conveyed by colour alone.
 const MALE_TINT = '#3b82f6';
 const FEMALE_TINT = '#ec4899';
 
@@ -30,9 +29,9 @@ function formatYears(member) {
 }
 
 function genderMeta(gender) {
-  if (gender === 'Male') return { Icon: MaleRoundedIcon, label: 'Male', tint: MALE_TINT };
-  if (gender === 'Female') return { Icon: FemaleRoundedIcon, label: 'Female', tint: FEMALE_TINT };
-  return { Icon: TransgenderRoundedIcon, label: 'Other', tint: colors.slate };
+  if (gender === 'Male') return { label: 'Male', tint: MALE_TINT };
+  if (gender === 'Female') return { label: 'Female', tint: FEMALE_TINT };
+  return { label: 'Other', tint: colors.slate };
 }
 
 const BADGE_SX = {
@@ -60,19 +59,23 @@ export default function MemberNode({ data }) {
   } = data;
 
   const years = formatYears(member);
-  const { Icon: GenderIcon, label: genderLabel, tint: genderTint } = genderMeta(member.gender);
+  const { label: genderLabel, tint: genderTint } = genderMeta(member.gender);
 
   return (
     <Paper
       elevation={0}
       data-testid={`member-node-${member.id}`}
       data-viewer-ring={isViewer ? 'true' : 'false'}
+      data-gender={genderLabel}
+      aria-label={`${member.fullname}, ${genderLabel}`}
+      title={genderLabel}
       sx={{
         width: 180,
         height: 64,
         p: 0.75,
-        bgcolor: colors.paper,
-        border: `1px solid ${colors.line}`,
+        // Gender is colour-coded on the card itself (border + soft tint).
+        bgcolor: `${genderTint}14`,
+        border: `2px solid ${genderTint}`,
         borderRadius: 1,
         position: 'relative',
         display: 'flex',
@@ -147,7 +150,6 @@ export default function MemberNode({ data }) {
             {years}
           </Typography>
         )}
-        <GenderIcon aria-label={genderLabel} aria-hidden={false} sx={{ fontSize: 16, color: genderTint }} />
       </Box>
 
       {hiddenCount > 0 && (

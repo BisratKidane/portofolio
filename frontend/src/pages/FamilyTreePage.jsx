@@ -92,7 +92,7 @@ export default function FamilyTreePage() {
   }
 
   return (
-    <Box sx={{ height: 'calc(100vh - 220px)', minHeight: 480 }}>
+    <Box sx={{ height: { xs: 'calc(100vh - 64px)', md: 'calc(100vh - 72px)' }, width: '100%' }}>
       <ReactFlowProvider>
         <FamilyTreeCanvas
           nodes={forest.nodes}

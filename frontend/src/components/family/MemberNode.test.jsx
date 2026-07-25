@@ -104,24 +104,27 @@ describe('MemberNode', () => {
     expect(screen.queryByText('You')).not.toBeInTheDocument();
   });
 
-  it('renders MaleRounded with the blue tint for a Male member', () => {
-    renderNode({ member: { ...BASE_MEMBER, gender: 'Male' } });
-    const icon = screen.getByLabelText('Male');
-    expect(icon).toBeInTheDocument();
-    expect(icon).toHaveStyle('color: #3b82f6');
+  it('depicts a Male member by card colour (data-gender + accessible label), not a gender icon', () => {
+    const { container } = renderNode({ member: { ...BASE_MEMBER, gender: 'Male' } });
+    const card = screen.getByTestId(`member-node-${BASE_MEMBER.id}`);
+    expect(card).toHaveAttribute('data-gender', 'Male');
+    expect(card).toHaveAccessibleName('Ada Lovelace, Male');
+    // Gender is now conveyed by colour, not an icon.
+    expect(container.querySelector('svg[aria-label="Male"]')).toBeNull();
   });
 
-  it('renders FemaleRounded with the rose tint for a Female member', () => {
+  it('depicts a Female member by card colour', () => {
     renderNode({ member: { ...BASE_MEMBER, gender: 'Female' } });
-    const icon = screen.getByLabelText('Female');
-    expect(icon).toBeInTheDocument();
-    expect(icon).toHaveStyle('color: #ec4899');
+    const card = screen.getByTestId(`member-node-${BASE_MEMBER.id}`);
+    expect(card).toHaveAttribute('data-gender', 'Female');
+    expect(card).toHaveAccessibleName('Ada Lovelace, Female');
   });
 
-  it('renders TransgenderRounded with the slate tint for any other gender value', () => {
+  it('depicts any other gender value as "Other" by card colour', () => {
     renderNode({ member: { ...BASE_MEMBER, gender: 'Other' } });
-    const icon = screen.getByLabelText('Other');
-    expect(icon).toBeInTheDocument();
+    const card = screen.getByTestId(`member-node-${BASE_MEMBER.id}`);
+    expect(card).toHaveAttribute('data-gender', 'Other');
+    expect(card).toHaveAccessibleName('Ada Lovelace, Other');
   });
 
   it('shows the descendant hidden-count badge when hiddenCount > 0 and calls onToggleExpand on click', async () => {

@@ -1,5 +1,5 @@
 import { AppBar, Avatar, Box, Button, Container, Stack, Toolbar } from '@mui/material';
-import { Link as RouterLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { colors, getInitials } from '../theme.js';
 import BrandMark from './BrandMark.jsx';
@@ -7,6 +7,11 @@ import BrandMark from './BrandMark.jsx';
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  // The family tree is a full-bleed canvas: it breaks out of the centered,
+  // max-width, padded content container and fills the whole window below the
+  // nav so it can show as much of the tree as possible.
+  const isFullBleed = pathname === '/family';
 
   const handleLogout = async () => {
     await logout();
@@ -78,10 +83,14 @@ export default function AppLayout() {
         </Container>
       </AppBar>
 
-      <Box component="main" sx={{ flexGrow: 1 }}>
-        <Container maxWidth="lg" sx={{ py: { xs: 4, md: 7 } }}>
+      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {isFullBleed ? (
           <Outlet />
-        </Container>
+        ) : (
+          <Container maxWidth="lg" sx={{ py: { xs: 4, md: 7 } }}>
+            <Outlet />
+          </Container>
+        )}
       </Box>
     </Box>
   );
