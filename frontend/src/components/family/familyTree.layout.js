@@ -26,7 +26,12 @@ export function layoutWithDagre(nodes, edges, options = {}) {
     g.setNode(n.id, { width: PERSON_W, height: PERSON_H });
   });
 
+  // Only rank direct parent->child edges in dagre. A spouse connector edge
+  // must never influence rank assignment — feeding it to dagre could pull a
+  // spouse with no parent/child edges of their own down to a different rank
+  // just because their partner has one (see familyTree.layout.test.js).
   edges.forEach((e) => {
+    if (e.type !== 'parent') return;
     g.setEdge(e.source, e.target, { minlen: 1, weight: 2 });
   });
 
