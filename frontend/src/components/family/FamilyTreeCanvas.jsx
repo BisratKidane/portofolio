@@ -23,6 +23,7 @@ import '@xyflow/react/dist/style.css';
 import { Box, Button, TextField } from '@mui/material';
 import MemberNode from './MemberNode.jsx';
 import { layoutWithDagre } from './familyTree.layout.js';
+import { colors } from '../../theme.js';
 
 const NODE_TYPES = { member: MemberNode };
 
@@ -160,8 +161,17 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
     [positionedNodes, expandedIds, viewerNodeId, handleToggleExpand, handleToggleAncestorExpand]
   );
 
+  // Render each domain 'parent' edge as a built-in 'smoothstep' React Flow
+  // edge (valid built-in type -> no missing-edge-type warning, orthogonal
+  // tree look) with a visible stroke, hidden until BOTH endpoints are expanded.
   const renderEdges = useMemo(
-    () => edges.map((e) => ({ ...e, hidden: !(expandedIds.has(e.source) && expandedIds.has(e.target)) })),
+    () =>
+      edges.map((e) => ({
+        ...e,
+        type: 'smoothstep',
+        style: { stroke: colors.slate, strokeWidth: 1.5 },
+        hidden: !(expandedIds.has(e.source) && expandedIds.has(e.target))
+      })),
     [edges, expandedIds]
   );
 

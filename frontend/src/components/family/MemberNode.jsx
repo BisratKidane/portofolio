@@ -7,6 +7,7 @@
 // `data = { member, isViewer, hiddenCount, onToggleExpand,
 // ancestorHiddenCount, onToggleAncestorExpand }`.
 
+import { Handle, Position } from '@xyflow/react';
 import { Box, Chip, IconButton, Paper, Typography } from '@mui/material';
 import MaleRoundedIcon from '@mui/icons-material/MaleRounded';
 import FemaleRoundedIcon from '@mui/icons-material/FemaleRounded';
@@ -83,6 +84,22 @@ export default function MemberNode({ data }) {
         '&:focus-visible': { outline: `2px solid ${colors.primary}`, outlineOffset: '2px' }
       }}
     >
+      {/* Edge attach points: parent→child edges leave a parent's bottom
+          (source) and enter a child's top (target). Without these handles
+          React Flow renders no edges at all. Kept small and subtle. */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        isConnectable={false}
+        style={{ width: 6, height: 6, background: colors.line, border: 'none' }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        isConnectable={false}
+        style={{ width: 6, height: 6, background: colors.line, border: 'none' }}
+      />
+
       {ancestorHiddenCount > 0 && (
         <IconButton
           size="small"

@@ -1,11 +1,27 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ReactFlowProvider } from '@xyflow/react';
 import MemberNode from './MemberNode.jsx';
 
 vi.mock('../../api/photoClient.js', () => ({
   fetchMemberPhotoBlob: vi.fn().mockRejectedValue(new Error('not needed in this test'))
 }));
+
+// MemberNode now renders React Flow <Handle>s, which require both a
+// ReactFlowProvider ancestor and a ResizeObserver whose entries expose
+// contentRect (jsdom has none; @xyflow/system reads entry.contentRect).
+class ResizeObserverPolyfill {
+  observe(target) {
+    this.cb?.([{ target, contentRect: { width: 180, height: 64, top: 0, left: 0 } }]);
+  }
+  unobserve() {}
+  disconnect() {}
+  constructor(cb) {
+    this.cb = cb;
+  }
+}
+globalThis.ResizeObserver = globalThis.ResizeObserver || ResizeObserverPolyfill;
 
 const BASE_MEMBER = {
   id: '1',
@@ -25,7 +41,11 @@ function renderNode(dataOverrides = {}) {
     onToggleAncestorExpand: vi.fn(),
     ...dataOverrides
   };
-  const utils = render(<MemberNode data={data} />);
+  const utils = render(
+    <ReactFlowProvider>
+      <MemberNode data={data} />
+    </ReactFlowProvider>
+  );
   return { data, ...utils };
 }
 
@@ -34,6 +54,15 @@ describe('MemberNode', () => {
     renderNode();
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
     expect(screen.getByText('1932–2001')).toBeInTheDocument();
+  });
+
+  it('renders a source (bottom) and target (top) handle so parent→child edges can attach', () => {
+    const { container } = renderNode();
+    // Without these handles React Flow draws no edges at all.
+    const handles = container.querySelectorAll('.react-flow__handle');
+    expect(handles.length).toBe(2);
+    expect(container.querySelector('.react-flow__handle-top')).toBeTruthy();
+    expect(container.querySelector('.react-flow__handle-bottom')).toBeTruthy();
   });
 
   it('renders only the start year with a trailing dash when deathdate is unknown', () => {
