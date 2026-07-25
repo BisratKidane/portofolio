@@ -250,7 +250,7 @@ Plans:
 
 **Wave 2** *(blocked on 17-02 completion)*
 
-- [ ] 17-03-PLAN.md — FamilyTreeCanvas + MemberNode + UnionNode: production spouse-pairing render, collapse/expand, find-me/search/zoom/minimap, render-smoke tests (TREE-01, TREE-02)
+- [x] 17-03-PLAN.md — FamilyTreeCanvas + MemberNode + UnionNode: production spouse-pairing render, collapse/expand, find-me/search/zoom/minimap, render-smoke tests (TREE-01, TREE-02)
 
 **Wave 3** *(blocked on 17-01 and 17-03 completion)*
 
@@ -281,4 +281,4 @@ Phases execute in numeric order: 12 → 13 → 14 → 15 → 16 → 17 (16 may r
 | 14. Relationship Resolvers, Permission Scoping & Query Safety | v2.0 | 6/6 | Complete    | 2026-07-23 |
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 6/6 | Complete    | 2026-07-23 |
 | 16. Photo Upload | v2.0 | 7/7 | Complete    | 2026-07-24 |
-| 17. /family Deep Tree Visualization | v2.0 | 2/4 | In Progress|  |
+| 17. /family Deep Tree Visualization | v2.0 | 3/4 | In Progress|  |
