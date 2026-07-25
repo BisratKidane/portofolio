@@ -161,17 +161,31 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
     [positionedNodes, expandedIds, viewerNodeId, handleToggleExpand, handleToggleAncestorExpand]
   );
 
-  // Render each domain 'parent' edge as a built-in 'smoothstep' React Flow
-  // edge (valid built-in type -> no missing-edge-type warning, orthogonal
-  // tree look) with a visible stroke, hidden until BOTH endpoints are expanded.
+  // Render each domain edge as a built-in React Flow edge type, styled by
+  // domain edge type, hidden until BOTH endpoints are expanded (same gate
+  // for parent->child and spouse edges). 'parent' edges use 'smoothstep'
+  // (valid built-in type -> no missing-edge-type warning, orthogonal tree
+  // look); 'spouse' edges use a straight, dashed, distinctly-tinted
+  // connector so a married pair reads as linked without looking like a
+  // parent->child relationship. sourceHandle/targetHandle are preserved via
+  // the `...e` spread so each edge attaches to its dedicated handle.
   const renderEdges = useMemo(
     () =>
-      edges.map((e) => ({
-        ...e,
-        type: 'smoothstep',
-        style: { stroke: colors.slate, strokeWidth: 1.5 },
-        hidden: !(expandedIds.has(e.source) && expandedIds.has(e.target))
-      })),
+      edges.map((e) =>
+        e.type === 'spouse'
+          ? {
+              ...e,
+              type: 'straight',
+              style: { stroke: colors.primary, strokeWidth: 1.5, strokeDasharray: '4 3' },
+              hidden: !(expandedIds.has(e.source) && expandedIds.has(e.target))
+            }
+          : {
+              ...e,
+              type: 'smoothstep',
+              style: { stroke: colors.slate, strokeWidth: 1.5 },
+              hidden: !(expandedIds.has(e.source) && expandedIds.has(e.target))
+            }
+      ),
     [edges, expandedIds]
   );
 

@@ -84,18 +84,38 @@ export default function MemberNode({ data }) {
         '&:focus-visible': { outline: `2px solid ${colors.primary}`, outlineOffset: '2px' }
       }}
     >
-      {/* Edge attach points: parent→child edges leave a parent's bottom
-          (source) and enter a child's top (target). Without these handles
-          React Flow renders no edges at all. Kept small and subtle. */}
+      {/* Edge attach points. Parent->child edges leave a parent's bottom
+          (parent-source) and enter a child's top (child-target). The spouse
+          connector edge leaves one partner's right side (spouse-source) and
+          enters the other partner's left side (spouse-target). Explicit ids
+          are required now that a node has more than one handle of each
+          type — without them React Flow can't tell which handle an edge's
+          sourceHandle/targetHandle refers to. Kept small and subtle. */}
       <Handle
+        id="child-target"
         type="target"
         position={Position.Top}
         isConnectable={false}
         style={{ width: 6, height: 6, background: colors.line, border: 'none' }}
       />
       <Handle
+        id="parent-source"
         type="source"
         position={Position.Bottom}
+        isConnectable={false}
+        style={{ width: 6, height: 6, background: colors.line, border: 'none' }}
+      />
+      <Handle
+        id="spouse-source"
+        type="source"
+        position={Position.Right}
+        isConnectable={false}
+        style={{ width: 6, height: 6, background: colors.line, border: 'none' }}
+      />
+      <Handle
+        id="spouse-target"
+        type="target"
+        position={Position.Left}
         isConnectable={false}
         style={{ width: 6, height: 6, background: colors.line, border: 'none' }}
       />

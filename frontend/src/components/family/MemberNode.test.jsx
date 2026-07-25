@@ -56,13 +56,23 @@ describe('MemberNode', () => {
     expect(screen.getByText('1932–2001')).toBeInTheDocument();
   });
 
-  it('renders a source (bottom) and target (top) handle so parent→child edges can attach', () => {
+  it('renders four handles (top/bottom for parent->child, left/right for the spouse connector) so both edge types can attach', () => {
     const { container } = renderNode();
     // Without these handles React Flow draws no edges at all.
     const handles = container.querySelectorAll('.react-flow__handle');
-    expect(handles.length).toBe(2);
+    expect(handles.length).toBe(4);
     expect(container.querySelector('.react-flow__handle-top')).toBeTruthy();
     expect(container.querySelector('.react-flow__handle-bottom')).toBeTruthy();
+    expect(container.querySelector('.react-flow__handle-left')).toBeTruthy();
+    expect(container.querySelector('.react-flow__handle-right')).toBeTruthy();
+  });
+
+  it('exposes explicit handle ids so parent/child/spouse edges attach to the correct side', () => {
+    const { container } = renderNode();
+    expect(container.querySelector('[data-handleid="child-target"]')).toBeTruthy();
+    expect(container.querySelector('[data-handleid="parent-source"]')).toBeTruthy();
+    expect(container.querySelector('[data-handleid="spouse-source"]')).toBeTruthy();
+    expect(container.querySelector('[data-handleid="spouse-target"]')).toBeTruthy();
   });
 
   it('renders only the start year with a trailing dash when deathdate is unknown', () => {

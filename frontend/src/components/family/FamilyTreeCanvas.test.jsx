@@ -276,3 +276,68 @@ describe('FamilyTreeCanvas — direct parent->child edge reveal on interactive e
     expect(revealed.has('32')).toBe(true);
   });
 });
+
+// Spouse connector edge: styled distinctly from a parent->child edge (dashed,
+// primary-tinted) and hidden until BOTH partner nodes are expanded, same gate
+// as parent->child edges.
+describe('FamilyTreeCanvas — spouse connector edge', () => {
+  const MEMBER_6 = {
+    id: '6',
+    fullname: 'Pat Rivera',
+    gender: 'Male',
+    mother: null,
+    father: null,
+    spouses: [{ id: '14' }],
+    children: []
+  };
+  const MEMBER_14 = {
+    id: '14',
+    fullname: 'Sam Rivera',
+    gender: 'Female',
+    mother: null,
+    father: null,
+    spouses: [{ id: '6' }],
+    children: []
+  };
+  const nodes = [
+    { id: '6', type: 'member', data: { member: MEMBER_6 } },
+    { id: '14', type: 'member', data: { member: MEMBER_14 } }
+  ];
+  const edges = [
+    {
+      id: 'spouse-6-14',
+      source: '6',
+      target: '14',
+      type: 'spouse',
+      sourceHandle: 'spouse-source',
+      targetHandle: 'spouse-target'
+    }
+  ];
+
+  it('renders the spouse edge with a dashed, distinctly-colored stroke when both partners are expanded', async () => {
+    renderCanvas({ nodes, edges, initialExpandedIds: new Set(['6', '14']), viewerId: '6' });
+
+    await waitFor(() => expect(screen.getByText('Pat Rivera')).toBeInTheDocument());
+
+    const edgeEl = await waitFor(() => {
+      const el = document.querySelector('[data-testid="rf__edge-spouse-6-14"]');
+      expect(el).toBeTruthy();
+      return el;
+    });
+    const path = edgeEl.querySelector('.react-flow__edge-path');
+    expect(path).toBeTruthy();
+    expect(path.style.strokeDasharray).toBeTruthy();
+  });
+
+  it('hides the spouse edge until both partner nodes are expanded', async () => {
+    renderCanvas({ nodes, edges, initialExpandedIds: new Set(['6']), viewerId: '6' });
+
+    await waitFor(() => expect(screen.getByText('Pat Rivera')).toBeInTheDocument());
+    expect(screen.queryByText('Sam Rivera')).not.toBeInTheDocument();
+
+    const edgeEl = document.querySelector('[data-testid="rf__edge-spouse-6-14"]');
+    // Hidden edges are not rendered into the DOM by React Flow at all when
+    // `hidden: true` is set on the edge object.
+    expect(edgeEl).toBeFalsy();
+  });
+});
