@@ -4,7 +4,10 @@ import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import { colors } from '../../theme.js';
 import { fetchMemberPhotoBlob } from '../../api/photoClient.js';
 
-export default function MemberAvatarImage({ member, size = 42 }) {
+// `variant` maps to MUI Avatar's shape: 'circular' (default, keeps the /manage
+// and detail-panel avatars round) | 'rounded' | 'square'. The /family tree node
+// passes 'rounded' so the portrait reads as a picture, not a circular avatar.
+export default function MemberAvatarImage({ member, size = 42, variant = 'circular' }) {
   const [fetching, setFetching] = useState(false);
   const [objectUrl, setObjectUrl] = useState(null);
   const objectUrlRef = useRef(null);
@@ -60,22 +63,22 @@ export default function MemberAvatarImage({ member, size = 42 }) {
 
   if (!member.photoUrl) {
     return (
-      <Avatar alt={member.fullname} sx={{ width: size, height: size, bgcolor: '#eef1f8', color: colors.slate }}>
+      <Avatar variant={variant} alt={member.fullname} sx={{ width: size, height: size, bgcolor: '#eef1f8', color: colors.slate }}>
         <PersonRoundedIcon aria-hidden="true" />
       </Avatar>
     );
   }
 
   if (fetching) {
-    return <Skeleton variant="circular" width={size} height={size} />;
+    return <Skeleton variant={variant === 'circular' ? 'circular' : 'rounded'} width={size} height={size} />;
   }
 
   if (objectUrl) {
-    return <Avatar src={objectUrl} alt={member.fullname} sx={{ width: size, height: size }} />;
+    return <Avatar variant={variant} src={objectUrl} alt={member.fullname} sx={{ width: size, height: size }} />;
   }
 
   return (
-    <Avatar alt={member.fullname} sx={{ width: size, height: size, bgcolor: '#eef1f8', color: colors.slate }}>
+    <Avatar variant={variant} alt={member.fullname} sx={{ width: size, height: size, bgcolor: '#eef1f8', color: colors.slate }}>
       <PersonRoundedIcon aria-hidden="true" />
     </Avatar>
   );

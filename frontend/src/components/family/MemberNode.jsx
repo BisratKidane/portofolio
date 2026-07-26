@@ -148,7 +148,7 @@ export default function MemberNode({ data }) {
           justifyContent: 'center'
         }}
       >
-        <MemberAvatarImage member={member} size={72} />
+        <MemberAvatarImage member={member} size={72} variant="rounded" />
       </Box>
 
       {/* Right column: reserved row + fullname + birthday + mother + address. */}
