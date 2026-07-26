@@ -113,10 +113,10 @@ describe('FamilyTreeCanvas', () => {
     });
   });
 
-  it('highlights the viewer node with the You chip; the non-viewer node has neither', async () => {
+  it('identifies the viewer by the ring alone — no "You" chip is rendered', async () => {
     renderCanvas();
     await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
-    expect(screen.getByText('You')).toBeInTheDocument();
+    expect(screen.queryByText('You')).not.toBeInTheDocument();
   });
 
   it('applies the viewer ring to the viewer node only', async () => {

@@ -132,14 +132,15 @@ describe('MemberNode', () => {
     expect(container.querySelector('[data-handleid="spouse-target"]')).toBeTruthy();
   });
 
-  it('applies a 2px solid viewer ring (outline) when isViewer is true, distinct from the You chip', () => {
+  it('marks the viewer with the double-border ring (outline) when isViewer is true — no "You" chip', () => {
     renderNode({ isViewer: true });
     const card = screen.getByTestId(`member-node-${BASE_MEMBER.id}`);
     expect(card).toHaveAttribute('data-viewer-ring', 'true');
-    expect(screen.getByText('You')).toBeInTheDocument();
+    // The viewer is conveyed by the border/outline alone; the chip was removed.
+    expect(screen.queryByText('You')).not.toBeInTheDocument();
   });
 
-  it('applies no ring and no You chip when isViewer is false', () => {
+  it('applies no viewer ring when isViewer is false', () => {
     renderNode({ isViewer: false });
     const card = screen.getByTestId(`member-node-${BASE_MEMBER.id}`);
     expect(card).toHaveAttribute('data-viewer-ring', 'false');

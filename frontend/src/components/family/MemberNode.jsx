@@ -10,7 +10,7 @@
 // ancestorHiddenCount, onToggleAncestorExpand }`.
 
 import { Handle, Position } from '@xyflow/react';
-import { Box, Chip, IconButton, Paper, Typography } from '@mui/material';
+import { Box, IconButton, Paper, Typography } from '@mui/material';
 import { colors } from '../../theme.js';
 import MemberAvatarImage from '../manage/MemberAvatarImage.jsx';
 
@@ -138,17 +138,18 @@ export default function MemberNode({ data }) {
         </IconButton>
       )}
 
-      {/* Left column: 1/3-width avatar, vertically centered. */}
+      {/* Left column: the photo fills the whole 1/3-width column, full height,
+          cropping/zooming to cover (object-fit: cover via the Avatar). */}
       <Box
         sx={{
           flex: '0 0 33%',
+          alignSelf: 'stretch',
           minWidth: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
+          borderRadius: 1,
+          overflow: 'hidden'
         }}
       >
-        <MemberAvatarImage member={member} size={72} variant="rounded" />
+        <MemberAvatarImage member={member} variant="rounded" fill />
       </Box>
 
       {/* Right column: reserved row + fullname + birthday + mother + address. */}
@@ -156,14 +157,11 @@ export default function MemberNode({ data }) {
         {/* Reserved row — kept empty for a future edit action (deferred). */}
         <Box sx={{ height: 18, flexShrink: 0 }} />
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 600 }} noWrap>
-            {member.fullname}
-          </Typography>
-          {isViewer && (
-            <Chip label="You" size="small" sx={{ bgcolor: colors.gradientSoft, color: colors.primaryDark }} />
-          )}
-        </Box>
+        {/* The viewer is identified by the card's double border (gender border +
+            viewer outline ring), so no separate "You" chip is needed. */}
+        <Typography sx={{ fontSize: 14, fontWeight: 600 }} noWrap>
+          {member.fullname}
+        </Typography>
 
         {birthday && (
           <Typography sx={ROW_SX} noWrap>
