@@ -156,6 +156,19 @@ describe('FamilyTreeCanvas', () => {
 
     expect(onMemberClick).toHaveBeenCalledWith('4');
   });
+
+  // The tree now opens framed on the whole forest from the top ancestor (no
+  // auto-pan-to-viewer on load); the "Find me" button remains the way to jump
+  // back to the viewer's own node.
+  it('keeps the "Find me" button working: clicking it leaves the viewer node visible', async () => {
+    renderCanvas();
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Find me' }));
+
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+    expect(screen.getByTestId('member-node-1')).toHaveAttribute('data-viewer-ring', 'true');
+  });
 });
 
 // Regression coverage for the pure hierarchical model: a member connects to

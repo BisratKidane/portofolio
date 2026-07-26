@@ -99,7 +99,7 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
   const [expandedIds, setExpandedIds] = useState(() => new Set(initialExpandedIds));
   const [searchTerm, setSearchTerm] = useState('');
   const { fitView, getNode } = useReactFlow();
-  const didAutoFindMe = useRef(false);
+  const didInitialFit = useRef(false);
 
   const membersById = useMemo(() => buildMembersById(nodes), [nodes]);
   const viewerNodeId = viewerId != null ? String(viewerId) : null;
@@ -191,25 +191,28 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
 
   const findMe = useCallback(() => {
     if (viewerNodeId == null) return;
+    // Reveal the viewer's ancestor chain if it's currently collapsed, then
+    // frame the viewer node. requestAnimationFrame lets the reveal's layout
+    // settle before fitView runs (mirrors handleSearchSubmit); this is
+    // self-contained now that the on-load auto-pan effect is gone.
     if (!expandedIds.has(viewerNodeId)) {
       setExpandedIds((prev) => expandAncestorChainFrom(viewerNodeId, membersById, prev));
-      return; // becomes visible next render; the auto-find-me effect below reframes it
     }
-    const node = getNode(viewerNodeId);
-    if (!node) return;
-    fitView({ nodes: [{ id: viewerNodeId }], duration: 400, maxZoom: 1.2 });
+    requestAnimationFrame(() => {
+      if (!getNode(viewerNodeId)) return;
+      fitView({ nodes: [{ id: viewerNodeId }], duration: 400, maxZoom: 1.2 });
+    });
   }, [viewerNodeId, expandedIds, membersById, getNode, fitView]);
 
-  // D-02: on load, auto-pan to and highlight the viewer's own node.
+  // On load, frame the WHOLE tree once (root at top), fit to the window.
+  // Replaces the old auto-pan-to-viewer behavior — the tree now always opens
+  // from the top ancestor. The ref guard keeps this to a single run.
   useEffect(() => {
-    if (didAutoFindMe.current) return;
-    if (viewerNodeId == null) return;
-    if (!expandedIds.has(viewerNodeId)) return;
-    const node = getNode(viewerNodeId);
-    if (!node) return;
-    didAutoFindMe.current = true;
-    fitView({ nodes: [{ id: viewerNodeId }], duration: 400, maxZoom: 1.2 });
-  }, [viewerNodeId, expandedIds, getNode, fitView, renderNodes]);
+    if (didInitialFit.current) return;
+    if (renderNodes.length === 0) return;
+    didInitialFit.current = true;
+    fitView({ padding: 0.1, duration: 400 });
+  }, [renderNodes, fitView]);
 
   const handleSearchSubmit = useCallback(
     (event) => {
