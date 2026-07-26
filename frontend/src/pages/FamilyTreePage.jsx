@@ -48,10 +48,7 @@ export default function FamilyTreePage() {
 
   const membersById = useMemo(() => new Map(members.map((member) => [String(member.id), member])), [members]);
 
-  const forest = useMemo(
-    () => buildForest(members, user.familyMemberId),
-    [members, user.familyMemberId]
-  );
+  const forest = useMemo(() => buildForest(members), [members]);
 
   if (pageLoading) {
     return (

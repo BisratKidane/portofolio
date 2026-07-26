@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { buildForest, computeInitialExpandSet, deriveSiblings } from './familyTree.assembly.js';
+import {
+  buildForest,
+  collectDescendantIds,
+  resolveRootAncestorId,
+  computeRootExpandSet,
+  deriveSiblings
+} from './familyTree.assembly.js';
 
 describe('buildForest', () => {
   it('assigns generation 0 to apex ancestors (no mother, no father)', () => {
@@ -83,7 +89,8 @@ describe('buildForest', () => {
       edges: [],
       generations: new Map(),
       apexIds: [],
-      initialExpandedIds: new Set()
+      initialExpandedIds: new Set(),
+      rootAncestorId: null
     });
   });
 
@@ -178,81 +185,115 @@ describe('buildForest — spouse connector edges', () => {
     expect(edges.filter((e) => e.type === 'spouse')).toEqual([]);
   });
 
-  it('includes the viewer spouse in initialExpandedIds so the connecting edge is visible on first paint', () => {
+  it("includes the root member's spouse in initialExpandedIds so the connecting edge is visible on first paint", () => {
     const flat = [
       { id: '6', mother: null, father: null, spouses: [{ id: '14' }], children: [] },
       { id: '14', mother: null, father: null, spouses: [{ id: '6' }], children: [] }
     ];
-    const { initialExpandedIds } = buildForest(flat, '6');
+    const { initialExpandedIds } = buildForest(flat);
     expect(initialExpandedIds.has('6')).toBe(true);
     expect(initialExpandedIds.has('14')).toBe(true);
   });
 });
 
-describe('computeInitialExpandSet — multi-apex-path spine (Open Question 1)', () => {
-  // Viewer's mother chain reaches a separate apex (1) and viewer's father chain
-  // reaches a DIFFERENT separate apex (9). Only the mother's chain is walked as
-  // the ancestral spine; the father's own further-up chain is deliberately
-  // excluded even though the father himself IS in the direct line.
+describe('buildForest — root-based initial expand set', () => {
+  // A three-generation tree rooted at the canonical top ancestor id 1 (Agne).
+  // Id 1 has a married-in spouse (id 2), a child (id 3) who also has a
+  // married-in spouse (id 4), and a grandchild (id 5).
   const flat = [
-    { id: '1', mother: null, father: null, spouses: [], children: [{ id: '2' }] },
-    { id: '2', mother: { id: '1' }, father: null, spouses: [{ id: '3' }], children: [{ id: '4' }] },
-    { id: '9', mother: null, father: null, spouses: [], children: [{ id: '3' }] },
-    { id: '3', mother: { id: '9' }, father: null, spouses: [{ id: '2' }], children: [{ id: '4' }] },
-    { id: '4', mother: { id: '2' }, father: { id: '3' }, spouses: [], children: [] }
+    { id: '1', mother: null, father: null, spouses: [{ id: '2' }], children: [{ id: '3' }] },
+    { id: '2', mother: null, father: null, spouses: [{ id: '1' }], children: [{ id: '3' }] },
+    { id: '3', mother: { id: '1' }, father: { id: '2' }, spouses: [{ id: '4' }], children: [{ id: '5' }] },
+    { id: '4', mother: null, father: null, spouses: [{ id: '3' }], children: [{ id: '5' }] },
+    { id: '5', mother: { id: '3' }, father: { id: '4' }, spouses: [], children: [] }
   ];
 
-  it('walks only the viewer mother chain up to its apex, not the father chain beyond the direct line', () => {
-    const { initialExpandedIds } = buildForest(flat, '4');
+  it('defaults the root to id "1" when present in the payload', () => {
+    const { rootAncestorId } = buildForest(flat);
+    expect(rootAncestorId).toBe('1');
+  });
 
-    // Direct line: viewer + both parents.
-    expect(initialExpandedIds.has('4')).toBe(true);
-    expect(initialExpandedIds.has('2')).toBe(true);
-    expect(initialExpandedIds.has('3')).toBe(true);
+  it('expands id 1 plus every descendant and the spouses of expanded members', () => {
+    const { initialExpandedIds } = buildForest(flat);
+    // Root, its descendants (3, 5), and the spouses of expanded members (2, 4).
+    expect([...initialExpandedIds].sort()).toEqual(['1', '2', '3', '4', '5']);
+  });
 
-    // Ancestral spine follows the mother's chain all the way to her apex.
-    expect(initialExpandedIds.has('1')).toBe(true);
-
-    // The father's own further ancestor (his apex, id 9) is NOT auto-expanded —
-    // only his own direct id is part of the direct line.
-    expect(initialExpandedIds.has('9')).toBe(false);
-
-    // No union ids anywhere in the pure hierarchical model.
+  it('never emits union ids in the pure hierarchical model', () => {
+    const { initialExpandedIds } = buildForest(flat);
     for (const id of initialExpandedIds) {
       expect(String(id).startsWith('union-')).toBe(false);
     }
   });
 });
 
-describe('computeInitialExpandSet — D-03 disconnected apex exclusion', () => {
-  // The viewer's spouse has their OWN separate parent chain (a disconnected
-  // apex root unrelated to the viewer's own lineage) — D-03's explicit example
-  // of a spouse who "married in." That spouse's parent ids must be excluded
-  // from initialExpandedIds even though the spouse's own id is included.
+describe('resolveRootAncestorId / computeRootExpandSet — fallback root selection', () => {
+  // No id 1 present. Two disconnected apexes: id 2 with a large descendant
+  // subtree (3, 4, 5) and id 8 with a single child (9). The apex with the most
+  // descendants (id 2) must win.
   const flat = [
-    { id: '4', mother: null, father: null, spouses: [{ id: '5' }], children: [] },
-    { id: '5', mother: { id: '6' }, father: { id: '7' }, spouses: [{ id: '4' }], children: [] },
-    { id: '6', mother: null, father: null, spouses: [{ id: '7' }], children: [{ id: '5' }] },
-    { id: '7', mother: null, father: null, spouses: [{ id: '6' }], children: [{ id: '5' }] }
+    { id: '2', mother: null, father: null, spouses: [], children: [{ id: '3' }] },
+    { id: '3', mother: { id: '2' }, father: null, spouses: [], children: [{ id: '4' }] },
+    { id: '4', mother: { id: '3' }, father: null, spouses: [], children: [{ id: '5' }] },
+    { id: '5', mother: { id: '4' }, father: null, spouses: [], children: [] },
+    { id: '8', mother: null, father: null, spouses: [], children: [{ id: '9' }] },
+    { id: '9', mother: { id: '8' }, father: null, spouses: [], children: [] }
   ];
 
-  it('includes the married-in spouse but excludes their separate/disconnected apex parents', () => {
-    const initialExpandedIds = computeInitialExpandSet(flat, '4');
-
-    expect(initialExpandedIds.has('4')).toBe(true);
-    expect(initialExpandedIds.has('5')).toBe(true);
-
-    // Spouse's own disconnected apex parent chain is deliberately excluded —
-    // it stays collapsed behind 17-03's ancestor-reveal badge, not auto-expanded.
-    expect(initialExpandedIds.has('6')).toBe(false);
-    expect(initialExpandedIds.has('7')).toBe(false);
+  it('picks the apex with the most descendants when id 1 is absent', () => {
+    const membersById = new Map(flat.map((m) => [String(m.id), m]));
+    expect(resolveRootAncestorId(flat, membersById)).toBe('2');
   });
 
-  it('buildForest itself excludes the same disconnected apex ids from initialExpandedIds', () => {
-    const { initialExpandedIds } = buildForest(flat, '4');
-    expect(initialExpandedIds.has('5')).toBe(true);
-    expect(initialExpandedIds.has('6')).toBe(false);
-    expect(initialExpandedIds.has('7')).toBe(false);
+  it('root-expands the winning apex and all of its descendants', () => {
+    const { rootAncestorId, initialExpandedIds } = buildForest(flat);
+    expect(rootAncestorId).toBe('2');
+    expect([...initialExpandedIds].sort()).toEqual(['2', '3', '4', '5']);
+    // The smaller, disconnected apex chain is not part of the initial expand.
+    expect(initialExpandedIds.has('8')).toBe(false);
+    expect(initialExpandedIds.has('9')).toBe(false);
+  });
+});
+
+describe('collectDescendantIds — spouse inclusion without traversing into the spouse', () => {
+  // Root id 1 -> child id 2, who is married to id 3. The married-in spouse (3)
+  // has their OWN unrelated ancestor (id 4) and out-of-line child (id 5). The
+  // spouse's id is included, but their separate ancestry/descent stays out.
+  const flat = [
+    { id: '1', mother: null, father: null, spouses: [], children: [{ id: '2' }] },
+    { id: '2', mother: { id: '1' }, father: null, spouses: [{ id: '3' }], children: [] },
+    { id: '3', mother: { id: '4' }, father: null, spouses: [{ id: '2' }], children: [{ id: '5' }] },
+    { id: '4', mother: null, father: null, spouses: [], children: [{ id: '3' }] },
+    { id: '5', mother: { id: '3' }, father: null, spouses: [], children: [] }
+  ];
+
+  it('includes the spouse of an expanded member but not the spouse’s own ancestors or out-of-line children', () => {
+    const membersById = new Map(flat.map((m) => [String(m.id), m]));
+    const ids = collectDescendantIds('1', membersById, { includeSpouses: true });
+
+    expect(ids.has('1')).toBe(true);
+    expect(ids.has('2')).toBe(true);
+    expect(ids.has('3')).toBe(true); // married-in spouse of expanded member 2
+
+    // The spouse's separate ancestor (4) and out-of-line child (5) are excluded.
+    expect(ids.has('4')).toBe(false);
+    expect(ids.has('5')).toBe(false);
+  });
+
+  it('omits spouses entirely when includeSpouses is false', () => {
+    const membersById = new Map(flat.map((m) => [String(m.id), m]));
+    const ids = collectDescendantIds('1', membersById, { includeSpouses: false });
+    expect([...ids].sort()).toEqual(['1', '2']);
+  });
+
+  it('is guarded against a children cycle', () => {
+    const cyclic = [
+      { id: '1', mother: null, father: null, spouses: [], children: [{ id: '2' }] },
+      { id: '2', mother: { id: '1' }, father: null, spouses: [], children: [{ id: '1' }] }
+    ];
+    const membersById = new Map(cyclic.map((m) => [String(m.id), m]));
+    const ids = collectDescendantIds('1', membersById, { includeSpouses: false });
+    expect([...ids].sort()).toEqual(['1', '2']);
   });
 });
 
@@ -281,17 +322,27 @@ describe('deriveSiblings', () => {
   });
 });
 
-describe('computeInitialExpandSet — standalone export', () => {
+describe('computeRootExpandSet — empty input', () => {
   it('returns an empty Set instance when flatMembers is empty', () => {
-    const result = computeInitialExpandSet([], '1');
+    const result = computeRootExpandSet([]);
     expect(result).toBeInstanceOf(Set);
     expect(result.size).toBe(0);
   });
 
-  it('returns an empty Set when viewerId is not found among the flat members', () => {
-    const flat = [{ id: '1', mother: null, father: null, spouses: [], children: [] }];
-    const result = computeInitialExpandSet(flat, 'does-not-exist');
-    expect(result).toBeInstanceOf(Set);
-    expect(result.size).toBe(0);
+  it('buildForest reports rootAncestorId null and an empty expand set for empty input', () => {
+    const { rootAncestorId, initialExpandedIds } = buildForest([]);
+    expect(rootAncestorId).toBeNull();
+    expect(initialExpandedIds).toBeInstanceOf(Set);
+    expect(initialExpandedIds.size).toBe(0);
+  });
+
+  it('falls back to the first member id when no apex exists (every member has a parent)', () => {
+    // A pure cycle: no member has mother == null && father == null.
+    const flat = [
+      { id: '7', mother: { id: '8' }, father: null, spouses: [], children: [{ id: '8' }] },
+      { id: '8', mother: { id: '7' }, father: null, spouses: [], children: [{ id: '7' }] }
+    ];
+    const membersById = new Map(flat.map((m) => [String(m.id), m]));
+    expect(resolveRootAncestorId(flat, membersById)).toBe('7');
   });
 });

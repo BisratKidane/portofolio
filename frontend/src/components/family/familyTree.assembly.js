@@ -3,7 +3,7 @@
 // the flat FamilyMember payload shape documented in 17-RESEARCH.md Pattern 1
 // ({ id, mother: {id}|null, father: {id}|null, spouses: [{id}],
 // children: [{id}] }) and produces the xyflow-shaped { nodes, edges } plus
-// generation ranks and the D-04 initial expand set. No React, no dagre, no
+// generation ranks and the root-based initial expand set. No React, no dagre, no
 // DOM — see familyTree.layout.js for the dagre wrapper that consumes this
 // module's output.
 //
@@ -71,72 +71,6 @@ function computeGenerations(membersById) {
   return generations;
 }
 
-// Walks up from the viewer, preferring the mother's chain at every step
-// (Open Question 1 resolution), collecting every member id on the path,
-// until an apex ancestor (no mother, no father) is reached.
-function walkAncestralSpine(viewerId, membersById) {
-  const spine = new Set();
-  const visited = new Set();
-  let currentId = viewerId;
-
-  while (currentId != null && membersById.has(currentId) && !visited.has(currentId)) {
-    visited.add(currentId);
-    spine.add(currentId);
-
-    const member = membersById.get(currentId);
-    const motherId = idOrNull(member.mother);
-    const fatherId = idOrNull(member.father);
-
-    if (motherId == null && fatherId == null) break; // reached an apex ancestor
-
-    const nextId =
-      motherId != null && membersById.has(motherId)
-        ? motherId
-        : fatherId != null && membersById.has(fatherId)
-          ? fatherId
-          : null;
-
-    if (nextId == null) break;
-    currentId = nextId;
-  }
-
-  return spine;
-}
-
-// The viewer's direct 1-hop neighborhood: self, parents, spouses, children,
-// derived siblings. Deliberately does NOT walk into a spouse's own parent
-// chain (D-03: a married-in spouse's separate/disconnected apex ancestry
-// stays collapsed behind 17-03's ancestor-reveal badge, not auto-expanded
-// here).
-function directLineIds(viewerId, membersById) {
-  const ids = new Set([viewerId]);
-  const viewer = membersById.get(viewerId);
-  if (!viewer) return ids;
-
-  const motherId = idOrNull(viewer.mother);
-  const fatherId = idOrNull(viewer.father);
-  if (motherId != null && membersById.has(motherId)) ids.add(motherId);
-  if (fatherId != null && membersById.has(fatherId)) ids.add(fatherId);
-
-  for (const spouse of viewer.spouses || []) {
-    const spouseId = idOrNull(spouse);
-    if (spouseId == null || !membersById.has(spouseId)) continue;
-    ids.add(spouseId);
-  }
-
-  for (const child of viewer.children || []) {
-    const childId = idOrNull(child);
-    if (childId == null || !membersById.has(childId)) continue;
-    ids.add(childId);
-  }
-
-  for (const sibling of deriveSiblings(viewerId, membersById)) {
-    ids.add(String(sibling.id));
-  }
-
-  return ids;
-}
-
 /**
  * Given a Map<id, flatMember>, returns the flat-member rows sharing
  * mother.id OR father.id with `memberId`'s own row (either-parent rule,
@@ -166,23 +100,89 @@ export function deriveSiblings(memberId, membersById) {
 }
 
 /**
- * Computes ONLY the D-04 initial-expand-set piece: the ancestral spine
- * (apex to viewer, mother-preferred) plus the viewer's direct line (parents,
- * spouse, children, siblings). Standalone so a later viewerId resolution
- * (e.g. after `user` loads) can recompute this without re-running the full
- * `buildForest`. `buildForest` calls this internally.
+ * BFS from `rootId` down the `children` graph, guarded against cycles with a
+ * `visited` set. Adds the root and every reachable descendant. When
+ * `includeSpouses`, also adds each visited member's `spouses` WITHOUT
+ * traversing into them (a married-in spouse's out-of-line children/ancestors
+ * stay out). Ignores refs whose id is not in `membersById`. Returns a
+ * `Set<string>` of ids.
  */
-export function computeInitialExpandSet(flatMembers, viewerId) {
-  if (!flatMembers || flatMembers.length === 0 || viewerId == null) return new Set();
+export function collectDescendantIds(rootId, membersById, { includeSpouses = true } = {}) {
+  const ids = new Set();
+  const rootIdStr = rootId != null ? String(rootId) : null;
+  if (rootIdStr == null || !membersById.has(rootIdStr)) return ids;
+
+  const visited = new Set([rootIdStr]);
+  const queue = [rootIdStr];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift();
+    const member = membersById.get(currentId);
+    if (!member) continue;
+    ids.add(currentId);
+
+    if (includeSpouses) {
+      for (const spouse of member.spouses || []) {
+        const spouseId = idOrNull(spouse);
+        if (spouseId != null && membersById.has(spouseId)) ids.add(spouseId);
+      }
+    }
+
+    for (const child of member.children || []) {
+      const childId = idOrNull(child);
+      if (childId == null || !membersById.has(childId) || visited.has(childId)) continue;
+      visited.add(childId);
+      queue.push(childId);
+    }
+  }
+
+  return ids;
+}
+
+/**
+ * Resolves the id of the member to root the tree at: the canonical top
+ * ancestor id `"1"` when present; otherwise the apex member
+ * (`mother == null && father == null`) with the largest descendant subtree
+ * (spouses excluded from the size comparison so married-in partners don't
+ * inflate a shallow apex); otherwise the first member's id; `null` for an
+ * empty payload.
+ */
+export function resolveRootAncestorId(flatMembers, membersById) {
+  if (!flatMembers || flatMembers.length === 0) return null;
+  if (membersById.has('1')) return '1';
+
+  const apexMembers = flatMembers.filter((member) => member.mother == null && member.father == null);
+  if (apexMembers.length > 0) {
+    let bestId = null;
+    let bestSize = -1;
+    for (const member of apexMembers) {
+      const apexId = String(member.id);
+      const size = collectDescendantIds(apexId, membersById, { includeSpouses: false }).size;
+      if (size > bestSize) {
+        bestSize = size;
+        bestId = apexId;
+      }
+    }
+    return bestId;
+  }
+
+  return String(flatMembers[0].id);
+}
+
+/**
+ * Computes the root-based initial-expand set: resolves the root ancestor and
+ * returns every descendant of it plus the spouses of those expanded members
+ * (so married-in partners/couples show on first paint). Returns an empty
+ * `Set` for empty input or when no root resolves.
+ */
+export function computeRootExpandSet(flatMembers) {
+  if (!flatMembers || flatMembers.length === 0) return new Set();
 
   const membersById = buildMembersById(flatMembers);
-  const viewerIdStr = String(viewerId);
-  if (!membersById.has(viewerIdStr)) return new Set();
+  const rootId = resolveRootAncestorId(flatMembers, membersById);
+  if (rootId == null) return new Set();
 
-  const spine = walkAncestralSpine(viewerIdStr, membersById);
-  const direct = directLineIds(viewerIdStr, membersById);
-
-  return new Set([...spine, ...direct]);
+  return collectDescendantIds(rootId, membersById, { includeSpouses: true });
 }
 
 /**
@@ -191,14 +191,15 @@ export function computeInitialExpandSet(flatMembers, viewerId) {
  * parent->child 'parent' edge per present, known parent (a single-parent
  * child yields 1 edge, a two-parent child yields 2 edges).
  */
-export function buildForest(flatMembers, viewerId) {
+export function buildForest(flatMembers) {
   if (!flatMembers || flatMembers.length === 0) {
     return {
       nodes: [],
       edges: [],
       generations: new Map(),
       apexIds: [],
-      initialExpandedIds: new Set()
+      initialExpandedIds: new Set(),
+      rootAncestorId: null
     };
   }
 
@@ -259,7 +260,11 @@ export function buildForest(flatMembers, viewerId) {
     }
   }
 
-  const initialExpandedIds = computeInitialExpandSet(flatMembers, viewerId);
+  const rootAncestorId = resolveRootAncestorId(flatMembers, membersById);
+  const initialExpandedIds =
+    rootAncestorId != null
+      ? collectDescendantIds(rootAncestorId, membersById, { includeSpouses: true })
+      : new Set();
 
-  return { nodes, edges, generations, apexIds, initialExpandedIds };
+  return { nodes, edges, generations, apexIds, initialExpandedIds, rootAncestorId };
 }
