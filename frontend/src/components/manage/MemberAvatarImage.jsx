@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Avatar, Skeleton } from '@mui/material';
-import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
-import { colors } from '../../theme.js';
+import MemberFallbackAvatar from '../MemberFallbackAvatar.jsx';
 import { fetchMemberPhotoBlob } from '../../api/photoClient.js';
 
 // `variant` maps to MUI Avatar's shape: 'circular' (default, keeps the /manage
@@ -67,8 +66,8 @@ export default function MemberAvatarImage({ member, size = 42, variant = 'circul
 
   if (!member.photoUrl) {
     return (
-      <Avatar variant={variant} alt={member.fullname} sx={{ ...dims, bgcolor: '#eef1f8', color: colors.slate }}>
-        <PersonRoundedIcon aria-hidden="true" />
+      <Avatar variant={variant} sx={{ ...dims, '& > svg': { width: '100%', height: '100%' } }}>
+        <MemberFallbackAvatar gender={member.gender} />
       </Avatar>
     );
   }
@@ -88,8 +87,8 @@ export default function MemberAvatarImage({ member, size = 42, variant = 'circul
   }
 
   return (
-    <Avatar variant={variant} alt={member.fullname} sx={{ ...dims, bgcolor: '#eef1f8', color: colors.slate }}>
-      <PersonRoundedIcon aria-hidden="true" />
+    <Avatar variant={variant} sx={{ ...dims, '& > svg': { width: '100%', height: '100%' } }}>
+      <MemberFallbackAvatar gender={member.gender} />
     </Avatar>
   );
 }

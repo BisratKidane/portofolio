@@ -28,11 +28,11 @@ export default function Login() {
   return (
     <AuthShell
       eyebrow="Welcome back"
-      title="Sign in to Portofolio"
+      title="Sign in to Agne"
       subtitle="Enter your credentials to access your dashboard."
       footer={
         <Typography variant="body2" color="text.secondary">
-          New to Portofolio?{' '}
+          New to Agne?{' '}
           <Link component={RouterLink} to="/register">
             Create an account
           </Link>

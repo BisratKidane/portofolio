@@ -24,9 +24,9 @@ describe('MemberAvatarImage', () => {
     expect(document.querySelector('.MuiSkeleton-circular')).not.toBeInTheDocument();
     expect(screen.queryByText('AL')).not.toBeInTheDocument();
     expect(container.querySelector('.MuiAvatar-root')).toBeInTheDocument();
-    const icon = document.querySelector('[data-testid="PersonRoundedIcon"]');
-    expect(icon).toBeInTheDocument();
-    expect(icon).toHaveAttribute('aria-hidden', 'true');
+    const fallback = document.querySelector('[data-testid="member-fallback-avatar"]');
+    expect(fallback).toBeInTheDocument();
+    expect(fallback).toHaveAttribute('aria-hidden', 'true');
     expect(fetchMemberPhotoBlob).not.toHaveBeenCalled();
   });
 
@@ -60,10 +60,22 @@ describe('MemberAvatarImage', () => {
     render(<MemberAvatarImage member={MEMBER_WITH_PHOTO} />);
 
     await waitFor(() => {
-      const icon = document.querySelector('[data-testid="PersonRoundedIcon"]');
-      expect(icon).toBeInTheDocument();
+      const fallback = document.querySelector('[data-testid="member-fallback-avatar"]');
+      expect(fallback).toBeInTheDocument();
     });
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('uses the gender-coded fallback avatar (Male/Female) when there is no photo', () => {
+    const { rerender } = render(
+      <MemberAvatarImage member={{ id: '3', fullname: 'Alan T', photoUrl: null, gender: 'Male' }} />
+    );
+    expect(document.querySelector('[data-testid="member-fallback-avatar"]')).toHaveAttribute('data-gender', 'Male');
+
+    rerender(
+      <MemberAvatarImage member={{ id: '4', fullname: 'Ada L', photoUrl: null, gender: 'Female' }} />
+    );
+    expect(document.querySelector('[data-testid="member-fallback-avatar"]')).toHaveAttribute('data-gender', 'Female');
   });
 });

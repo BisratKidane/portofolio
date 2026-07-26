@@ -29,7 +29,7 @@ export default function Register() {
     <AuthShell
       eyebrow="Get started"
       title="Create your account"
-      subtitle="Set up your Portofolio profile in a few seconds."
+      subtitle="Set up your Agne profile in a few seconds."
       footer={
         <Typography variant="body2" color="text.secondary">
           Already have an account?{' '}

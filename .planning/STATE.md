@@ -145,6 +145,7 @@ Items acknowledged and carried forward from previous milestone close:
 |----------|------|--------|------|
 | 260726-rwp | Root the `/family` tree at the top ancestor (member id 1, Agne) instead of the viewer — full tree expanded + fit on load | complete ✓ | 2026-07-26 |
 | 260726-sh4 | Restyle `/family` MemberNode card: 1/3 avatar column + rows (reserved edit row, fullname, birthday, mother name, alive-only address) — on branch `member_node` | complete ✓ | 2026-07-26 |
+| 260726-wn2 | Agne rebrand: themed tree-of-people logo + favicon, gender default avatars, rename Portofolio→Agne — on branch `agne-rebrand` | complete ✓ | 2026-07-26 |
 
 ## Session Continuity
 
