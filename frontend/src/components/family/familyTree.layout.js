@@ -12,8 +12,8 @@
 
 import dagre from '@dagrejs/dagre';
 
-const PERSON_W = 180;
-const PERSON_H = 64;
+const PERSON_W = 252;
+const PERSON_H = 120;
 
 export function layoutWithDagre(nodes, edges, options = {}) {
   const { rankdir = 'TB', nodesep = 60, ranksep = 90, edgesep = 10 } = options;
