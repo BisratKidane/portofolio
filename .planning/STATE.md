@@ -139,6 +139,12 @@ Items acknowledged and carried forward from previous milestone close:
 | Genealogy | Multiple marriages, half-siblings, adoptions as first-class types | Deferred to v2 (GEN-01/02) | v2.0 requirements |
 | Tree curation | Inline tree-editing from `/family` nodes, duplicate-merge tooling | Deferred to v2 (CUR-01/02) | v2.0 requirements |
 
+## Quick Tasks Completed
+
+| Quick ID | Task | Status | Date |
+|----------|------|--------|------|
+| 260726-rwp | Root the `/family` tree at the top ancestor (member id 1, Agne) instead of the viewer — full tree expanded + fit on load | complete ✓ | 2026-07-26 |
+
 ## Session Continuity
 
 Last session: 2026-07-25T14:49:12.583Z
