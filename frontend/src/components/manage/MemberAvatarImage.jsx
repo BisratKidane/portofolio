@@ -4,7 +4,7 @@ import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import { colors } from '../../theme.js';
 import { fetchMemberPhotoBlob } from '../../api/photoClient.js';
 
-export default function MemberAvatarImage({ member }) {
+export default function MemberAvatarImage({ member, size = 42 }) {
   const [fetching, setFetching] = useState(false);
   const [objectUrl, setObjectUrl] = useState(null);
   const objectUrlRef = useRef(null);
@@ -60,22 +60,22 @@ export default function MemberAvatarImage({ member }) {
 
   if (!member.photoUrl) {
     return (
-      <Avatar alt={member.fullname} sx={{ width: 42, height: 42, bgcolor: '#eef1f8', color: colors.slate }}>
+      <Avatar alt={member.fullname} sx={{ width: size, height: size, bgcolor: '#eef1f8', color: colors.slate }}>
         <PersonRoundedIcon aria-hidden="true" />
       </Avatar>
     );
   }
 
   if (fetching) {
-    return <Skeleton variant="circular" width={42} height={42} />;
+    return <Skeleton variant="circular" width={size} height={size} />;
   }
 
   if (objectUrl) {
-    return <Avatar src={objectUrl} alt={member.fullname} sx={{ width: 42, height: 42 }} />;
+    return <Avatar src={objectUrl} alt={member.fullname} sx={{ width: size, height: size }} />;
   }
 
   return (
-    <Avatar alt={member.fullname} sx={{ width: 42, height: 42, bgcolor: '#eef1f8', color: colors.slate }}>
+    <Avatar alt={member.fullname} sx={{ width: size, height: size, bgcolor: '#eef1f8', color: colors.slate }}>
       <PersonRoundedIcon aria-hidden="true" />
     </Avatar>
   );
