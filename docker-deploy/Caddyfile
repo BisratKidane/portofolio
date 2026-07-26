@@ -4,9 +4,12 @@
 {$DOMAIN} {
 	encode gzip
 
-	# GraphQL API -> backend. Path is preserved (backend serves at /graphql).
-	@graphql path /graphql /graphql/*
-	handle @graphql {
+	# API -> backend. Paths are preserved. /graphql is the GraphQL endpoint;
+	# /api/* covers the non-GraphQL photo routes (upload/serve/delete) mounted at
+	# app.use('/api', photoRouter) — these MUST be proxied or photo upload and
+	# avatar image loading 404 against the static SPA.
+	@backend path /graphql /graphql/* /api /api/*
+	handle @backend {
 		reverse_proxy backend:4000
 	}
 
