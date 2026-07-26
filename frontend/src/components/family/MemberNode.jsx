@@ -1,7 +1,9 @@
 // Custom xyflow node type rendering a FamilyMember card on the /family tree
-// (Phase 17, Plan 17-03). Matches 17-UI-SPEC.md's node anatomy contract:
-// avatar + name + years + non-color-only gender cue + viewer ring/chip +
-// descendant/ancestor hidden-count badges (D-03/D-09).
+// (Phase 17, Plan 17-03; restyled by quick task 260726-sh4). Two-column card:
+// a 1/3-width avatar column + a rows column (reserved top row, fullname,
+// birthday, mother name, address-if-alive). Preserves the non-color-only
+// gender cue + viewer ring/chip + descendant/ancestor hidden-count badges
+// (D-03/D-09).
 //
 // Receives xyflow's standard custom-node props `{ data }` where
 // `data = { member, isViewer, hiddenCount, onToggleExpand,
@@ -19,13 +21,11 @@ import MemberAvatarImage from '../manage/MemberAvatarImage.jsx';
 const MALE_TINT = '#3b82f6';
 const FEMALE_TINT = '#ec4899';
 
-function formatYears(member) {
-  const startYear = member.birthdate ? new Date(member.birthdate).getFullYear() : null;
-  const endYear = member.deathdate ? new Date(member.deathdate).getFullYear() : null;
-  if (startYear == null && endYear == null) return null;
-  if (startYear != null && endYear != null) return `${startYear}–${endYear}`;
-  if (startYear != null) return `${startYear}–`;
-  return `–${endYear}`;
+function formatDate(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString();
 }
 
 function genderMeta(gender) {
@@ -48,6 +48,8 @@ const BADGE_SX = {
   '&:hover': { bgcolor: colors.gradientSoft }
 };
 
+const ROW_SX = { fontSize: 12, fontWeight: 400, color: colors.slate };
+
 export default function MemberNode({ data }) {
   const {
     member,
@@ -58,7 +60,9 @@ export default function MemberNode({ data }) {
     onToggleAncestorExpand
   } = data;
 
-  const years = formatYears(member);
+  const birthday = formatDate(member.birthdate);
+  const motherName = member.mother?.fullname || member.mothersname;
+  const showAddress = member.deathdate == null && Boolean(member.address);
   const { label: genderLabel, tint: genderTint } = genderMeta(member.gender);
 
   return (
@@ -70,8 +74,8 @@ export default function MemberNode({ data }) {
       aria-label={`${member.fullname}, ${genderLabel}`}
       title={genderLabel}
       sx={{
-        width: 180,
-        height: 64,
+        width: 252,
+        height: 120,
         p: 0.75,
         // Gender is colour-coded on the card itself (border + soft tint).
         bgcolor: `${genderTint}14`,
@@ -79,7 +83,7 @@ export default function MemberNode({ data }) {
         borderRadius: 1,
         position: 'relative',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'stretch',
         gap: 1,
         boxSizing: 'border-box',
         outline: isViewer ? `2px solid ${colors.primary}` : 'none',
@@ -134,9 +138,24 @@ export default function MemberNode({ data }) {
         </IconButton>
       )}
 
-      <MemberAvatarImage member={member} />
+      {/* Left column: 1/3-width avatar, vertically centered. */}
+      <Box
+        sx={{
+          flex: '0 0 33%',
+          minWidth: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <MemberAvatarImage member={member} size={72} />
+      </Box>
 
-      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+      {/* Right column: reserved row + fullname + birthday + mother + address. */}
+      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+        {/* Reserved row — kept empty for a future edit action (deferred). */}
+        <Box sx={{ height: 18, flexShrink: 0 }} />
+
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
           <Typography sx={{ fontSize: 14, fontWeight: 600 }} noWrap>
             {member.fullname}
@@ -145,9 +164,22 @@ export default function MemberNode({ data }) {
             <Chip label="You" size="small" sx={{ bgcolor: colors.gradientSoft, color: colors.primaryDark }} />
           )}
         </Box>
-        {years && (
-          <Typography sx={{ fontSize: 12, fontWeight: 400, color: colors.slate }} noWrap>
-            {years}
+
+        {birthday && (
+          <Typography sx={ROW_SX} noWrap>
+            {birthday}
+          </Typography>
+        )}
+
+        {motherName && (
+          <Typography sx={ROW_SX} noWrap>
+            {motherName}
+          </Typography>
+        )}
+
+        {showAddress && (
+          <Typography sx={ROW_SX} noWrap>
+            {member.address}
           </Typography>
         )}
       </Box>

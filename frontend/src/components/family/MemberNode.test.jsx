@@ -28,7 +28,10 @@ const BASE_MEMBER = {
   fullname: 'Ada Lovelace',
   gender: 'Female',
   birthdate: '1932-01-01',
-  deathdate: '2001-06-15'
+  deathdate: '2001-06-15',
+  mother: { id: '9', fullname: 'Mary Mother' },
+  mothersname: 'Mary Mother',
+  address: '12 Elm St'
 };
 
 function renderNode(dataOverrides = {}) {
@@ -50,10 +53,64 @@ function renderNode(dataOverrides = {}) {
 }
 
 describe('MemberNode', () => {
-  it('renders the full name and birth-death years', () => {
+  it('renders the full name and the formatted birthday', () => {
     renderNode();
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
-    expect(screen.getByText('1932–2001')).toBeInTheDocument();
+    const expectedBirthday = new Date('1932-01-01').toLocaleDateString();
+    expect(screen.getByText(expectedBirthday)).toBeInTheDocument();
+  });
+
+  it('omits the birthday row when birthdate is missing or invalid', () => {
+    const { rerender } = renderNode({ member: { ...BASE_MEMBER, birthdate: null } });
+    const formattedBirthday = new Date('1932-01-01').toLocaleDateString();
+    expect(screen.queryByText(formattedBirthday)).not.toBeInTheDocument();
+
+    rerender(
+      <ReactFlowProvider>
+        <MemberNode
+          data={{
+            member: { ...BASE_MEMBER, birthdate: 'not-a-date' },
+            isViewer: false,
+            hiddenCount: 0,
+            onToggleExpand: vi.fn(),
+            ancestorHiddenCount: 0,
+            onToggleAncestorExpand: vi.fn()
+          }}
+        />
+      </ReactFlowProvider>
+    );
+    expect(screen.queryByText('Invalid Date')).not.toBeInTheDocument();
+  });
+
+  it('renders the linked mother full name, preferring it over the stored mothersname text', () => {
+    renderNode({ member: { ...BASE_MEMBER, mother: { id: '9', fullname: 'Mary Mother' }, mothersname: 'Wrong Text' } });
+    expect(screen.getByText('Mary Mother')).toBeInTheDocument();
+    expect(screen.queryByText('Wrong Text')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the stored mothersname text when no mother is linked', () => {
+    renderNode({ member: { ...BASE_MEMBER, mother: null, mothersname: 'Stored Mum' } });
+    expect(screen.getByText('Stored Mum')).toBeInTheDocument();
+  });
+
+  it('hides the mother row when neither a linked mother nor a mothersname exists', () => {
+    renderNode({ member: { ...BASE_MEMBER, mother: null, mothersname: null } });
+    expect(screen.queryByText('Mary Mother')).not.toBeInTheDocument();
+  });
+
+  it('renders the address row only when the member is alive and an address exists', () => {
+    renderNode({ member: { ...BASE_MEMBER, deathdate: null, address: '12 Elm St' } });
+    expect(screen.getByText('12 Elm St')).toBeInTheDocument();
+  });
+
+  it('hides the address row for a deceased member even when an address exists', () => {
+    renderNode({ member: { ...BASE_MEMBER, deathdate: '2001-06-15', address: '12 Elm St' } });
+    expect(screen.queryByText('12 Elm St')).not.toBeInTheDocument();
+  });
+
+  it('hides the address row for an alive member with no address', () => {
+    renderNode({ member: { ...BASE_MEMBER, deathdate: null, address: null } });
+    expect(screen.queryByText('12 Elm St')).not.toBeInTheDocument();
   });
 
   it('renders four handles (top/bottom for parent->child, left/right for the spouse connector) so both edge types can attach', () => {
@@ -73,21 +130,6 @@ describe('MemberNode', () => {
     expect(container.querySelector('[data-handleid="parent-source"]')).toBeTruthy();
     expect(container.querySelector('[data-handleid="spouse-source"]')).toBeTruthy();
     expect(container.querySelector('[data-handleid="spouse-target"]')).toBeTruthy();
-  });
-
-  it('renders only the start year with a trailing dash when deathdate is unknown', () => {
-    renderNode({ member: { ...BASE_MEMBER, deathdate: null } });
-    expect(screen.getByText('1932–')).toBeInTheDocument();
-  });
-
-  it('renders only the end year with a leading dash when birthdate is unknown', () => {
-    renderNode({ member: { ...BASE_MEMBER, birthdate: null } });
-    expect(screen.getByText('–2001')).toBeInTheDocument();
-  });
-
-  it('omits the years line entirely when both dates are unknown', () => {
-    renderNode({ member: { ...BASE_MEMBER, birthdate: null, deathdate: null } });
-    expect(screen.queryByText(/–/)).not.toBeInTheDocument();
   });
 
   it('applies a 2px solid viewer ring (outline) when isViewer is true, distinct from the You chip', () => {
