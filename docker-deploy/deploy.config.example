@@ -1,0 +1,22 @@
+# docker-deploy configuration — copy to `deploy.config` and fill in.
+# `deploy.config` is gitignored (contains your server + registry details).
+#
+#   cp deploy.config.example deploy.config
+#   $EDITOR deploy.config
+
+# ---- Docker Hub registry ----
+# Your Docker Hub username. Images are pushed to:
+#   docker.io/$DOCKERHUB_USER/portofolio-backend
+#   docker.io/$DOCKERHUB_USER/portofolio-frontend
+DOCKERHUB_USER="your-dockerhub-username"
+
+# Moving tag applied to every build (in addition to the immutable git-sha tag).
+IMAGE_TAG="latest"
+
+# ---- Target server (SSH) ----
+SERVER_SSH="root@46.224.145.10"
+REMOTE_DIR="/opt/portofolio"
+
+# ---- Public app config ----
+# DNS A record for this domain MUST point at the server so Caddy can issue TLS.
+DOMAIN="app.example.com"

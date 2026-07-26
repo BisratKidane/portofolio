@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels: { app: backend }
+spec:
+  # Keep at 1: the login/register rate limiter is in-memory per process.
+  # Scaling >1 splits its counters — move it to a shared store first.
+  replicas: 1
+  selector:
+    matchLabels: { app: backend }
+  template:
+    metadata:
+      labels: { app: backend }
+    spec:
+      containers:
+        - name: backend
+          # Remapped to docker.io/<DOCKERHUB_USER>/portofolio-backend:<tag> by kustomization.yaml
+          image: portofolio-backend:latest
+          envFrom:
+            - configMapRef: { name: portofolio-config }
+            - secretRef: { name: portofolio-secret }
+          ports:
+            - containerPort: 4000
+          readinessProbe:
+            httpGet: { path: /health, port: 4000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 4000 }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests: { cpu: "100m", memory: "192Mi" }
+            limits: { memory: "512Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector: { app: backend }
+  ports:
+    - port: 4000
+      targetPort: 4000

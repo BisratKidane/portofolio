@@ -1,0 +1,65 @@
+# Server-side stack for the scripted deploy. Unlike the repo-root compose file
+# (which BUILDS from source), this one PULLS pre-built images from Docker Hub.
+# Only Caddy is exposed publicly; it terminates TLS and routes traffic:
+#   https://$DOMAIN/graphql*  -> backend:4000
+#   https://$DOMAIN/*         -> frontend:80 (static SPA)
+# backend + mysql have no published ports (reachable only on the compose network).
+name: portofolio
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ${IMAGE_BACKEND}
+    restart: unless-stopped
+    pull_policy: always
+    env_file:
+      - remote.env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    image: ${IMAGE_FRONTEND}
+    restart: unless-stopped
+    pull_policy: always
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  mysql_data:
+  caddy_data:
+  caddy_config:

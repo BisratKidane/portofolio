@@ -1,0 +1,32 @@
+# Edit the host (2 places) to your domain. TLS assumes cert-manager with a
+# ClusterIssuer named "letsencrypt-prod" and the nginx ingress controller —
+# adjust the annotations/ingressClassName to match your cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portofolio
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: ["app.example.com"]
+      secretName: portofolio-tls
+  rules:
+    - host: app.example.com
+      http:
+        paths:
+          # More specific path first: GraphQL API -> backend.
+          - path: /graphql
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port: { number: 4000 }
+          # Everything else -> static SPA.
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { number: 80 }

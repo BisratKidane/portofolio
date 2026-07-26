@@ -1,0 +1,4 @@
+# Local, secret-bearing files — never commit these.
+deploy.config
+remote.env
+*.local

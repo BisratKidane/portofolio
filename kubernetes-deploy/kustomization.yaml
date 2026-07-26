@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: portofolio
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - mysql.yaml
+  - backend.yaml
+  - frontend.yaml
+  - ingress.yaml
+# NOTE: the Secret is intentionally NOT listed here — it is created from the
+# gitignored secret.env by deploy.sh so credentials never live in git.
+
+# Point these at your Docker Hub images. Set newName to your username and newTag
+# to the pushed tag (the main short-sha, or 'latest'). deploy.sh --build sets the
+# tag automatically; otherwise edit newTag here.
+images:
+  - name: portofolio-backend
+    newName: docker.io/your-dockerhub-username/portofolio-backend
+    newTag: latest
+  - name: portofolio-frontend
+    newName: docker.io/your-dockerhub-username/portofolio-frontend
+    newTag: latest

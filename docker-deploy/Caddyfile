@@ -1,0 +1,17 @@
+# Caddy edge proxy. {$DOMAIN} is read from the container environment.
+# Caddy automatically obtains + renews a Let's Encrypt certificate for the
+# domain (needs public ports 80 + 443 and a DNS A record pointing here).
+{$DOMAIN} {
+	encode gzip
+
+	# GraphQL API -> backend. Path is preserved (backend serves at /graphql).
+	@graphql path /graphql /graphql/*
+	handle @graphql {
+		reverse_proxy backend:4000
+	}
+
+	# Everything else -> static SPA.
+	handle {
+		reverse_proxy frontend:80
+	}
+}

@@ -1,0 +1,25 @@
+# Non-secret runtime config. Edit CLIENT_URL / CLIENT_ORIGINS / SMTP_HOST / SMTP_FROM
+# for your domain and mail relay. Secret values live in the Secret (see README).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: portofolio-config
+data:
+  NODE_ENV: "production"
+  PORT: "4000"
+  # Public URLs — must match your Ingress host.
+  CLIENT_URL: "https://app.example.com"
+  CLIENT_ORIGINS: "https://app.example.com"
+  JWT_EXPIRES_IN: "1d"
+  RESET_TOKEN_EXPIRES_MINUTES: "30"
+  # SMTP (host/port/from are not secret; user + pass live in the Secret).
+  SMTP_HOST: "smtp.example.com"
+  SMTP_PORT: "587"
+  SMTP_FROM: "no-reply@app.example.com"
+  # Database wiring (in-cluster).
+  DB_HOST: "mysql"
+  DB_PORT: "3306"
+  DB_NAME: "portofolio"
+  DB_USER: "portofolio"
+  MYSQL_DATABASE: "portofolio"
+  MYSQL_USER: "portofolio"

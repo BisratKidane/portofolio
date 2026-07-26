@@ -121,6 +121,20 @@ Docker Compose starts:
 
 4. Put a reverse proxy such as Nginx, Caddy, or a load balancer in front of the frontend/backend as needed for HTTPS and your public domain.
 
+## Production deployment (live)
+
+The app runs live at **<https://agne.bisrat.ch>**.
+
+| Concern | Detail |
+|---|---|
+| **Hosting** | A single [Hetzner](https://www.hetzner.com/) server (`46.224.145.10`), running the stack with Docker Compose. |
+| **Domain** | `agne.bisrat.ch` |
+| **Registrar / DNS** | `bisrat.ch` is registered and DNS-managed at **GoDaddy** (nameservers `ns65/ns66.domaincontrol.com`). An `A` record for `agne` points at the server IP. |
+| **TLS** | [Caddy](https://caddyserver.com/) terminates HTTPS at the edge and automatically obtains/renews a Let's Encrypt certificate. It routes `/graphql*` to the backend and everything else to the static frontend; `backend` and `mysql` have no public ports. |
+| **Email** | Transactional mail (email verification + password reset) is sent via [Resend](https://resend.com/) over SMTP. The `bisrat.ch` sending domain is verified in Resend — its DKIM, SPF, and MX records live in the GoDaddy DNS zone — and mail is sent from `no-reply@bisrat.ch`. |
+
+The production deploy is scripted in [`docker-deploy/`](docker-deploy/): a single `./deploy.sh` builds the images from `main`, pushes them to Docker Hub, then makes the server pull and restart the stack. See [`docker-deploy/README.md`](docker-deploy/README.md) for the full runbook. Server secrets live in `docker-deploy/remote.env` (gitignored); `docker-deploy/remote.env.example` documents the shape. A Kubernetes variant of the same stack lives in [`kubernetes-deploy/`](kubernetes-deploy/).
+
 ## Troubleshooting registration network errors
 
 If registration shows `Network Error`, the browser could not reach the GraphQL API. Check these items first:
@@ -170,6 +184,8 @@ In production the backend **refuses to boot** unless `SMTP_HOST`, `SMTP_USER`, a
 | `SMTP_USER` | yes | _(none)_ | SMTP username. Many providers use a literal value such as `apikey`. |
 | `SMTP_PASS` | yes | _(none)_ | SMTP password or API key. |
 | `SMTP_FROM` | no | `no-reply@portfolio.local` | Sender address. Set this to an address on a domain you control, or your relay will reject the message or it will land in spam. |
+
+**Resend shortcut (used in production):** the live deployment sends through [Resend](https://resend.com/). Setting a single `RESEND_API_KEY` is enough — the backend defaults `SMTP_HOST=smtp.resend.com` and `SMTP_USER=resend` automatically (`backend/src/config/resolveSmtpCredentials.js`); explicit `SMTP_*` values still override. To send to anyone, the sending domain must be **verified in Resend** (add the DKIM + SPF/MX records it generates to your DNS) and `SMTP_FROM` set to an address on that domain (e.g. `no-reply@bisrat.ch`).
 
 `CLIENT_URL` is used to build the reset link (`${CLIENT_URL}/reset-password?token=...`), so it must be the public URL of the frontend in production.
 
