@@ -1,0 +1,99 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import MemberFields from './MemberFields.jsx';
+
+const EMPTY_FORM = {
+  firstname: '',
+  lastname: '',
+  gender: '',
+  mothersname: '',
+  email: '',
+  birthdate: '',
+  deathdate: '',
+  phone: '',
+  address: ''
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+function renderFields(props = {}) {
+  const onChange = vi.fn();
+  const utils = render(
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <MemberFields form={EMPTY_FORM} onChange={onChange} {...props} />
+    </LocalizationProvider>
+  );
+  return { ...utils, onChange };
+}
+
+describe('MemberFields', () => {
+  it('renders every member field once', () => {
+    renderFields();
+
+    expect(screen.getByLabelText('First name', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Last name', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Gender', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText("Mother's name", { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Birthdate', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Deathdate', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Email', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Phone', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Address', { exact: false })).toBeInTheDocument();
+  });
+
+  it('calls onChange(field, value) for a text field', async () => {
+    const { onChange } = renderFields();
+
+    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'A');
+
+    expect(onChange).toHaveBeenCalledWith('firstname', 'A');
+  });
+
+  it('round-trips a stored YYYY-MM-DD birthdate string into the calendar field', () => {
+    renderFields({ form: { ...EMPTY_FORM, birthdate: '1990-05-15' } });
+
+    // dayjs default localized display is MM/DD/YYYY — proves the DATEONLY string
+    // is parsed via dayjs and shown in the DatePicker (string -> dayjs -> field).
+    expect(screen.getByLabelText('Birthdate', { exact: false })).toHaveValue('05/15/1990');
+  });
+
+  it('renders an empty date field (placeholder) for a blank date string', () => {
+    renderFields({ form: { ...EMPTY_FORM, deathdate: '' } });
+
+    // No value, no onChange on mount — the boundary treats '' as null.
+    expect(screen.getByLabelText('Deathdate', { exact: false })).toHaveValue('');
+  });
+
+  it('does not render the photo control unless withPhoto is set', () => {
+    renderFields();
+    expect(screen.queryByRole('button', { name: 'Add photo' })).not.toBeInTheDocument();
+  });
+
+  it('renders an "Add photo" control and routes a picked file to onPickPhoto when withPhoto', async () => {
+    const onPickPhoto = vi.fn();
+    renderFields({ withPhoto: true, onPickPhoto });
+
+    expect(screen.getByRole('button', { name: 'Add photo' })).toBeInTheDocument();
+
+    const file = new File(['bytes'], 'photo.jpg', { type: 'image/jpeg' });
+    const input = document.querySelector('input[type="file"]');
+    await userEvent.upload(input, file);
+
+    expect(onPickPhoto).toHaveBeenCalledTimes(1);
+    expect(onPickPhoto.mock.calls[0][0]).toBeInstanceOf(File);
+  });
+
+  it('shows "Change photo" + "Remove" when a photo is already picked', async () => {
+    const onClearPhoto = vi.fn();
+    renderFields({ withPhoto: true, photoPreviewUrl: 'blob:preview', onClearPhoto });
+
+    expect(screen.getByRole('button', { name: 'Change photo' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(onClearPhoto).toHaveBeenCalled();
+  });
+});
