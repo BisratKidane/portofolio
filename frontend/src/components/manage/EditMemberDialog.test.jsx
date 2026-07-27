@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import EditMemberDialog from './EditMemberDialog.jsx';
 
 vi.mock('../../api/graphqlClient.js', () => ({
@@ -38,7 +40,9 @@ function renderDialog(props = {}) {
   const onClose = vi.fn();
   const onSaved = vi.fn();
   const utils = render(
-    <EditMemberDialog open member={MEMBER} onClose={onClose} onSaved={onSaved} {...props} />
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <EditMemberDialog open member={MEMBER} onClose={onClose} onSaved={onSaved} {...props} />
+    </LocalizationProvider>
   );
   return { ...utils, onClose, onSaved };
 }
@@ -125,7 +129,9 @@ describe('EditMemberDialog', () => {
 
     const OTHER_MEMBER = { ...MEMBER, id: '2', firstname: 'Grace', lastname: 'Hopper' };
     rerender(
-      <EditMemberDialog open member={OTHER_MEMBER} onClose={vi.fn()} onSaved={vi.fn()} />
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <EditMemberDialog open member={OTHER_MEMBER} onClose={vi.fn()} onSaved={vi.fn()} />
+      </LocalizationProvider>
     );
 
     expect(screen.getByLabelText('First name', { exact: false })).toHaveValue('Grace');

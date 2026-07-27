@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Dialog, DialogContent, DialogTitle, MenuItem, Stack, TextField } from '@mui/material';
+import { Alert, Button, Dialog, DialogContent, DialogTitle, Stack } from '@mui/material';
 import { graphqlRequest } from '../../api/graphqlClient.js';
+import MemberFields from './MemberFields.jsx';
 
 const EDIT_MEMBER_MUTATION = `
   mutation EditMember($id: ID!, $fields: EditFamilyMemberInput!) {
@@ -47,8 +48,8 @@ export default function EditMemberDialog({ open, member, onClose, onSaved }) {
     setError('');
   }, [member, open]);
 
-  const handleFormChange = (field) => (event) => {
-    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+  const handleFieldChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleClose = () => {
@@ -79,49 +80,7 @@ export default function EditMemberDialog({ open, member, onClose, onSaved }) {
         <Stack spacing={2} sx={{ pt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}
 
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="First name"
-              required
-              value={form.firstname}
-              onChange={handleFormChange('firstname')}
-              fullWidth
-            />
-            <TextField
-              label="Last name"
-              required
-              value={form.lastname}
-              onChange={handleFormChange('lastname')}
-              fullWidth
-            />
-            <TextField
-              select
-              label="Gender"
-              required
-              value={form.gender}
-              onChange={handleFormChange('gender')}
-              fullWidth
-            >
-              <MenuItem value="Male">Male</MenuItem>
-              <MenuItem value="Female">Female</MenuItem>
-              <MenuItem value="Other">Other</MenuItem>
-            </TextField>
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField label="Email" value={form.email} onChange={handleFormChange('email')} fullWidth />
-            <TextField label="Phone" value={form.phone} onChange={handleFormChange('phone')} fullWidth />
-            <TextField label="Address" value={form.address} onChange={handleFormChange('address')} fullWidth />
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField label="Birthdate" value={form.birthdate} onChange={handleFormChange('birthdate')} fullWidth />
-            <TextField label="Deathdate" value={form.deathdate} onChange={handleFormChange('deathdate')} fullWidth />
-            <TextField
-              label="Mother's name"
-              value={form.mothersname}
-              onChange={handleFormChange('mothersname')}
-              fullWidth
-            />
-          </Stack>
+          <MemberFields form={form} onChange={handleFieldChange} />
 
           <Stack direction="row" spacing={2}>
             <Button variant="contained" disabled={disableSubmit} onClick={handleSubmit}>
