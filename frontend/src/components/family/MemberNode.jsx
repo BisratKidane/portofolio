@@ -62,7 +62,7 @@ export default function MemberNode({ data }) {
 
   const birthday = formatDate(member.birthdate);
   const motherName = member.mother?.fullname || member.mothersname;
-  const showAddress = member.deathdate == null && Boolean(member.address);
+  const showAddress = member.isAlive !== false && Boolean(member.address);
   const { label: genderLabel, tint: genderTint } = genderMeta(member.gender);
 
   return (

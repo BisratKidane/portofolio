@@ -20,9 +20,15 @@ import MemberDetailPanel from '../components/family/MemberDetailPanel.jsx';
 const FAMILY_TREE_QUERY = `
   query FamilyTree {
     familyMembers {
-      id firstname lastname fullname gender birthdate deathdate photoUrl mothersname address
+      id firstname lastname fullname gender birthdate isAlive photoUrl mothersname address
       mother { id fullname } father { id } spouses { id } children { id }
     }
+  }
+`;
+
+const TOGGLE_ALIVE_MUTATION = `
+  mutation ToggleAlive($id: ID!, $fields: EditFamilyMemberInput!) {
+    editMember(id: $id, fields: $fields) { id isAlive }
   }
 `;
 
@@ -45,6 +51,21 @@ export default function FamilyTreePage() {
   useEffect(() => {
     refetch();
   }, [refetch]);
+
+  const isAdmin = user?.role === 'ADMIN';
+
+  // Admin isAlive toggle from the detail panel: flip the boolean, then patch the
+  // single member in place so the drawer stays open and the tree re-renders
+  // without a full-page reload.
+  const handleToggleAlive = useCallback(async (member) => {
+    const { editMember } = await graphqlRequest(TOGGLE_ALIVE_MUTATION, {
+      id: member.id,
+      fields: { isAlive: member.isAlive === false }
+    });
+    setMembers((prev) =>
+      prev.map((m) => (String(m.id) === String(member.id) ? { ...m, isAlive: editMember.isAlive } : m))
+    );
+  }, []);
 
   const membersById = useMemo(() => new Map(members.map((member) => [String(member.id), member])), [members]);
 
@@ -110,6 +131,8 @@ export default function FamilyTreePage() {
         member={membersById.get(selectedMemberId)}
         membersById={membersById}
         onClose={() => setSelectedMemberId(null)}
+        canToggleAlive={isAdmin}
+        onToggleAlive={handleToggleAlive}
       />
     </Box>
   );

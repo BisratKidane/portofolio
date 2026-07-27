@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Avatar, Box, Button, MenuItem, Stack, TextField } from '@mui/material';
+import { Avatar, Box, Button, FormControlLabel, MenuItem, Stack, Switch, TextField } from '@mui/material';
 import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs from 'dayjs';
@@ -128,18 +128,22 @@ export default function MemberFields({
         />
       </Stack>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
         <DatePicker
           label="Birthdate"
           value={form.birthdate ? dayjs(form.birthdate) : null}
           onChange={handleDateChange('birthdate')}
           slotProps={{ textField: { fullWidth: true } }}
         />
-        <DatePicker
-          label="Deathdate"
-          value={form.deathdate ? dayjs(form.deathdate) : null}
-          onChange={handleDateChange('deathdate')}
-          slotProps={{ textField: { fullWidth: true } }}
+        <FormControlLabel
+          sx={{ flex: 1, m: 0, justifyContent: 'flex-start' }}
+          control={
+            <Switch
+              checked={form.isAlive !== false}
+              onChange={(event) => onChange('isAlive', event.target.checked)}
+            />
+          }
+          label={form.isAlive !== false ? 'Living' : 'Deceased'}
         />
       </Stack>
 

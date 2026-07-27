@@ -28,7 +28,7 @@ const BASE_MEMBER = {
   fullname: 'Ada Lovelace',
   gender: 'Female',
   birthdate: '1932-01-01',
-  deathdate: '2001-06-15',
+  isAlive: false,
   mother: { id: '9', fullname: 'Mary Mother' },
   mothersname: 'Mary Mother',
   address: '12 Elm St'
@@ -99,17 +99,17 @@ describe('MemberNode', () => {
   });
 
   it('renders the address row only when the member is alive and an address exists', () => {
-    renderNode({ member: { ...BASE_MEMBER, deathdate: null, address: '12 Elm St' } });
+    renderNode({ member: { ...BASE_MEMBER, isAlive: true, address: '12 Elm St' } });
     expect(screen.getByText('12 Elm St')).toBeInTheDocument();
   });
 
   it('hides the address row for a deceased member even when an address exists', () => {
-    renderNode({ member: { ...BASE_MEMBER, deathdate: '2001-06-15', address: '12 Elm St' } });
+    renderNode({ member: { ...BASE_MEMBER, isAlive: false, address: '12 Elm St' } });
     expect(screen.queryByText('12 Elm St')).not.toBeInTheDocument();
   });
 
   it('hides the address row for an alive member with no address', () => {
-    renderNode({ member: { ...BASE_MEMBER, deathdate: null, address: null } });
+    renderNode({ member: { ...BASE_MEMBER, isAlive: true, address: null } });
     expect(screen.queryByText('12 Elm St')).not.toBeInTheDocument();
   });
 

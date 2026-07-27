@@ -6,7 +6,7 @@ import MemberFields from './MemberFields.jsx';
 const EDIT_MEMBER_MUTATION = `
   mutation EditMember($id: ID!, $fields: EditFamilyMemberInput!) {
     editMember(id: $id, fields: $fields) {
-      id firstname lastname fullname gender mothersname email birthdate deathdate phone address
+      id firstname lastname fullname gender mothersname email birthdate isAlive phone address
     }
   }
 `;
@@ -18,7 +18,7 @@ const EMPTY_FORM = {
   mothersname: '',
   email: '',
   birthdate: '',
-  deathdate: '',
+  isAlive: true,
   phone: '',
   address: ''
 };
@@ -32,7 +32,7 @@ function formFromMember(member) {
     mothersname: member.mothersname ?? '',
     email: member.email ?? '',
     birthdate: member.birthdate ?? '',
-    deathdate: member.deathdate ?? '',
+    isAlive: member.isAlive ?? true,
     phone: member.phone ?? '',
     address: member.address ?? ''
   };

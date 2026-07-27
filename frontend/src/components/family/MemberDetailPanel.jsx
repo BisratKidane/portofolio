@@ -3,7 +3,7 @@
 // (membersById, passed down by FamilyTreePage) -- no new network call, no
 // edit affordances (D-08).
 
-import { Box, Drawer, IconButton, Stack, Typography } from '@mui/material';
+import { Box, Button, Chip, Drawer, IconButton, Stack, Typography } from '@mui/material';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { colors } from '../../theme.js';
 import { deriveSiblings } from './familyTree.assembly.js';
@@ -13,16 +13,11 @@ function idOrNull(ref) {
   return ref?.id != null ? String(ref.id) : null;
 }
 
-// Same year-formatting shape as MemberNode.jsx's formatYears, but this panel
-// falls back to an explicit "Dates unknown" string (UI-SPEC copy) instead of
-// omitting the line entirely.
-function formatDates(member) {
+// Birth year only (death dates are no longer tracked — living status is a
+// boolean). Falls back to the explicit "Dates unknown" UI-SPEC copy.
+function formatBirth(member) {
   const startYear = member.birthdate ? new Date(member.birthdate).getFullYear() : null;
-  const endYear = member.deathdate ? new Date(member.deathdate).getFullYear() : null;
-  if (startYear == null && endYear == null) return 'Dates unknown';
-  if (startYear != null && endYear != null) return `${startYear}–${endYear}`;
-  if (startYear != null) return `${startYear}–`;
-  return `–${endYear}`;
+  return startYear != null ? `Born ${startYear}` : 'Dates unknown';
 }
 
 function resolveRefs(refs, membersById) {
@@ -55,8 +50,17 @@ function RelationshipSection({ title, members, emptyLabel }) {
   );
 }
 
-export default function MemberDetailPanel({ open, member, membersById, onClose }) {
+export default function MemberDetailPanel({
+  open,
+  member,
+  membersById,
+  onClose,
+  canToggleAlive = false,
+  onToggleAlive
+}) {
   if (!open || !member) return null;
+
+  const isAlive = member.isAlive !== false;
 
   const parents = [member.mother, member.father]
     .map((ref) => idOrNull(ref))
@@ -88,9 +92,27 @@ export default function MemberDetailPanel({ open, member, membersById, onClose }
                 <CloseRoundedIcon />
               </IconButton>
             </Stack>
-            <Typography sx={{ mt: 2 }} color="text.secondary" variant="body2">
-              {formatDates(member)}
-            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2 }}>
+              <Typography color="text.secondary" variant="body2">
+                {formatBirth(member)}
+              </Typography>
+              <Chip
+                size="small"
+                label={isAlive ? 'Living' : 'Deceased'}
+                color={isAlive ? 'success' : 'default'}
+                variant="outlined"
+              />
+            </Stack>
+            {canToggleAlive && (
+              <Button
+                size="small"
+                variant="outlined"
+                sx={{ mt: 1.5 }}
+                onClick={() => onToggleAlive && onToggleAlive(member)}
+              >
+                {isAlive ? 'Mark as deceased' : 'Mark as living'}
+              </Button>
+            )}
             {member.phone && (
               <Typography sx={{ mt: 1 }} variant="body2">
                 {member.phone}

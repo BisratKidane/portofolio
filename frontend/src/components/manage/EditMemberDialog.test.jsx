@@ -14,7 +14,7 @@ import { graphqlRequest } from '../../api/graphqlClient.js';
 const EDIT_MEMBER_MUTATION = `
   mutation EditMember($id: ID!, $fields: EditFamilyMemberInput!) {
     editMember(id: $id, fields: $fields) {
-      id firstname lastname fullname gender mothersname email birthdate deathdate phone address
+      id firstname lastname fullname gender mothersname email birthdate isAlive phone address
     }
   }
 `;
@@ -27,7 +27,7 @@ const MEMBER = {
   mothersname: 'Jane Doe',
   email: 'ada@example.com',
   birthdate: '1815-12-10',
-  deathdate: '',
+  isAlive: true,
   phone: '555-1234',
   address: '1 Main St'
 };
@@ -86,7 +86,7 @@ describe('EditMemberDialog', () => {
           mothersname: 'Jane Doe',
           email: 'ada@example.com',
           birthdate: '1815-12-10',
-          deathdate: '',
+          isAlive: true,
           phone: '555-1234',
           address: '1 Main St'
         }

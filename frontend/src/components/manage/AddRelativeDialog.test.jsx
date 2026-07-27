@@ -129,7 +129,7 @@ describe('AddRelativeDialog - parent', () => {
           mothersname: '',
           email: '',
           birthdate: '',
-          deathdate: '',
+          isAlive: true,
           phone: '',
           address: ''
         }
@@ -170,7 +170,7 @@ describe('AddRelativeDialog - spouse', () => {
           mothersname: '',
           email: '',
           birthdate: '',
-          deathdate: '',
+          isAlive: true,
           phone: '',
           address: ''
         }
@@ -299,7 +299,7 @@ describe('AddRelativeDialog - child', () => {
           mothersname: '',
           email: '',
           birthdate: '',
-          deathdate: '',
+          isAlive: true,
           phone: '',
           address: ''
         },
@@ -402,7 +402,7 @@ describe('AddRelativeDialog - sibling', () => {
           mothersname: '',
           email: '',
           birthdate: '',
-          deathdate: '',
+          isAlive: true,
           phone: '',
           address: ''
         }

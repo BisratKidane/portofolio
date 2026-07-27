@@ -30,7 +30,7 @@ import PhotoCropDialog from '../components/manage/PhotoCropDialog.jsx';
 const MY_EDITABLE_MEMBERS_QUERY = `
   query MyEditableMembers {
     myEditableMembers {
-      id firstname lastname fullname gender birthdate deathdate phone email address photoUrl
+      id firstname lastname fullname gender birthdate isAlive phone email address photoUrl
       mother { id siblings { id fullname gender birthdate photoUrl } }
       father { id siblings { id fullname gender birthdate photoUrl } }
       spouses { id fullname } children { id fullname } siblings { id fullname }
@@ -41,7 +41,17 @@ const MY_EDITABLE_MEMBERS_QUERY = `
 
 const FAMILY_MEMBERS_QUERY = `
   query FamilyMembersTable {
-    familyMembers { id firstname lastname fullname gender birthdate photoUrl linkedUser { id name email } }
+    familyMembers {
+      id firstname lastname fullname gender birthdate isAlive photoUrl
+      linkedUser { id name email }
+      createdBy { id name } updatedBy { id name } createdAt updatedAt
+    }
+  }
+`;
+
+const TOGGLE_ALIVE_MUTATION = `
+  mutation ToggleAlive($id: ID!, $fields: EditFamilyMemberInput!) {
+    editMember(id: $id, fields: $fields) { id isAlive updatedAt updatedBy { id name } }
   }
 `;
 
@@ -54,7 +64,7 @@ const FAMILY_MEMBERS_QUERY = `
 const FAMILY_MEMBER_FOCUS_QUERY = `
   query FamilyMemberFocus($id: ID!) {
     familyMember(id: $id) {
-      id firstname lastname fullname gender birthdate deathdate phone email address photoUrl
+      id firstname lastname fullname gender birthdate isAlive phone email address photoUrl
       mother { id fullname siblings { id fullname gender birthdate photoUrl } }
       father { id fullname siblings { id fullname gender birthdate photoUrl } }
       spouses { id fullname } children { id fullname } siblings { id fullname }
@@ -88,7 +98,7 @@ const EMPTY_LINK_FORM = {
   mothersname: '',
   email: '',
   birthdate: '',
-  deathdate: '',
+  isAlive: true,
   phone: '',
   address: ''
 };
@@ -512,6 +522,22 @@ function AdminBranch({ user }) {
     return graphqlRequest(FAMILY_MEMBERS_QUERY).then((data) => setMembers(data.familyMembers));
   }, []);
 
+  // Admin isAlive toggle from the members table: flip the flag and patch the
+  // row (incl. the refreshed "last edited by" provenance) in place.
+  const handleToggleMemberAlive = useCallback(async (member) => {
+    const { editMember } = await graphqlRequest(TOGGLE_ALIVE_MUTATION, {
+      id: member.id,
+      fields: { isAlive: member.isAlive === false }
+    });
+    setMembers((prev) =>
+      prev.map((m) =>
+        String(m.id) === String(member.id)
+          ? { ...m, isAlive: editMember.isAlive, updatedAt: editMember.updatedAt, updatedBy: editMember.updatedBy }
+          : m
+      )
+    );
+  }, []);
+
   useEffect(() => {
     setPageLoading(true);
     Promise.all([graphqlRequest(FAMILY_MEMBERS_QUERY), graphqlRequest(UNLINKED_USERS_QUERY)])
@@ -600,7 +626,7 @@ function AdminBranch({ user }) {
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={4} alignItems="flex-start">
         {/* Left: list + search */}
         <Box sx={{ width: '100%', flex: { lg: '0 0 32%' }, minWidth: 0 }}>
-          <AdminMemberTable members={members} onSelect={handleFocus} />
+          <AdminMemberTable members={members} onSelect={handleFocus} onToggleAlive={handleToggleMemberAlive} />
         </Box>
 
         {/* Middle: selected member's edit panel (uncles/aunts live in the right column) */}

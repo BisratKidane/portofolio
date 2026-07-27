@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Box,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -9,9 +10,33 @@ import {
   TablePagination,
   TableRow,
   TextField,
+  Tooltip,
   Typography
 } from '@mui/material';
 import MemberAvatarImage from './MemberAvatarImage.jsx';
+
+function formatWhen(value) {
+  if (!value) return null;
+  const ms = Number.isNaN(Number(value)) ? Date.parse(value) : Number(value);
+  if (Number.isNaN(ms)) return null;
+  return new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// Compact provenance cell: "name" over the date it happened. Admin-only data —
+// createdBy/updatedBy are already null for non-admins server-side.
+function Provenance({ who, when }) {
+  const date = formatWhen(when);
+  return (
+    <Box>
+      <Typography variant="body2" noWrap>{who?.name || '—'}</Typography>
+      {date && (
+        <Typography variant="caption" color="text.secondary" noWrap>
+          {date}
+        </Typography>
+      )}
+    </Box>
+  );
+}
 
 // Gender is no longer its own column — the avatar already conveys it. Instead the
 // member's NAME is colour-coded: blue for Male, orange for Female (matching the
@@ -21,7 +46,7 @@ function nameColor(gender) {
   return NAME_COLOR[gender] || 'text.primary';
 }
 
-export default function AdminMemberTable({ members, onSelect }) {
+export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -65,7 +90,10 @@ export default function AdminMemberTable({ members, onSelect }) {
                 <TableCell sx={{ width: 56 }} />
                 <TableCell>Name</TableCell>
                 <TableCell>Born</TableCell>
+                <TableCell>Living</TableCell>
                 <TableCell>Linked account</TableCell>
+                <TableCell>Added by</TableCell>
+                <TableCell>Last edited by</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -85,7 +113,19 @@ export default function AdminMemberTable({ members, onSelect }) {
                     </Typography>
                   </TableCell>
                   <TableCell>{member.birthdate || '—'}</TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()} sx={{ cursor: 'default' }}>
+                    <Tooltip title={member.isAlive !== false ? 'Living — click to mark deceased' : 'Deceased — click to mark living'}>
+                      <Switch
+                        size="small"
+                        checked={member.isAlive !== false}
+                        onChange={() => onToggleAlive && onToggleAlive(member)}
+                        inputProps={{ 'aria-label': `Toggle living status for ${member.fullname}` }}
+                      />
+                    </Tooltip>
+                  </TableCell>
                   <TableCell>{member.linkedUser ? member.linkedUser.name : '—'}</TableCell>
+                  <TableCell><Provenance who={member.createdBy} when={member.createdAt} /></TableCell>
+                  <TableCell><Provenance who={member.updatedBy} when={member.updatedAt} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -46,7 +46,7 @@ const EMPTY_FORM = {
   mothersname: '',
   email: '',
   birthdate: '',
-  deathdate: '',
+  isAlive: true,
   phone: '',
   address: ''
 };

@@ -107,4 +107,40 @@ describe('AdminMemberTable', () => {
 
     expect(container.querySelectorAll('.MuiAvatar-root')).toHaveLength(MEMBERS.length);
   });
+
+  it('renders a living toggle that calls onToggleAlive (without selecting the row)', async () => {
+    const onToggleAlive = vi.fn();
+    const onSelect = vi.fn();
+    render(<AdminMemberTable members={MEMBERS} onSelect={onSelect} onToggleAlive={onToggleAlive} />);
+
+    const toggle = screen.getByLabelText('Toggle living status for Ada Lovelace');
+    expect(toggle).toBeChecked(); // undefined isAlive treated as living
+    await userEvent.click(toggle);
+
+    expect(onToggleAlive).toHaveBeenCalledWith(MEMBERS[0]);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('reflects a deceased member as an unchecked toggle', () => {
+    render(
+      <AdminMemberTable
+        members={[{ ...MEMBERS[0], isAlive: false }]}
+        onSelect={vi.fn()}
+        onToggleAlive={vi.fn()}
+      />
+    );
+    expect(screen.getByLabelText('Toggle living status for Ada Lovelace')).not.toBeChecked();
+  });
+
+  it('shows added-by / last-edited-by provenance', () => {
+    render(
+      <AdminMemberTable
+        members={[{ ...MEMBERS[0], createdBy: { id: '9', name: 'Root Admin' }, updatedBy: { id: '9', name: 'Grace H' } }]}
+        onSelect={vi.fn()}
+      />
+    );
+    expect(screen.getByRole('columnheader', { name: 'Added by' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Last edited by' })).toBeInTheDocument();
+    expect(screen.getByText('Root Admin')).toBeInTheDocument();
+  });
 });

@@ -77,7 +77,7 @@ const ADA = {
   fullname: 'Ada Lovelace',
   gender: 'Female',
   birthdate: null,
-  deathdate: null,
+  isAlive: true,
   photoUrl: null,
   mother: null,
   father: null,

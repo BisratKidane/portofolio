@@ -12,7 +12,7 @@ const EMPTY_FORM = {
   mothersname: '',
   email: '',
   birthdate: '',
-  deathdate: '',
+  isAlive: true,
   phone: '',
   address: ''
 };
@@ -40,7 +40,7 @@ describe('MemberFields', () => {
     expect(screen.getByLabelText('Gender', { exact: false })).toBeInTheDocument();
     expect(screen.getByLabelText("Mother's name", { exact: false })).toBeInTheDocument();
     expect(screen.getByLabelText('Birthdate', { exact: false })).toBeInTheDocument();
-    expect(screen.getByLabelText('Deathdate', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Living')).toBeInTheDocument();
     expect(screen.getByLabelText('Email', { exact: false })).toBeInTheDocument();
     expect(screen.getByLabelText('Phone', { exact: false })).toBeInTheDocument();
     expect(screen.getByLabelText('Address', { exact: false })).toBeInTheDocument();
@@ -62,11 +62,19 @@ describe('MemberFields', () => {
     expect(screen.getByLabelText('Birthdate', { exact: false })).toHaveValue('05/15/1990');
   });
 
-  it('renders an empty date field (placeholder) for a blank date string', () => {
-    renderFields({ form: { ...EMPTY_FORM, deathdate: '' } });
+  it('reflects isAlive on the Living switch and toggles it via onChange', async () => {
+    const { onChange } = renderFields({ form: { ...EMPTY_FORM, isAlive: true } });
 
-    // No value, no onChange on mount — the boundary treats '' as null.
-    expect(screen.getByLabelText('Deathdate', { exact: false })).toHaveValue('');
+    const living = screen.getByLabelText('Living');
+    expect(living).toBeChecked();
+
+    await userEvent.click(living);
+    expect(onChange).toHaveBeenCalledWith('isAlive', false);
+  });
+
+  it('labels the switch "Deceased" when isAlive is false', () => {
+    renderFields({ form: { ...EMPTY_FORM, isAlive: false } });
+    expect(screen.getByLabelText('Deceased')).not.toBeChecked();
   });
 
   it('does not render the photo control unless withPhoto is set', () => {

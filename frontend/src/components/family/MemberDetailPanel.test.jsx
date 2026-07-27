@@ -12,7 +12,7 @@ const SELF = {
   fullname: 'Ada Lovelace',
   gender: 'Female',
   birthdate: '1815-12-10',
-  deathdate: '1852-11-27',
+  isAlive: false,
   phone: null,
   address: null,
   mother: { id: '2' },
@@ -27,7 +27,7 @@ const MOTHER = {
   fullname: 'Grace Hopper',
   gender: 'Female',
   birthdate: null,
-  deathdate: null,
+  isAlive: true,
   mother: null,
   father: null,
   spouses: [],
@@ -39,7 +39,7 @@ const CHILD = {
   fullname: 'Byron Lovelace',
   gender: 'Male',
   birthdate: null,
-  deathdate: null,
+  isAlive: true,
   mother: { id: '1' },
   father: null,
   spouses: [],
@@ -74,18 +74,35 @@ describe('MemberDetailPanel', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows the member name, gender, and formatted dates when open', () => {
+  it('shows the member name, gender, birth year, and living status when open', () => {
     renderPanel();
 
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
     expect(screen.getByText('Female')).toBeInTheDocument();
-    expect(screen.getByText('1815–1852')).toBeInTheDocument();
+    expect(screen.getByText('Born 1815')).toBeInTheDocument();
+    expect(screen.getByText('Deceased')).toBeInTheDocument();
   });
 
-  it('shows "Dates unknown" when both birthdate and deathdate are null', () => {
+  it('shows "Dates unknown" and a Living chip for an alive member with no birthdate', () => {
     renderPanel({ member: MOTHER, membersById: buildMembersById([SELF, MOTHER, CHILD]) });
 
     expect(screen.getByText('Dates unknown')).toBeInTheDocument();
+    expect(screen.getByText('Living')).toBeInTheDocument();
+  });
+
+  it('shows no isAlive toggle unless canToggleAlive is set', () => {
+    renderPanel();
+    expect(screen.queryByRole('button', { name: /mark as/i })).not.toBeInTheDocument();
+  });
+
+  it('renders an admin isAlive toggle that calls onToggleAlive with the member', async () => {
+    const onToggleAlive = vi.fn();
+    // SELF is deceased -> the toggle offers to mark them living.
+    renderPanel({ canToggleAlive: true, onToggleAlive });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mark as living' }));
+
+    expect(onToggleAlive).toHaveBeenCalledWith(SELF);
   });
 
   it('resolves Parents and Children sections from membersById, and shows "No recorded spouse" for an empty group', () => {

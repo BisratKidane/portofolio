@@ -42,7 +42,7 @@ const SELF_ROW = {
   fullname: 'Ada Lovelace',
   gender: 'Female',
   birthdate: null,
-  deathdate: null,
+  isAlive: true,
   phone: null,
   email: null,
   address: null,
@@ -291,7 +291,7 @@ const ADMIN_FOCUS_ROW = {
   fullname: 'Ada Lovelace',
   gender: 'Female',
   birthdate: null,
-  deathdate: null,
+  isAlive: true,
   phone: null,
   email: null,
   address: null,
@@ -577,7 +577,7 @@ describe('ManagePage (admin branch — account linking, MNG-03)', () => {
           mothersname: '',
           email: '',
           birthdate: '',
-          deathdate: '',
+          isAlive: true,
           phone: '',
           address: ''
         }
