@@ -132,15 +132,15 @@ describe('AdminMemberTable', () => {
     expect(screen.getByLabelText('Toggle living status for Ada Lovelace')).not.toBeChecked();
   });
 
-  it('shows added-by / last-edited-by provenance', () => {
+  it('shows last-edited-by provenance (no Added-by column)', () => {
     render(
       <AdminMemberTable
-        members={[{ ...MEMBERS[0], createdBy: { id: '9', name: 'Root Admin' }, updatedBy: { id: '9', name: 'Grace H' } }]}
+        members={[{ ...MEMBERS[0], createdBy: { id: '9', name: 'Root Admin' }, updatedBy: { id: '8', name: 'Grace H' } }]}
         onSelect={vi.fn()}
       />
     );
-    expect(screen.getByRole('columnheader', { name: 'Added by' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Added by' })).not.toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Last edited by' })).toBeInTheDocument();
-    expect(screen.getByText('Root Admin')).toBeInTheDocument();
+    expect(screen.getByText('Grace H')).toBeInTheDocument();
   });
 });

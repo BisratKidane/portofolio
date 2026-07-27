@@ -92,7 +92,6 @@ export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
                 <TableCell>Born</TableCell>
                 <TableCell>Living</TableCell>
                 <TableCell>Linked account</TableCell>
-                <TableCell>Added by</TableCell>
                 <TableCell>Last edited by</TableCell>
               </TableRow>
             </TableHead>
@@ -124,7 +123,6 @@ export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
                     </Tooltip>
                   </TableCell>
                   <TableCell>{member.linkedUser ? member.linkedUser.name : '—'}</TableCell>
-                  <TableCell><Provenance who={member.createdBy} when={member.createdAt} /></TableCell>
                   <TableCell><Provenance who={member.updatedBy} when={member.updatedAt} /></TableCell>
                 </TableRow>
               ))}
