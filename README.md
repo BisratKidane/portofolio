@@ -130,10 +130,42 @@ The app runs live at **<https://agne.bisrat.ch>**.
 | **Hosting** | A single [Hetzner](https://www.hetzner.com/) server (`46.224.145.10`), running the stack with Docker Compose. |
 | **Domain** | `agne.bisrat.ch` |
 | **Registrar / DNS** | `bisrat.ch` is registered and DNS-managed at **GoDaddy** (nameservers `ns65/ns66.domaincontrol.com`). An `A` record for `agne` points at the server IP. |
-| **TLS** | [Caddy](https://caddyserver.com/) terminates HTTPS at the edge and automatically obtains/renews a Let's Encrypt certificate. It routes `/graphql*` to the backend and everything else to the static frontend; `backend` and `mysql` have no public ports. |
+| **TLS** | [Caddy](https://caddyserver.com/) terminates HTTPS at the edge and automatically obtains/renews a Let's Encrypt certificate. It routes `/graphql*` to the backend and everything else to the static frontend; `backend` has no published ports and `mysql` is published only on the server's loopback (see below). |
 | **Email** | Transactional mail (email verification + password reset) is sent via [Resend](https://resend.com/) over SMTP. The `bisrat.ch` sending domain is verified in Resend — its DKIM, SPF, and MX records live in the GoDaddy DNS zone — and mail is sent from `no-reply@bisrat.ch`. |
 
 The production deploy is scripted in [`docker-deploy/`](docker-deploy/): a single `./deploy.sh` builds the images from `main`, pushes them to Docker Hub, then makes the server pull and restart the stack. See [`docker-deploy/README.md`](docker-deploy/README.md) for the full runbook. Server secrets live in `docker-deploy/remote.env` (gitignored); `docker-deploy/remote.env.example` documents the shape. A Kubernetes variant of the same stack lives in [`kubernetes-deploy/`](kubernetes-deploy/).
+
+## Connecting to the production database
+
+The MySQL container is **not** exposed to the public internet. In `docker-deploy/docker-compose.yml` it is published only on the server's loopback:
+
+```yaml
+mysql:
+  ports:
+    - "127.0.0.1:3306:3306"   # loopback-only — NOT "3306:3306"
+```
+
+The `127.0.0.1:` prefix is load-bearing: `"3306:3306"` alone binds `0.0.0.0` and would expose the database to the world. Because it is loopback-only, the only way in is an **SSH tunnel** through the server. This works out of the box with a GUI client such as [Beekeeper Studio](https://www.beekeeperstudio.io/) (built-in SSH tunnel support):
+
+| Setting | Value |
+|---|---|
+| Connection type | MySQL |
+| Host / Port | `127.0.0.1` / `3306` (resolved *from the server*) |
+| Database | `portofolio` |
+| User | `portofolio` |
+| Password | value of `MYSQL_PASSWORD` / `DB_PASSWORD` in `docker-deploy/remote.env` |
+| **SSH Tunnel** | Enabled |
+| SSH Host / Port | `46.224.145.10` / `22` |
+| SSH User | `root` |
+| SSH Auth | the same SSH key used to deploy |
+
+Prefer the command line? Open the tunnel yourself and point any client at `127.0.0.1:3307`:
+
+```bash
+ssh -L 3307:127.0.0.1:3306 root@46.224.145.10
+# then, in another terminal:
+mysql -h 127.0.0.1 -P 3307 -u portofolio -p portofolio
+```
 
 ## Troubleshooting registration network errors
 

@@ -10,6 +10,13 @@ services:
   mysql:
     image: mysql:8.4
     restart: unless-stopped
+    # Loopback-only publish so the DB is reachable via an SSH tunnel
+    # (e.g. Beekeeper Studio) but NEVER exposed to the public internet.
+    # The 127.0.0.1: prefix is load-bearing — "3306:3306" alone would
+    # bind 0.0.0.0 and expose MySQL to the world. See README "Connecting
+    # to the production database".
+    ports:
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}

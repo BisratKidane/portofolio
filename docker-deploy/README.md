@@ -84,6 +84,19 @@ docker compose --env-file remote.env logs -f backend
 docker compose --env-file remote.env down       # stop the stack
 ```
 
+### Connect a local DB client (SSH tunnel)
+
+MySQL is published only on the server's loopback (`127.0.0.1:3306:3306`), so it is
+reachable via an SSH tunnel but never from the public internet. With a GUI client
+like Beekeeper Studio, enable its **SSH Tunnel** (SSH host = the server, SSH user =
+`root`) and point the connection at `127.0.0.1:3306` / db `portofolio` / user
+`portofolio` (password = `MYSQL_PASSWORD` in `remote.env`). Or from a shell:
+
+```bash
+ssh -L 3307:127.0.0.1:3306 <SERVER_SSH>
+mysql -h 127.0.0.1 -P 3307 -u portofolio -p portofolio   # in another terminal
+```
+
 ## Notes
 
 - **Single backend instance** — the login/register rate limiter is in-memory per
