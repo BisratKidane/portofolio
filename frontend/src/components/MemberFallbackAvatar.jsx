@@ -8,8 +8,8 @@
 // the node's aria-label, so this is aria-hidden and carries no accessible name.
 // Gender is exposed for tests via `data-gender`.
 
-import avatarMale from '../assets/avatar-male.jpeg';
-import avatarFemale from '../assets/avatar-female.jpeg';
+import avatarMale from '../assets/avatar-male.png';
+import avatarFemale from '../assets/avatar-female.png';
 
 const GENDER_IMAGE = {
   Male: avatarMale,
