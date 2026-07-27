@@ -12,6 +12,9 @@ export default function AppLayout() {
   // max-width, padded content container and fills the whole window below the
   // nav so it can show as much of the tree as possible.
   const isFullBleed = pathname === '/family';
+  // /manage uses the full page width (not the lg-centered column) so its
+  // two-column list + edit layout has room to breathe.
+  const isWide = pathname === '/manage';
 
   const handleLogout = async () => {
     await logout();
@@ -94,7 +97,7 @@ export default function AppLayout() {
         {isFullBleed ? (
           <Outlet />
         ) : (
-          <Container maxWidth="lg" sx={{ py: { xs: 4, md: 7 } }}>
+          <Container maxWidth={isWide ? false : 'lg'} sx={{ py: { xs: 4, md: 7 } }}>
             <Outlet />
           </Container>
         )}

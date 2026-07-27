@@ -55,10 +55,12 @@ describe('AdminMemberTable', () => {
     render(<AdminMemberTable members={MEMBERS} onSelect={vi.fn()} />);
 
     expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Born' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Linked account' })).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Gender' })).not.toBeInTheDocument();
     expect(screen.getByText('Grace H')).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    // '—' now appears for empty Born and empty Linked-account cells.
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
 
   it('renders MUI TablePagination navigation controls', () => {

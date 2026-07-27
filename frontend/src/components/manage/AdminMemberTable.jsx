@@ -64,6 +64,7 @@ export default function AdminMemberTable({ members, onSelect }) {
               <TableRow>
                 <TableCell sx={{ width: 56 }} />
                 <TableCell>Name</TableCell>
+                <TableCell>Born</TableCell>
                 <TableCell>Linked account</TableCell>
               </TableRow>
             </TableHead>
@@ -83,6 +84,7 @@ export default function AdminMemberTable({ members, onSelect }) {
                       {member.fullname}
                     </Typography>
                   </TableCell>
+                  <TableCell>{member.birthdate || '—'}</TableCell>
                   <TableCell>{member.linkedUser ? member.linkedUser.name : '—'}</TableCell>
                 </TableRow>
               ))}

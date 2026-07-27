@@ -56,7 +56,7 @@ export default function RelationshipGroupedPanel({
   onPickPhoto,
   onRemovePhoto
 }) {
-  const { self, parents, spouses, children, siblings } = scope;
+  const { self, parents, spouses, children, siblings, unclesAunts = [] } = scope;
 
   const allCoreEmpty = parents.length === 0 && spouses.length === 0 && children.length === 0;
 
@@ -80,6 +80,18 @@ export default function RelationshipGroupedPanel({
               onRemovePhoto={onRemovePhoto}
             />
           </Box>
+        </Box>
+
+        <Box sx={{ px: { xs: 3, md: 4 }, py: 3 }}>
+          <Typography variant="h6">Uncles &amp; Aunts</Typography>
+          {unclesAunts.length === 0 ? (
+            <Typography color="text.secondary" variant="body2" sx={{ mt: 2 }}>
+              None yet — uncles and aunts are the siblings of the parents. Add siblings to a parent
+              to fill them in and spot who&apos;s missing.
+            </Typography>
+          ) : (
+            <MemberRows members={unclesAunts} isDerived {...rowProps} />
+          )}
         </Box>
 
         {allCoreEmpty && (

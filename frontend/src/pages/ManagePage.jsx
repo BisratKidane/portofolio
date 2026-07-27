@@ -31,7 +31,8 @@ const MY_EDITABLE_MEMBERS_QUERY = `
   query MyEditableMembers {
     myEditableMembers {
       id firstname lastname fullname gender birthdate deathdate phone email address photoUrl
-      mother { id } father { id }
+      mother { id siblings { id fullname gender birthdate photoUrl } }
+      father { id siblings { id fullname gender birthdate photoUrl } }
       spouses { id fullname } children { id fullname } siblings { id fullname }
       linkedUser { id }
     }
@@ -54,7 +55,8 @@ const FAMILY_MEMBER_FOCUS_QUERY = `
   query FamilyMemberFocus($id: ID!) {
     familyMember(id: $id) {
       id firstname lastname fullname gender birthdate deathdate phone email address photoUrl
-      mother { id fullname } father { id fullname }
+      mother { id fullname siblings { id fullname gender birthdate photoUrl } }
+      father { id fullname siblings { id fullname gender birthdate photoUrl } }
       spouses { id fullname } children { id fullname } siblings { id fullname }
       linkedUser { id name email }
     }
@@ -91,6 +93,21 @@ const EMPTY_LINK_FORM = {
   address: ''
 };
 
+// Uncles & aunts = the siblings of the person's parents. Derived from the
+// nested `mother.siblings` / `father.siblings` the queries fetch, deduped by id,
+// excluding the person themselves and their own parents.
+function collectUnclesAunts(self) {
+  const parentIds = new Set([self.mother?.id, self.father?.id].filter(Boolean));
+  const byId = new Map();
+  for (const parent of [self.mother, self.father]) {
+    for (const sib of parent?.siblings ?? []) {
+      if (!sib || sib.id === self.id || parentIds.has(sib.id) || byId.has(sib.id)) continue;
+      byId.set(sib.id, sib);
+    }
+  }
+  return [...byId.values()];
+}
+
 function groupByRelation(rows, self) {
   const parentIds = new Set([self.mother?.id, self.father?.id].filter(Boolean));
   const spouseIds = new Set((self.spouses ?? []).map((member) => member.id));
@@ -102,7 +119,8 @@ function groupByRelation(rows, self) {
     parents: rows.filter((row) => parentIds.has(row.id)),
     spouses: rows.filter((row) => spouseIds.has(row.id)),
     children: rows.filter((row) => childIds.has(row.id)),
-    siblings: rows.filter((row) => siblingIds.has(row.id))
+    siblings: rows.filter((row) => siblingIds.has(row.id)),
+    unclesAunts: collectUnclesAunts(self)
   };
 }
 
