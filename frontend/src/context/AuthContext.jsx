@@ -27,6 +27,15 @@ const VERIFY_EMAIL_MUTATION = `
   }
 `;
 
+const CHANGE_PASSWORD_MUTATION = `
+  mutation ChangePassword($currentPassword: String!, $newPassword: String!) {
+    changePassword(currentPassword: $currentPassword, newPassword: $newPassword) {
+      token
+      user { id name email role familyMemberId }
+    }
+  }
+`;
+
 const LOGOUT_MUTATION = `mutation Logout { logout }`;
 
 export function AuthProvider({ children }) {
@@ -66,6 +75,16 @@ export function AuthProvider({ children }) {
     login: (email, password) => authenticate(LOGIN_MUTATION, { email, password }),
     register: (name, email, password) => graphqlRequest(REGISTER_MUTATION, { name, email, password }).then((data) => data.register),
     verifyEmail: (token) => authenticate(VERIFY_EMAIL_MUTATION, { token }),
+    // Changing your own password rotates the JWT (the old one is revoked by
+    // passwordChangedAt on the backend), so persist the fresh token to stay
+    // signed in and refresh the cached user.
+    changePassword: async (currentPassword, newPassword) => {
+      const data = await graphqlRequest(CHANGE_PASSWORD_MUTATION, { currentPassword, newPassword });
+      const payload = data.changePassword;
+      localStorage.setItem('authToken', payload.token);
+      setUser(payload.user);
+      return payload.user;
+    },
     logout: async () => {
       try {
         if (localStorage.getItem('authToken')) await graphqlRequest(LOGOUT_MUTATION);

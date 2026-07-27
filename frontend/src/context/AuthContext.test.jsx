@@ -10,7 +10,7 @@ import { graphqlRequest } from '../api/graphqlClient.js';
 import { AuthProvider, useAuth } from './AuthContext.jsx';
 
 function Probe() {
-  const { user, loading, isAuthenticated, login, logout, register, verifyEmail } = useAuth();
+  const { user, loading, isAuthenticated, login, logout, register, verifyEmail, changePassword } = useAuth();
   return (
     <div>
       <span>loading:{String(loading)}</span>
@@ -20,6 +20,7 @@ function Probe() {
       <button onClick={() => logout()}>logout</button>
       <button onClick={() => register('Ada', 'ada@example.com', 'secret123')}>register</button>
       <button onClick={() => verifyEmail('sometoken')}>verifyEmail</button>
+      <button onClick={() => changePassword('Password123!', 'BrandNewPass1!')}>changePassword</button>
     </div>
   );
 }
@@ -129,6 +130,37 @@ describe('AuthContext', () => {
       { token: 'sometoken' }
     );
     expect(graphqlRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('rotates the stored token and refreshes the user after changePassword', async () => {
+    localStorage.setItem('authToken', 'old-token');
+    graphqlRequest.mockResolvedValueOnce({
+      me: { id: 1, name: 'Ada', email: 'ada@example.com', role: 'USER' }
+    });
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>
+    );
+    await screen.findByText('user:Ada');
+
+    graphqlRequest.mockResolvedValueOnce({
+      changePassword: {
+        token: 'rotated-token',
+        user: { id: 1, name: 'Ada', email: 'ada@example.com', role: 'USER' }
+      }
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'changePassword' }));
+
+    await waitFor(() => {
+      expect(localStorage.getItem('authToken')).toBe('rotated-token');
+    });
+    expect(graphqlRequest).toHaveBeenLastCalledWith(
+      expect.stringContaining('changePassword'),
+      { currentPassword: 'Password123!', newPassword: 'BrandNewPass1!' }
+    );
   });
 
   it('clears the user and the token after logout', async () => {

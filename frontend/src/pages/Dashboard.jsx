@@ -1,27 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Avatar,
   Box,
+  Button,
   Chip,
   CircularProgress,
   Divider,
+  IconButton,
   Paper,
   Stack,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import LockResetRoundedIcon from '@mui/icons-material/LockResetRounded';
 import { graphqlRequest } from '../api/graphqlClient.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { colors, getInitials } from '../theme.js';
+import EditUserDialog from '../components/dashboard/EditUserDialog.jsx';
+import ChangePasswordDialog from '../components/dashboard/ChangePasswordDialog.jsx';
+import SetPasswordDialog from '../components/dashboard/SetPasswordDialog.jsx';
 
 const DASHBOARD_QUERY = `
   query Dashboard {
     dashboard {
       message
-      user { id name email role createdAt }
-      users { id name email role createdAt }
+      user { id name email role emailVerified createdAt updatedAt }
+      users { id name email role emailVerified createdAt updatedAt }
     }
   }
 `;
@@ -72,14 +81,22 @@ function StatCard({ icon, label, value, tint }) {
 }
 
 export default function Dashboard() {
+  const { logout } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [error, setError] = useState('');
+  const [editTarget, setEditTarget] = useState(null); // { user, isSelf }
+  const [passwordTarget, setPasswordTarget] = useState(null); // admin set-password target
+  const [changingOwnPassword, setChangingOwnPassword] = useState(false);
 
-  useEffect(() => {
-    graphqlRequest(DASHBOARD_QUERY)
+  const load = useCallback(() => {
+    return graphqlRequest(DASHBOARD_QUERY)
       .then((data) => setDashboard(data.dashboard))
       .catch((err) => setError(err.message));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   if (error) return <Alert severity="error">{error}</Alert>;
 
@@ -160,6 +177,24 @@ export default function Dashboard() {
               fontWeight: 700,
             }}
           />
+        </Stack>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ position: 'relative', mt: 3 }}>
+          <Button
+            variant="contained"
+            startIcon={<EditRoundedIcon />}
+            onClick={() => setEditTarget({ user, isSelf: true })}
+            sx={{ bgcolor: 'rgba(255,255,255,0.18)', color: '#fff', boxShadow: 'none', '&:hover': { bgcolor: 'rgba(255,255,255,0.28)', boxShadow: 'none' } }}
+          >
+            Edit account
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<LockResetRoundedIcon />}
+            onClick={() => setChangingOwnPassword(true)}
+            sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.08)' } }}
+          >
+            Change password
+          </Button>
         </Stack>
       </Paper>
 
@@ -242,9 +277,17 @@ export default function Dashboard() {
                     {u.email}
                   </Typography>
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', md: 'block' } }}>
-                  {formatDate(u.createdAt)}
-                </Typography>
+                <Box sx={{ display: { xs: 'none', md: 'block' }, textAlign: 'right', minWidth: 140 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>
+                    Joined {formatDate(u.createdAt)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.3 }}>
+                    Updated {formatDate(u.updatedAt)}
+                  </Typography>
+                </Box>
+                {!u.emailVerified && (
+                  <Chip label="Unverified" size="small" color="warning" variant="outlined" sx={{ minWidth: 64 }} />
+                )}
                 <Chip
                   label={u.role}
                   size="small"
@@ -252,10 +295,56 @@ export default function Dashboard() {
                   color={u.role === 'ADMIN' ? 'secondary' : 'default'}
                   sx={{ minWidth: 64 }}
                 />
+                <Stack direction="row" spacing={0.5}>
+                  <Tooltip title="Edit user">
+                    <IconButton
+                      size="small"
+                      aria-label={`Edit ${u.name}`}
+                      onClick={() => setEditTarget({ user: u, isSelf: String(u.id) === String(user.id) })}
+                    >
+                      <EditRoundedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Set password">
+                    <IconButton
+                      size="small"
+                      aria-label={`Set password for ${u.name}`}
+                      onClick={() => setPasswordTarget(u)}
+                    >
+                      <LockResetRoundedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
               </Stack>
             ))}
           </Stack>
         </Paper>
+      )}
+
+      {editTarget && (
+        <EditUserDialog
+          open
+          user={editTarget.user}
+          isSelf={editTarget.isSelf}
+          canEditRole={isAdmin}
+          onClose={() => setEditTarget(null)}
+          onSaved={load}
+          onRequireReverify={() => {
+            setEditTarget(null);
+            logout();
+          }}
+        />
+      )}
+
+      <ChangePasswordDialog open={changingOwnPassword} onClose={() => setChangingOwnPassword(false)} />
+
+      {passwordTarget && (
+        <SetPasswordDialog
+          open
+          user={passwordTarget}
+          onClose={() => setPasswordTarget(null)}
+          onSaved={load}
+        />
       )}
     </Stack>
   );
