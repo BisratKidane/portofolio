@@ -1,13 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import AddRelativeDialog from './AddRelativeDialog.jsx';
 
 vi.mock('../../api/graphqlClient.js', () => ({
   graphqlRequest: vi.fn()
 }));
 
+vi.mock('../../api/photoClient.js', () => ({
+  uploadMemberPhoto: vi.fn()
+}));
+
+vi.mock('react-easy-crop', () => ({
+  default: ({ onCropComplete }) => {
+    if (onCropComplete) {
+      onCropComplete({ x: 0, y: 0, width: 100, height: 100 }, { x: 0, y: 0, width: 100, height: 100 });
+    }
+    return <div data-testid="mock-cropper" />;
+  }
+}));
+
 import { graphqlRequest } from '../../api/graphqlClient.js';
+import { uploadMemberPhoto } from '../../api/photoClient.js';
 
 const ADD_PARENT_MUTATION = `
   mutation AddParent($memberId: ID!, $role: ParentRole!, $newMember: NewFamilyMemberInput!) {
@@ -37,21 +53,39 @@ const IN_SCOPE_MEMBERS = [{ id: '20', fullname: 'William King' }];
 
 beforeEach(() => {
   vi.clearAllMocks();
+  URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+  URL.revokeObjectURL = vi.fn();
+  HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ drawImage: vi.fn() }));
+  HTMLCanvasElement.prototype.toBlob = vi.fn(function toBlob(callback) {
+    callback(new Blob(['fake-cropped'], { type: 'image/jpeg' }));
+  });
+  global.Image = class {
+    set src(value) {
+      this._src = value;
+      if (this.onload) this.onload();
+    }
+    get src() {
+      return this._src;
+    }
+  };
 });
 
 function renderDialog(props = {}) {
   const onClose = vi.fn();
   const onCreated = vi.fn();
   const utils = render(
-    <AddRelativeDialog
-      open
-      relationType="parent"
-      targetId="1"
-      inScopeMembers={IN_SCOPE_MEMBERS}
-      onClose={onClose}
-      onCreated={onCreated}
-      {...props}
-    />
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <AddRelativeDialog
+        open
+        relationType="parent"
+        targetId="1"
+        targetName="Almaz Kidane"
+        inScopeMembers={IN_SCOPE_MEMBERS}
+        onClose={onClose}
+        onCreated={onCreated}
+        {...props}
+      />
+    </LocalizationProvider>
   );
   return { ...utils, onClose, onCreated };
 }
@@ -60,6 +94,13 @@ describe('AddRelativeDialog - parent', () => {
   it('renders "Add member" as the primary submit button', () => {
     renderDialog({ relationType: 'parent' });
     expect(screen.getByRole('button', { name: 'Add member' })).toBeInTheDocument();
+  });
+
+  it('names the active member in the role helper text', () => {
+    renderDialog({ relationType: 'parent', targetName: 'Almaz Kidane' });
+    expect(
+      screen.getByText('Is this person the mother or father of Almaz Kidane?')
+    ).toBeInTheDocument();
   });
 
   it('submits addParent with role and form fields, then calls onCreated and onClose', async () => {
@@ -140,6 +181,67 @@ describe('AddRelativeDialog - spouse', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('attaches a deferred photo to the created member after the add mutation returns', async () => {
+    graphqlRequest.mockResolvedValueOnce({ addSpouse: { id: '31', fullname: 'William King' } });
+    uploadMemberPhoto.mockResolvedValueOnce({ photoUrl: '/api/family-members/31/photo' });
+    const { onCreated } = renderDialog({ relationType: 'spouse' });
+
+    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'William');
+    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'King');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
+
+    // Pick a file -> opens the crop dialog in deferred mode.
+    const file = new File(['bytes'], 'photo.jpg', { type: 'image/jpeg' });
+    const fileInput = document.querySelector('input[type="file"]');
+    await userEvent.upload(fileInput, file);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Save photo' }));
+
+    // Blob is held locally; no upload happens until the member is created.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Change photo' })).toBeInTheDocument();
+    });
+    expect(uploadMemberPhoto).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => {
+      expect(uploadMemberPhoto).toHaveBeenCalledTimes(1);
+    });
+    const [memberId, blob] = uploadMemberPhoto.mock.calls[0];
+    expect(memberId).toBe('31');
+    expect(blob).toBeInstanceOf(Blob);
+    expect(onCreated).toHaveBeenCalled();
+  });
+
+  it('still treats the member as created when the photo upload fails (non-fatal)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ addSpouse: { id: '32', fullname: 'William King' } });
+    uploadMemberPhoto.mockRejectedValueOnce(new Error('Upload failed.'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { onClose, onCreated } = renderDialog({ relationType: 'spouse' });
+
+    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'William');
+    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'King');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
+
+    const file = new File(['bytes'], 'photo.jpg', { type: 'image/jpeg' });
+    await userEvent.upload(document.querySelector('input[type="file"]'), file);
+    await userEvent.click(await screen.findByRole('button', { name: 'Save photo' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Change photo' })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => {
+      expect(onCreated).toHaveBeenCalled();
+    });
+    expect(onClose).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it('renders the mutation error and keeps the dialog open on rejection', async () => {
     graphqlRequest.mockRejectedValueOnce(new Error('Something went wrong.'));
     const { onClose, onCreated } = renderDialog({ relationType: 'spouse' });
@@ -163,6 +265,13 @@ describe('AddRelativeDialog - child', () => {
     expect(screen.getByLabelText('Role', { exact: false })).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'or pick someone already in your family' })
+    ).toBeInTheDocument();
+  });
+
+  it('names the active member in the child role helper text', () => {
+    renderDialog({ relationType: 'child', targetName: 'Almaz Kidane' });
+    expect(
+      screen.getByText("Almaz Kidane is this child's mother or father.")
     ).toBeInTheDocument();
   });
 

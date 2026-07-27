@@ -118,7 +118,7 @@ function flattenFocusedRow(focusedRow) {
   ].filter(Boolean);
 }
 
-const EMPTY_DIALOG_STATE = { open: false, relationType: '', targetId: null };
+const EMPTY_DIALOG_STATE = { open: false, relationType: '', targetId: null, targetName: '' };
 const EMPTY_CROP_STATE = { open: false, file: null, member: null };
 
 function MemberBranch({ user }) {
@@ -192,7 +192,12 @@ function MemberBranch({ user }) {
         isAdmin={false}
         actingUserId={user.id}
         onAddRelative={(relationType) =>
-          setDialogState({ open: true, relationType, targetId: scope.self.id })
+          setDialogState({
+            open: true,
+            relationType,
+            targetId: scope.self.id,
+            targetName: scope.self.fullname
+          })
         }
         onEdit={(member) => setEditTarget(member)}
         onDelete={undefined}
@@ -204,6 +209,7 @@ function MemberBranch({ user }) {
         open={dialogState.open}
         relationType={dialogState.relationType}
         targetId={dialogState.targetId}
+        targetName={dialogState.targetName}
         inScopeMembers={inScopeMembers}
         onClose={() => setDialogState(EMPTY_DIALOG_STATE)}
         onCreated={refetch}
@@ -508,7 +514,12 @@ function AdminBranch({ user }) {
           isAdmin
           actingUserId={user.id}
           onAddRelative={(relationType) =>
-            setDialogState({ open: true, relationType, targetId: focusedScope.self.id })
+            setDialogState({
+              open: true,
+              relationType,
+              targetId: focusedScope.self.id,
+              targetName: focusedScope.self.fullname
+            })
           }
           onEdit={(member) => setEditTarget(member)}
           onDelete={(member) => setDeleteTarget(member)}
@@ -546,6 +557,7 @@ function AdminBranch({ user }) {
         open={dialogState.open}
         relationType={dialogState.relationType}
         targetId={dialogState.targetId}
+        targetName={dialogState.targetName}
         inScopeMembers={inScopeMembers}
         onClose={() => setDialogState(EMPTY_DIALOG_STATE)}
         onCreated={() => {
