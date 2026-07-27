@@ -1,4 +1,4 @@
-import { UniqueConstraintError } from 'sequelize';
+import { Op, UniqueConstraintError } from 'sequelize';
 import {
   createResetToken,
   createVerificationToken,
@@ -273,6 +273,100 @@ export const userResolvers = {
       }
 
       return targetUser;
+    },
+    updateUser: async (_parent, { id, input }, { models, user }) => {
+      requireAuth(user);
+      const isSelf = String(user.id) === String(id);
+      // A non-admin may only edit their own account; editing anyone else
+      // requires admin. This is the security boundary — the UI restricting
+      // what non-admins see is not enough (mirrors linkUserToMember/WR-03).
+      if (!isSelf) requireAdmin(user);
+
+      const target = await models.User.findByPk(id);
+      if (!target) throw new Error('User not found.');
+
+      const isAdmin = user.role === 'ADMIN';
+
+      // Role — admin-only, and never below one verified admin so the app can't
+      // be locked out of its own administration.
+      if (input.role != null && input.role !== target.role) {
+        if (!isAdmin) throw new Error('Only an administrator can change roles.');
+        if (target.role === 'ADMIN' && input.role === 'USER') {
+          const otherVerifiedAdmins = await models.User.count({
+            where: { role: 'ADMIN', emailVerified: true, id: { [Op.ne]: target.id } }
+          });
+          if (otherVerifiedAdmins === 0) throw new Error('Cannot remove the last administrator.');
+        }
+        target.role = input.role;
+      }
+
+      // Name
+      if (input.name != null) {
+        const trimmed = input.name.trim();
+        if (!trimmed) throw new Error('Name is required.');
+        target.name = trimmed;
+      }
+
+      // Email — changing it forces re-verification: the account is de-verified
+      // and a fresh verification link is emailed. The raw token is stashed for
+      // sending only after the row saves successfully.
+      let rawVerificationToken = null;
+      if (input.email != null) {
+        const normalized = input.email.toLowerCase().trim();
+        if (!normalized) throw new Error('Email is required.');
+        if (normalized !== target.email) {
+          rawVerificationToken = createVerificationToken();
+          target.email = normalized;
+          target.emailVerified = false;
+          target.emailVerificationToken = hashVerificationToken(rawVerificationToken);
+          target.emailVerificationExpiresAt = verificationTokenExpiry();
+        }
+      }
+
+      try {
+        await target.save();
+      } catch (error) {
+        if (error instanceof UniqueConstraintError) {
+          throw new Error('A user with this email already exists.');
+        }
+        throw error;
+      }
+
+      if (rawVerificationToken) {
+        sendVerificationEmail({ to: target.email, token: rawVerificationToken }).catch((err) => {
+          console.error('Failed to send verification email:', err);
+        });
+      }
+
+      return serializeUser(target);
+    },
+    changePassword: async (_parent, { currentPassword, newPassword }, { user }) => {
+      requireAuth(user);
+      if (!(await user.validatePassword(currentPassword))) {
+        throw new Error('Your current password is incorrect.');
+      }
+      assertPasswordStrength(newPassword);
+      if (newPassword === currentPassword) {
+        throw new Error('New password must be different from your current password.');
+      }
+
+      user.passwordHash = newPassword;
+      await user.save(); // beforeUpdate hook re-hashes and stamps passwordChangedAt
+
+      // passwordChangedAt now invalidates every previously issued token, so mint
+      // a fresh one (signed after the save) to keep this session authenticated.
+      return { token: signToken(user), user };
+    },
+    setUserPassword: async (_parent, { userId, newPassword }, { models, user }) => {
+      requireAdmin(user);
+      const target = await models.User.findByPk(userId);
+      if (!target) throw new Error('User not found.');
+
+      assertPasswordStrength(newPassword);
+
+      target.passwordHash = newPassword;
+      await target.save(); // stamps passwordChangedAt -> revokes the target's sessions
+      return true;
     }
   }
 };

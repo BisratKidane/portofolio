@@ -9,9 +9,16 @@ export const userTypeDefs = `#graphql
     name: String!
     email: String!
     role: Role!
+    emailVerified: Boolean!
     familyMemberId: ID
     createdAt: String!
     updatedAt: String!
+  }
+
+  input UpdateUserInput {
+    name: String
+    email: String
+    role: Role
   }
 
   type AuthPayload {
@@ -49,5 +56,8 @@ export const userTypeDefs = `#graphql
     verifyEmail(token: String!): AuthPayload!
     resendVerificationEmail(email: String!): PasswordResetPayload!
     linkUserToMember(userId: ID!, memberId: ID, newMember: NewFamilyMemberInput): User!
+    updateUser(id: ID!, input: UpdateUserInput!): User!
+    changePassword(currentPassword: String!, newPassword: String!): AuthPayload!
+    setUserPassword(userId: ID!, newPassword: String!): Boolean!
   }
 `;
