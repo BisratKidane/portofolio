@@ -43,7 +43,14 @@ function cropFileToJpegBlob(imageUrl, croppedAreaPixels) {
   });
 }
 
-export default function PhotoCropDialog({ open, file, member, onClose, onUploaded }) {
+// Two modes:
+//   upload-now  (default): `member` + `onUploaded` — crops then immediately
+//                uploads via uploadMemberPhoto(member.id, blob). Used by
+//                MemberCard / edit where the member already exists.
+//   deferred    (return-blob): pass `onCropped` — crops to the same 512x512 JPEG
+//                blob and hands it back via onCropped(blob) WITHOUT uploading, so
+//                create-a-member forms can attach a photo before an id exists.
+export default function PhotoCropDialog({ open, file, member, onClose, onUploaded, onCropped }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -84,13 +91,19 @@ export default function PhotoCropDialog({ open, file, member, onClose, onUploade
     handleCancel();
   };
 
+  const deferred = Boolean(onCropped);
+
   const handleSubmit = async () => {
     setError('');
     setSubmitting(true);
     try {
       const blob = await cropFileToJpegBlob(imageUrl, croppedAreaPixelsRef.current);
-      await uploadMemberPhoto(member.id, blob);
-      onUploaded();
+      if (deferred) {
+        onCropped(blob);
+      } else {
+        await uploadMemberPhoto(member.id, blob);
+        onUploaded();
+      }
       onClose();
     } catch (err) {
       setError(err.message);
@@ -143,7 +156,7 @@ export default function PhotoCropDialog({ open, file, member, onClose, onUploade
 
           <Stack direction="row" spacing={2}>
             <Button variant="contained" disabled={submitting} onClick={handleSubmit}>
-              {submitting ? 'Uploading…' : 'Save photo'}
+              {submitting ? (deferred ? 'Saving…' : 'Uploading…') : 'Save photo'}
             </Button>
             <Button variant="text" disabled={submitting} onClick={handleCancel}>
               Cancel

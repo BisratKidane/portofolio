@@ -108,6 +108,26 @@ describe('PhotoCropDialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('deferred mode: calls onCropped with the blob WITHOUT uploading, then closes', async () => {
+    const onCropped = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <PhotoCropDialog open file={makeFile()} onClose={onClose} onCropped={onCropped} />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save photo' }));
+
+    await waitFor(() => {
+      expect(onCropped).toHaveBeenCalledTimes(1);
+    });
+
+    expect(onCropped.mock.calls[0][0]).toBeInstanceOf(Blob);
+    expect(uploadMemberPhoto).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+    });
+  });
+
   it('on successful submit, crops via a 512x512 canvas, calls uploadMemberPhoto with the member id and blob, then closes', async () => {
     uploadMemberPhoto.mockResolvedValueOnce({ photoUrl: '/api/family-members/2/photo' });
     const { onClose, onUploaded } = renderDialog();
