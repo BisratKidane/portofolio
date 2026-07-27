@@ -48,24 +48,47 @@ describe('Dashboard — admin system users list', () => {
     expect(screen.getByText(/Unverified/i)).toBeInTheDocument();
   });
 
-  it('renders per-row Edit and Set password actions', async () => {
+  it('gives every user row — including the admin\'s own — an actions menu', async () => {
     graphqlRequest.mockResolvedValueOnce(ADMIN_DASHBOARD);
     render(<Dashboard />);
 
     await screen.findByText('Ada Lovelace');
-    expect(screen.getByLabelText('Edit Ada Lovelace')).toBeInTheDocument();
-    expect(screen.getByLabelText('Set password for Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByLabelText('Actions for Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByLabelText('Actions for Root Admin')).toBeInTheDocument();
   });
 
-  it('hides row-level actions on the admin\'s OWN row (managed from the hero card)', async () => {
+  it('opens Edit account + Change password from a row\'s menu', async () => {
     graphqlRequest.mockResolvedValueOnce(ADMIN_DASHBOARD);
     render(<Dashboard />);
 
     await screen.findByText('Ada Lovelace');
-    // Admin (id 1, "Root Admin") appears in the list but its row must not offer
-    // a set-password action that would silently revoke the admin's own session.
-    expect(screen.queryByLabelText('Set password for Root Admin')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Edit Root Admin')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText('Actions for Ada Lovelace'));
+
+    expect(await screen.findByRole('menuitem', { name: /edit account/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /change password/i })).toBeInTheDocument();
+  });
+
+  it('routes another user\'s "Change password" to the admin set-password flow (no current password)', async () => {
+    graphqlRequest.mockResolvedValueOnce(ADMIN_DASHBOARD);
+    render(<Dashboard />);
+
+    await screen.findByText('Ada Lovelace');
+    await userEvent.click(screen.getByLabelText('Actions for Ada Lovelace'));
+    await userEvent.click(await screen.findByRole('menuitem', { name: /change password/i }));
+
+    expect(await screen.findByText(/Set a new password for/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Current password', { exact: false })).not.toBeInTheDocument();
+  });
+
+  it('routes the admin\'s OWN "Change password" to the current-password flow', async () => {
+    graphqlRequest.mockResolvedValueOnce(ADMIN_DASHBOARD);
+    render(<Dashboard />);
+
+    await screen.findByText('Ada Lovelace');
+    await userEvent.click(screen.getByLabelText('Actions for Root Admin'));
+    await userEvent.click(await screen.findByRole('menuitem', { name: /change password/i }));
+
+    expect(await screen.findByLabelText('Current password', { exact: false })).toBeInTheDocument();
   });
 });
 

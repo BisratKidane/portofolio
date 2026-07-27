@@ -8,6 +8,8 @@ import {
   CircularProgress,
   Divider,
   IconButton,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   Tooltip,
@@ -18,6 +20,7 @@ import GroupRoundedIcon from '@mui/icons-material/GroupRounded';
 import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import LockResetRoundedIcon from '@mui/icons-material/LockResetRounded';
+import MoreVertRoundedIcon from '@mui/icons-material/MoreVertRounded';
 import { graphqlRequest } from '../api/graphqlClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { colors, getInitials } from '../theme.js';
@@ -87,6 +90,9 @@ export default function Dashboard() {
   const [editTarget, setEditTarget] = useState(null); // { user, isSelf }
   const [passwordTarget, setPasswordTarget] = useState(null); // admin set-password target
   const [changingOwnPassword, setChangingOwnPassword] = useState(false);
+  const [rowMenu, setRowMenu] = useState({ anchorEl: null, user: null }); // per-row actions menu
+
+  const closeRowMenu = () => setRowMenu({ anchorEl: null, user: null });
 
   const load = useCallback(() => {
     return graphqlRequest(DASHBOARD_QUERY)
@@ -178,24 +184,29 @@ export default function Dashboard() {
             }}
           />
         </Stack>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ position: 'relative', mt: 3 }}>
-          <Button
-            variant="contained"
-            startIcon={<EditRoundedIcon />}
-            onClick={() => setEditTarget({ user, isSelf: true })}
-            sx={{ bgcolor: 'rgba(255,255,255,0.18)', color: '#fff', boxShadow: 'none', '&:hover': { bgcolor: 'rgba(255,255,255,0.28)', boxShadow: 'none' } }}
-          >
-            Edit account
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<LockResetRoundedIcon />}
-            onClick={() => setChangingOwnPassword(true)}
-            sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.08)' } }}
-          >
-            Change password
-          </Button>
-        </Stack>
+        {/* Non-admins have no users list, so they manage their own account
+            from the hero card. Admins manage every account (including their
+            own) from the System users list below. */}
+        {!isAdmin && (
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ position: 'relative', mt: 3 }}>
+            <Button
+              variant="contained"
+              startIcon={<EditRoundedIcon />}
+              onClick={() => setEditTarget({ user, isSelf: true })}
+              sx={{ bgcolor: 'rgba(255,255,255,0.18)', color: '#fff', boxShadow: 'none', '&:hover': { bgcolor: 'rgba(255,255,255,0.28)', boxShadow: 'none' } }}
+            >
+              Edit account
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<LockResetRoundedIcon />}
+              onClick={() => setChangingOwnPassword(true)}
+              sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)', '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.08)' } }}
+            >
+              Change password
+            </Button>
+          </Stack>
+        )}
       </Paper>
 
       {/* Stat tiles */}
@@ -295,37 +306,47 @@ export default function Dashboard() {
                   color={u.role === 'ADMIN' ? 'secondary' : 'default'}
                   sx={{ minWidth: 64 }}
                 />
-                {/* Own row is managed from the hero card ("Edit account" /
-                    "Change password"). Admin set-password here would silently
-                    revoke the admin's own session, so it's intentionally
-                    hidden for self. */}
-                {String(u.id) !== String(user.id) && (
-                  <Stack direction="row" spacing={0.5}>
-                    <Tooltip title="Edit user">
-                      <IconButton
-                        size="small"
-                        aria-label={`Edit ${u.name}`}
-                        onClick={() => setEditTarget({ user: u, isSelf: false })}
-                      >
-                        <EditRoundedIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Set password">
-                      <IconButton
-                        size="small"
-                        aria-label={`Set password for ${u.name}`}
-                        onClick={() => setPasswordTarget(u)}
-                      >
-                        <LockResetRoundedIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
-                )}
+                <Tooltip title="Manage account">
+                  <IconButton
+                    size="small"
+                    aria-label={`Actions for ${u.name}`}
+                    onClick={(e) => setRowMenu({ anchorEl: e.currentTarget, user: u })}
+                  >
+                    <MoreVertRoundedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </Stack>
             ))}
           </Stack>
         </Paper>
       )}
+
+      <Menu anchorEl={rowMenu.anchorEl} open={Boolean(rowMenu.anchorEl)} onClose={closeRowMenu}>
+        <MenuItem
+          onClick={() => {
+            const u = rowMenu.user;
+            closeRowMenu();
+            setEditTarget({ user: u, isSelf: String(u.id) === String(user.id) });
+          }}
+        >
+          Edit account
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            const u = rowMenu.user;
+            closeRowMenu();
+            // Changing your OWN password needs the current-password flow (it
+            // rotates your token); other users get the admin set-password flow.
+            if (String(u.id) === String(user.id)) {
+              setChangingOwnPassword(true);
+            } else {
+              setPasswordTarget(u);
+            }
+          }}
+        >
+          Change password
+        </MenuItem>
+      </Menu>
 
       {editTarget && (
         <EditUserDialog
