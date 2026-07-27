@@ -96,6 +96,7 @@ export default function FamilyTreePage() {
           edges={forest.edges}
           initialExpandedIds={forest.initialExpandedIds}
           viewerId={user.familyMemberId}
+          rootId={forest.rootAncestorId}
           onMemberClick={(id) => setSelectedMemberId(id)}
         />
       </ReactFlowProvider>

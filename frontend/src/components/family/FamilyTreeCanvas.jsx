@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controls, MiniMap, Panel, ReactFlow, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Box, Button, TextField } from '@mui/material';
+import { Box, Button, FormControlLabel, Switch, TextField } from '@mui/material';
 import MemberNode from './MemberNode.jsx';
 import { layoutWithDagre } from './familyTree.layout.js';
 import { colors } from '../../theme.js';
@@ -95,14 +95,29 @@ export function expandAncestorChainFrom(memberId, membersById, expandedIds) {
   return next;
 }
 
-export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, viewerId, onMemberClick }) {
+export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, viewerId, rootId, onMemberClick }) {
   const [expandedIds, setExpandedIds] = useState(() => new Set(initialExpandedIds));
   const [searchTerm, setSearchTerm] = useState('');
+  const [collapsed, setCollapsed] = useState(false);
   const { fitView, getNode } = useReactFlow();
   const didInitialFit = useRef(false);
 
   const membersById = useMemo(() => buildMembersById(nodes), [nodes]);
   const viewerNodeId = viewerId != null ? String(viewerId) : null;
+  const rootNodeId = rootId != null ? String(rootId) : null;
+
+  // Collapse-all / expand-all toggle. Collapse folds the whole tree down to just
+  // the top ancestor (the +N badges then reveal levels again); expand restores
+  // the full initial view. A no-op collapse (no root) leaves the tree expanded.
+  const handleToggleCollapse = useCallback(
+    (event) => {
+      const next = event.target.checked;
+      setCollapsed(next);
+      setExpandedIds(next && rootNodeId ? new Set([rootNodeId]) : new Set(initialExpandedIds));
+      requestAnimationFrame(() => fitView({ padding: 0.1, duration: 400 }));
+    },
+    [rootNodeId, initialExpandedIds, fitView]
+  );
 
   // Memo key = the visible id set only, NOT the full node/edge arrays --
   // dagre re-runs on expand/collapse toggles, not on every render. Nodes
@@ -270,6 +285,11 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
           <Button variant="contained" onClick={findMe} sx={{ minHeight: 44 }}>
             Find me
           </Button>
+          <FormControlLabel
+            control={<Switch checked={collapsed} onChange={handleToggleCollapse} size="small" />}
+            label="Collapse tree"
+            sx={{ m: 0 }}
+          />
           <Box component="form" onSubmit={handleSearchSubmit} sx={{ display: 'flex', gap: 1 }}>
             <TextField
               size="small"

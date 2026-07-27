@@ -113,6 +113,27 @@ describe('FamilyTreeCanvas', () => {
     });
   });
 
+  it('collapses the whole tree to the root ancestor and expands it back via the toggle', async () => {
+    renderCanvas({ rootId: '1', initialExpandedIds: new Set(['1', '4']) });
+    await waitFor(() => {
+      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+    });
+
+    // Collapse -> only the root ancestor (Ada, id '1') stays; John (id '4') folds away.
+    fireEvent.click(screen.getByLabelText('Collapse tree'));
+    await waitFor(() => {
+      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+    });
+
+    // Expand -> the initial set is restored.
+    fireEvent.click(screen.getByLabelText('Collapse tree'));
+    await waitFor(() => {
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+    });
+  });
+
   it('identifies the viewer by the ring alone — no "You" chip is rendered', async () => {
     renderCanvas();
     await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
