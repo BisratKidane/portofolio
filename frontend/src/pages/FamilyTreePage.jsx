@@ -50,6 +50,11 @@ export default function FamilyTreePage() {
 
   const forest = useMemo(() => buildForest(members), [members]);
 
+  // The tree opens showing the WHOLE tree (every member), not just the root's
+  // descendants. The collapse toggle folds it down to the root ancestor and
+  // "expand" restores this full set.
+  const allExpandedIds = useMemo(() => new Set(forest.nodes.map((node) => node.id)), [forest.nodes]);
+
   if (pageLoading) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 10 }}>
@@ -94,7 +99,7 @@ export default function FamilyTreePage() {
         <FamilyTreeCanvas
           nodes={forest.nodes}
           edges={forest.edges}
-          initialExpandedIds={forest.initialExpandedIds}
+          initialExpandedIds={allExpandedIds}
           viewerId={user.familyMemberId}
           rootId={forest.rootAncestorId}
           onMemberClick={(id) => setSelectedMemberId(id)}

@@ -14,6 +14,7 @@ import dagre from '@dagrejs/dagre';
 
 const PERSON_W = 252;
 const PERSON_H = 120;
+const SPOUSE_GAP = 40;
 
 export function layoutWithDagre(nodes, edges, options = {}) {
   const { rankdir = 'TB', nodesep = 60, ranksep = 90, edgesep = 10 } = options;
@@ -41,6 +42,25 @@ export function layoutWithDagre(nodes, edges, options = {}) {
   nodes.forEach((n) => {
     const { x, y } = g.node(n.id);
     positions.set(n.id, { x: x - PERSON_W / 2, y: y - PERSON_H / 2 });
+  });
+
+  // Place spouses side by side: the partner with a place in the bloodline (has a
+  // parent in the tree) anchors on the LEFT, and the other spouse is snapped
+  // immediately to its RIGHT on the same row. Dagre positions members purely by
+  // the parent->child hierarchy, so without this a spouse can land anywhere; the
+  // spouse relationship is then conveyed only by the (dashed) connector edge.
+  const memberById = new Map(nodes.map((n) => [n.id, n.data?.member]));
+  const hasParent = (m) => Boolean(m && (m.mother || m.father));
+  edges.forEach((e) => {
+    if (e.type !== 'spouse') return;
+    if (!positions.has(e.source) || !positions.has(e.target)) return;
+    const sourceBlood = hasParent(memberById.get(e.source));
+    const targetBlood = hasParent(memberById.get(e.target));
+    // Anchor = the bloodline partner; ties fall back to the edge source.
+    const anchor = targetBlood && !sourceBlood ? e.target : e.source;
+    const mover = anchor === e.source ? e.target : e.source;
+    const anchorPos = positions.get(anchor);
+    positions.set(mover, { x: anchorPos.x + PERSON_W + SPOUSE_GAP, y: anchorPos.y });
   });
 
   return nodes.map((n) => ({ ...n, position: positions.get(n.id) || { x: 0, y: 0 } }));

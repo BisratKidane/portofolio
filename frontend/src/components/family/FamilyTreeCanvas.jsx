@@ -184,25 +184,36 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
   // connector so a married pair reads as linked without looking like a
   // parent->child relationship. sourceHandle/targetHandle are preserved via
   // the `...e` spread so each edge attaches to its dedicated handle.
-  const renderEdges = useMemo(
-    () =>
-      edges.map((e) =>
-        e.type === 'spouse'
-          ? {
-              ...e,
-              type: 'straight',
-              style: { stroke: colors.primary, strokeWidth: 1.5, strokeDasharray: '4 3' },
-              hidden: !(expandedIds.has(e.source) && expandedIds.has(e.target))
-            }
-          : {
-              ...e,
-              type: 'smoothstep',
-              style: { stroke: colors.slate, strokeWidth: 1.5 },
-              hidden: !(expandedIds.has(e.source) && expandedIds.has(e.target))
-            }
-      ),
-    [edges, expandedIds]
-  );
+  const renderEdges = useMemo(() => {
+    const posById = new Map(positionedNodes.map((n) => [n.id, n.position]));
+    return edges.map((e) => {
+      if (e.type === 'spouse') {
+        // Orient the connector so it always exits the LEFT partner's right side
+        // and enters the RIGHT partner's left side (matches the layout's spouse
+        // snap), regardless of the edge's stored source/target id order.
+        const ps = posById.get(e.source);
+        const pt = posById.get(e.target);
+        const leftId = ps && pt && pt.x < ps.x ? e.target : e.source;
+        const rightId = leftId === e.source ? e.target : e.source;
+        return {
+          ...e,
+          source: leftId,
+          target: rightId,
+          sourceHandle: 'spouse-source',
+          targetHandle: 'spouse-target',
+          type: 'straight',
+          style: { stroke: colors.primary, strokeWidth: 1.5, strokeDasharray: '4 3' },
+          hidden: !(expandedIds.has(e.source) && expandedIds.has(e.target))
+        };
+      }
+      return {
+        ...e,
+        type: 'smoothstep',
+        style: { stroke: colors.slate, strokeWidth: 1.5 },
+        hidden: !(expandedIds.has(e.source) && expandedIds.has(e.target))
+      };
+    });
+  }, [edges, expandedIds, positionedNodes]);
 
   const findMe = useCallback(() => {
     if (viewerNodeId == null) return;
