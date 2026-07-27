@@ -177,7 +177,6 @@ describe('linkUserToMember', () => {
           mothersname: '  ',
           email: '',
           birthdate: '',
-          deathdate: '',
           phone: '',
           address: ''
         }
@@ -194,7 +193,6 @@ describe('linkUserToMember', () => {
     expect(created.mothersname).toBeNull();
     expect(created.email).toBeNull();
     expect(created.birthdate).toBeNull();
-    expect(created.deathdate).toBeNull();
     expect(created.phone).toBeNull();
     expect(created.address).toBeNull();
   });

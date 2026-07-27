@@ -19,7 +19,7 @@ export const familyMemberTypeDefs = `#graphql
     mothersname: String
     email: String
     birthdate: String
-    deathdate: String
+    isAlive: Boolean!
     phone: String
     address: String
     photoUrl: String
@@ -29,6 +29,11 @@ export const familyMemberTypeDefs = `#graphql
     children: [FamilyMember!]!
     siblings: [FamilyMember!]!
     linkedUser: User
+    # Provenance — resolved to the user only for an ADMIN viewer, else null.
+    createdBy: User
+    updatedBy: User
+    createdAt: String
+    updatedAt: String
   }
 
   input NewFamilyMemberInput {
@@ -38,7 +43,7 @@ export const familyMemberTypeDefs = `#graphql
     mothersname: String
     email: String
     birthdate: String
-    deathdate: String
+    isAlive: Boolean
     phone: String
     address: String
   }
@@ -53,7 +58,7 @@ export const familyMemberTypeDefs = `#graphql
     mothersname: String
     email: String
     birthdate: String
-    deathdate: String
+    isAlive: Boolean
     phone: String
     address: String
   }

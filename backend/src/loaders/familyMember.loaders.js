@@ -56,6 +56,17 @@ export function createLoaders(models) {
         return memberIds.map((id) => byMember.get(String(id)));
       },
       { cacheKeyFn: (key) => String(key) }
+    ),
+
+    // Batches the admin-only provenance lookups (createdBy/updatedBy) so a list
+    // of members resolves their creators/editors without an N+1 per member.
+    userById: new DataLoader(
+      async (ids) => {
+        const rows = await models.User.findAll({ where: { id: ids } });
+        const byId = new Map(rows.map((row) => [String(row.id), row]));
+        return ids.map((id) => byId.get(String(id)) ?? null);
+      },
+      { cacheKeyFn: (key) => String(key) }
     )
   };
 }

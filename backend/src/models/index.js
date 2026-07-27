@@ -43,6 +43,22 @@ User.belongsTo(FamilyMember, {
 });
 FamilyMember.hasOne(User, { as: 'linkedUser', foreignKey: 'familyMemberId' });
 
+// Provenance (admin-visible): who created / last updated each member. SET NULL
+// on delete so removing a user never cascades into deleting members they
+// created or edited.
+FamilyMember.belongsTo(User, {
+  as: 'createdByUser',
+  foreignKey: { name: 'createdByUserId', allowNull: true },
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE'
+});
+FamilyMember.belongsTo(User, {
+  as: 'updatedByUser',
+  foreignKey: { name: 'updatedByUserId', allowNull: true },
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE'
+});
+
 export const models = {
   User,
   FamilyMember,

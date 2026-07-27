@@ -64,7 +64,10 @@ export const familyMemberResolvers = {
           throw new Error(`This member already has a ${role.toLowerCase()} on record.`);
         }
 
-        const parent = await models.FamilyMember.create(sanitizeNewMember(newMember), { transaction: t });
+        const parent = await models.FamilyMember.create(
+          { ...sanitizeNewMember(newMember), createdByUserId: user.id },
+          { transaction: t }
+        );
         await linkParent(targetId, { [slot]: parent.id }, { transaction: t });
 
         return parent;
@@ -90,7 +93,10 @@ export const familyMemberResolvers = {
         const target = await models.FamilyMember.findByPk(targetId, { transaction: t });
         if (!target) throw new Error('Family member not found.');
 
-        const spouse = await models.FamilyMember.create(sanitizeNewMember(newMember), { transaction: t });
+        const spouse = await models.FamilyMember.create(
+          { ...sanitizeNewMember(newMember), createdByUserId: user.id },
+          { transaction: t }
+        );
         await setSpouse(targetId, spouse.id, { transaction: t });
 
         return spouse;
@@ -138,7 +144,7 @@ export const familyMemberResolvers = {
           if (!otherParent) throw new Error('Family member not found.');
         }
 
-        const attrs = { ...sanitizeNewMember(newMember), [slot]: targetId };
+        const attrs = { ...sanitizeNewMember(newMember), [slot]: targetId, createdByUserId: user.id };
         if (otherParent) attrs[otherSlot] = otherId;
 
         return addChild(attrs, { transaction: t });
@@ -184,7 +190,7 @@ export const familyMemberResolvers = {
           }
         }
 
-        const attrs = { ...sanitizeNewMember(newMember) };
+        const attrs = { ...sanitizeNewMember(newMember), createdByUserId: user.id };
         if (target.motherId != null) attrs.motherId = target.motherId;
         if (target.fatherId != null) attrs.fatherId = target.fatherId;
 
@@ -221,7 +227,7 @@ export const familyMemberResolvers = {
         throw new Error('This member manages their own profile and cannot be edited by others.');
       }
 
-      return target.update(sanitizeNewMember(fields));
+      return target.update({ ...sanitizeNewMember(fields), updatedByUserId: user.id });
     },
     // T-14-04 (mitigate): requireAdmin(user) is the FIRST and ONLY guard --
     // deliberately no computeEditableScope call anywhere in this resolver.
@@ -291,6 +297,17 @@ export const familyMemberResolvers = {
       if (!linked) return null;
       if (user?.role === 'ADMIN' || linked.id === user?.id) return linked;
       return null;
+    },
+    // Provenance is admin-only (mirrors the linkedUser gating): exposing who
+    // created/edited a member to any linked USER would leak the user table the
+    // same way an ungated linkedUser would. Batched via the userById loader.
+    createdBy: (member, _args, { user, loaders }) => {
+      if (user?.role !== 'ADMIN' || member.createdByUserId == null) return null;
+      return loaders.userById.load(Number(member.createdByUserId));
+    },
+    updatedBy: (member, _args, { user, loaders }) => {
+      if (user?.role !== 'ADMIN' || member.updatedByUserId == null) return null;
+      return loaders.userById.load(Number(member.updatedByUserId));
     }
   }
 };

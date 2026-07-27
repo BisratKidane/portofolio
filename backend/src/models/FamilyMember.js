@@ -36,9 +36,17 @@ export function initFamilyMember(sequelize) {
         type: DataTypes.DATEONLY,
         allowNull: true
       },
+      // Legacy column, kept for historical data but no longer written or read
+      // by the app — superseded by `isAlive` (a member is deceased when the
+      // admin toggles this off; the exact date is no longer captured).
       deathdate: {
         type: DataTypes.DATEONLY,
         allowNull: true
+      },
+      isAlive: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true
       },
       phone: {
         type: DataTypes.STRING,

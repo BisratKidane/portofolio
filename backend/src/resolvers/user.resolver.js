@@ -259,7 +259,10 @@ export const userResolvers = {
             if (!member) throw new Error('Family member not found.');
             resolvedMemberId = memberId;
           } else {
-            const createdMember = await models.FamilyMember.create(sanitizeNewMember(newMember), { transaction: t });
+            const createdMember = await models.FamilyMember.create(
+              { ...sanitizeNewMember(newMember), createdByUserId: user.id },
+              { transaction: t }
+            );
             resolvedMemberId = createdMember.id;
           }
 
