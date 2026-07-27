@@ -113,21 +113,25 @@ describe('FamilyTreeCanvas', () => {
     });
   });
 
-  it('collapses the whole tree to the root ancestor and expands it back via the toggle', async () => {
-    renderCanvas({ rootId: '1', initialExpandedIds: new Set(['1', '4']) });
+  it("collapses to the viewer's immediate family + lineage line (head & leaf), then expands back", async () => {
+    // Viewer is Ada (id '1'). Collapse should keep her line up to the head
+    // (her mother Grace, id '2') and down to a leaf (her child Byron, id '3'),
+    // and fold away the unrelated John (id '4').
+    renderCanvas({ viewerId: '1', rootId: '1', initialExpandedIds: new Set(['1', '4']) });
     await waitFor(() => {
       expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
       expect(screen.getByText('John Doe')).toBeInTheDocument();
     });
 
-    // Collapse -> only the root ancestor (Ada, id '1') stays; John (id '4') folds away.
     fireEvent.click(screen.getByLabelText('Collapse tree'));
     await waitFor(() => {
       expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+      expect(screen.getByText('Byron Lovelace')).toBeInTheDocument();
       expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
     });
 
-    // Expand -> the initial set is restored.
+    // Expand -> the full initial set is restored (John visible again).
     fireEvent.click(screen.getByLabelText('Collapse tree'));
     await waitFor(() => {
       expect(screen.getByText('John Doe')).toBeInTheDocument();

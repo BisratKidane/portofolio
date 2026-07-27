@@ -23,6 +23,7 @@ import '@xyflow/react/dist/style.css';
 import { Box, Button, FormControlLabel, Switch, TextField } from '@mui/material';
 import MemberNode from './MemberNode.jsx';
 import { layoutWithDagre } from './familyTree.layout.js';
+import { deriveSiblings } from './familyTree.assembly.js';
 import { colors } from '../../theme.js';
 
 const NODE_TYPES = { member: MemberNode };
@@ -95,6 +96,60 @@ export function expandAncestorChainFrom(memberId, membersById, expandedIds) {
   return next;
 }
 
+// The collapsed view: a focal member's immediate family (parents, spouse,
+// children, siblings) PLUS the vertical lineage line through them — up to the
+// head (top ancestor, mother-preferred) and down to a leaf (first-child chain).
+// Gives a "you are here" slice instead of the whole tree.
+export function computeCollapsedSet(focalId, membersById) {
+  const set = new Set();
+  const start = focalId != null ? String(focalId) : null;
+  if (start == null || !membersById.has(start)) return set;
+
+  const focal = membersById.get(start);
+  set.add(start);
+
+  // Immediate family.
+  for (const rel of [focal.mother, focal.father, ...(focal.spouses || []), ...(focal.children || [])]) {
+    const id = idOrNull(rel);
+    if (id != null && membersById.has(id)) set.add(id);
+  }
+  for (const sibling of deriveSiblings(start, membersById)) set.add(String(sibling.id));
+
+  // Line up to the head (prefer the mother's chain, D-01 tie-break).
+  let cursor = start;
+  const walkedUp = new Set();
+  while (cursor != null && membersById.has(cursor) && !walkedUp.has(cursor)) {
+    walkedUp.add(cursor);
+    set.add(cursor);
+    const member = membersById.get(cursor);
+    const motherId = idOrNull(member.mother);
+    const fatherId = idOrNull(member.father);
+    if (motherId == null && fatherId == null) break;
+    cursor =
+      motherId != null && membersById.has(motherId)
+        ? motherId
+        : fatherId != null && membersById.has(fatherId)
+          ? fatherId
+          : null;
+  }
+
+  // Line down to a leaf (first child at each step).
+  cursor = start;
+  const walkedDown = new Set();
+  while (cursor != null && membersById.has(cursor) && !walkedDown.has(cursor)) {
+    walkedDown.add(cursor);
+    set.add(cursor);
+    const member = membersById.get(cursor);
+    const childIds = (member.children || [])
+      .map(idOrNull)
+      .filter((id) => id != null && membersById.has(id));
+    if (childIds.length === 0) break;
+    cursor = childIds[0];
+  }
+
+  return set;
+}
+
 export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, viewerId, rootId, onMemberClick }) {
   const [expandedIds, setExpandedIds] = useState(() => new Set(initialExpandedIds));
   const [searchTerm, setSearchTerm] = useState('');
@@ -106,17 +161,23 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
   const viewerNodeId = viewerId != null ? String(viewerId) : null;
   const rootNodeId = rootId != null ? String(rootId) : null;
 
-  // Collapse-all / expand-all toggle. Collapse folds the whole tree down to just
-  // the top ancestor (the +N badges then reveal levels again); expand restores
-  // the full initial view. A no-op collapse (no root) leaves the tree expanded.
+  // Collapse toggle. Collapse folds the tree down to the focal member's
+  // immediate family plus the lineage line through them (up to the head, down to
+  // a leaf); the +N badges then reveal more. Expand restores the full tree. The
+  // focal member is the viewer, falling back to the root ancestor.
   const handleToggleCollapse = useCallback(
     (event) => {
       const next = event.target.checked;
       setCollapsed(next);
-      setExpandedIds(next && rootNodeId ? new Set([rootNodeId]) : new Set(initialExpandedIds));
+      if (next) {
+        const collapsedSet = computeCollapsedSet(viewerNodeId ?? rootNodeId, membersById);
+        setExpandedIds(collapsedSet.size ? collapsedSet : new Set(rootNodeId ? [rootNodeId] : []));
+      } else {
+        setExpandedIds(new Set(initialExpandedIds));
+      }
       requestAnimationFrame(() => fitView({ padding: 0.1, duration: 400 }));
     },
-    [rootNodeId, initialExpandedIds, fitView]
+    [viewerNodeId, rootNodeId, membersById, initialExpandedIds, fitView]
   );
 
   // Memo key = the visible id set only, NOT the full node/edge arrays --
