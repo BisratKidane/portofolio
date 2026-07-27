@@ -295,26 +295,32 @@ export default function Dashboard() {
                   color={u.role === 'ADMIN' ? 'secondary' : 'default'}
                   sx={{ minWidth: 64 }}
                 />
-                <Stack direction="row" spacing={0.5}>
-                  <Tooltip title="Edit user">
-                    <IconButton
-                      size="small"
-                      aria-label={`Edit ${u.name}`}
-                      onClick={() => setEditTarget({ user: u, isSelf: String(u.id) === String(user.id) })}
-                    >
-                      <EditRoundedIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Set password">
-                    <IconButton
-                      size="small"
-                      aria-label={`Set password for ${u.name}`}
-                      onClick={() => setPasswordTarget(u)}
-                    >
-                      <LockResetRoundedIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
+                {/* Own row is managed from the hero card ("Edit account" /
+                    "Change password"). Admin set-password here would silently
+                    revoke the admin's own session, so it's intentionally
+                    hidden for self. */}
+                {String(u.id) !== String(user.id) && (
+                  <Stack direction="row" spacing={0.5}>
+                    <Tooltip title="Edit user">
+                      <IconButton
+                        size="small"
+                        aria-label={`Edit ${u.name}`}
+                        onClick={() => setEditTarget({ user: u, isSelf: false })}
+                      >
+                        <EditRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Set password">
+                      <IconButton
+                        size="small"
+                        aria-label={`Set password for ${u.name}`}
+                        onClick={() => setPasswordTarget(u)}
+                      >
+                        <LockResetRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                )}
               </Stack>
             ))}
           </Stack>

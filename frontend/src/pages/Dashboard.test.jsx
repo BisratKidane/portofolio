@@ -56,6 +56,17 @@ describe('Dashboard — admin system users list', () => {
     expect(screen.getByLabelText('Edit Ada Lovelace')).toBeInTheDocument();
     expect(screen.getByLabelText('Set password for Ada Lovelace')).toBeInTheDocument();
   });
+
+  it('hides row-level actions on the admin\'s OWN row (managed from the hero card)', async () => {
+    graphqlRequest.mockResolvedValueOnce(ADMIN_DASHBOARD);
+    render(<Dashboard />);
+
+    await screen.findByText('Ada Lovelace');
+    // Admin (id 1, "Root Admin") appears in the list but its row must not offer
+    // a set-password action that would silently revoke the admin's own session.
+    expect(screen.queryByLabelText('Set password for Root Admin')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Edit Root Admin')).not.toBeInTheDocument();
+  });
 });
 
 describe('Dashboard — self-service controls on the hero card', () => {
