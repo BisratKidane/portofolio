@@ -9,20 +9,22 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  MenuItem,
   Paper,
   Stack,
   TextField,
   Typography
 } from '@mui/material';
+import LinkRoundedIcon from '@mui/icons-material/LinkRounded';
 import { useAuth } from '../context/AuthContext.jsx';
 import { graphqlRequest } from '../api/graphqlClient.js';
-import { removeMemberPhoto } from '../api/photoClient.js';
+import { removeMemberPhoto, uploadMemberPhoto } from '../api/photoClient.js';
 import { colors, getInitials } from '../theme.js';
 import RelationshipGroupedPanel from '../components/manage/RelationshipGroupedPanel.jsx';
 import AddRelativeDialog from '../components/manage/AddRelativeDialog.jsx';
 import EditMemberDialog from '../components/manage/EditMemberDialog.jsx';
 import AdminMemberTable from '../components/manage/AdminMemberTable.jsx';
+import MemberAvatarImage from '../components/manage/MemberAvatarImage.jsx';
+import MemberFields from '../components/manage/MemberFields.jsx';
 import PhotoCropDialog from '../components/manage/PhotoCropDialog.jsx';
 
 const MY_EDITABLE_MEMBERS_QUERY = `
@@ -38,7 +40,7 @@ const MY_EDITABLE_MEMBERS_QUERY = `
 
 const FAMILY_MEMBERS_QUERY = `
   query FamilyMembersTable {
-    familyMembers { id firstname lastname fullname gender photoUrl linkedUser { id name email } }
+    familyMembers { id firstname lastname fullname gender birthdate photoUrl linkedUser { id name email } }
   }
 `;
 
@@ -253,16 +255,51 @@ function MemberBranch({ user }) {
   );
 }
 
-// Re-homed verbatim from AdminLinkMembers.jsx (pre-15-05-redirect, commit 9082440).
+// Builds the muted secondary line for a member option: "Gender · b. YYYY".
+function memberOptionSubtitle(member) {
+  const parts = [];
+  if (member.gender) parts.push(member.gender);
+  const year = member.birthdate ? String(member.birthdate).slice(0, 4) : null;
+  if (year) parts.push(`b. ${year}`);
+  return parts.join(' · ');
+}
+
+// Re-homed from AdminLinkMembers.jsx (pre-15-05-redirect, commit 9082440), then
+// reworked into a side-by-side "connection card": the account on the left, a
+// link/chain cue in the middle, and the member picker (avatars + subtitle) on
+// the right, so the account <-> member relationship is visually explicit.
 function UnlinkedUserRow({ user, familyMembers, onLinked }) {
   const [mode, setMode] = useState('pick');
   const [selectedMember, setSelectedMember] = useState(null);
   const [form, setForm] = useState(EMPTY_LINK_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [croppedBlob, setCroppedBlob] = useState(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
+  const [cropFile, setCropFile] = useState(null);
+  const [cropOpen, setCropOpen] = useState(false);
 
-  const handleFormChange = (field) => (event) => {
-    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+  const handleFieldChange = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const clearPhoto = () => {
+    setPhotoPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setCroppedBlob(null);
+  };
+
+  const handlePickPhoto = (file) => {
+    setCropFile(file);
+    setCropOpen(true);
+  };
+
+  const handleCropped = (blob) => {
+    clearPhoto();
+    setCroppedBlob(blob);
+    setPhotoPreviewUrl(URL.createObjectURL(blob));
   };
 
   const handleLink = async () => {
@@ -286,11 +323,22 @@ function UnlinkedUserRow({ user, familyMembers, onLinked }) {
     setError('');
     setSubmitting(true);
     try {
-      await graphqlRequest(LINK_USER_TO_MEMBER_MUTATION, {
+      const data = await graphqlRequest(LINK_USER_TO_MEMBER_MUTATION, {
         userId: user.id,
         memberId: undefined,
         newMember: form
       });
+      const linked = data.linkUserToMember;
+
+      // Photo-on-create is best-effort: a failed upload must NOT lose the member.
+      if (croppedBlob && linked?.familyMemberId) {
+        try {
+          await uploadMemberPhoto(linked.familyMemberId, croppedBlob);
+        } catch (photoErr) {
+          console.warn(`Member created, but the photo could not be uploaded: ${photoErr.message}`);
+        }
+      }
+
       onLinked(user.id);
     } catch (err) {
       setError(err.message);
@@ -299,86 +347,97 @@ function UnlinkedUserRow({ user, familyMembers, onLinked }) {
     }
   };
 
+  const accountBlock = (
+    <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0, flex: 1 }}>
+      <Avatar sx={{ width: 42, height: 42, bgcolor: '#eef1f8', color: colors.slate }}>
+        {getInitials(user.name)}
+      </Avatar>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography sx={{ fontWeight: 600 }} noWrap>
+          {user.name}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" noWrap>
+          {user.email}
+        </Typography>
+      </Box>
+    </Stack>
+  );
+
   return (
     <Stack spacing={2} sx={{ px: { xs: 3, md: 4 }, py: 3 }}>
-      <Stack direction="row" alignItems="center" spacing={2}>
-        <Avatar sx={{ width: 42, height: 42, bgcolor: '#eef1f8', color: colors.slate }}>
-          {getInitials(user.name)}
-        </Avatar>
-        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 600 }} noWrap>
-            {user.name}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" noWrap>
-            {user.email}
-          </Typography>
-        </Box>
-      </Stack>
-
       {error && <Alert severity="error">{error}</Alert>}
 
       {mode === 'pick' ? (
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }}>
-          <Autocomplete
-            options={familyMembers}
-            getOptionLabel={(member) => member.fullname}
-            value={selectedMember}
-            onChange={(_event, value) => setSelectedMember(value)}
-            sx={{ minWidth: 260, flexGrow: 1 }}
-            renderInput={(params) => <TextField {...params} label="Family member" />}
-          />
-          <Button variant="contained" disabled={!selectedMember || submitting} onClick={handleLink}>
-            {submitting ? 'Linking…' : 'Link'}
-          </Button>
-          <Button variant="text" disabled={submitting} onClick={() => setMode('create')}>
-            Create new member instead
-          </Button>
-        </Stack>
+        <>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            alignItems={{ md: 'center' }}
+            sx={{ border: `1px solid ${colors.line}`, borderRadius: 4, p: 2, bgcolor: colors.gradientSoft }}
+          >
+            {accountBlock}
+
+            <LinkRoundedIcon aria-hidden="true" sx={{ color: colors.primary, transform: { xs: 'rotate(90deg)', md: 'none' } }} />
+
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Autocomplete
+                options={familyMembers}
+                getOptionLabel={(member) => member.fullname}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                value={selectedMember}
+                onChange={(_event, value) => setSelectedMember(value)}
+                renderOption={(props, member) => {
+                  const { key, ...optionProps } = props;
+                  const subtitle = memberOptionSubtitle(member);
+                  return (
+                    <Box component="li" key={key} {...optionProps} sx={{ gap: 1.5 }}>
+                      <MemberAvatarImage member={member} size={32} />
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography noWrap>{member.fullname}</Typography>
+                        {subtitle && (
+                          <Typography variant="body2" color="text.secondary" noWrap>
+                            {subtitle}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  );
+                }}
+                renderInput={(params) => <TextField {...params} label="Family member" />}
+              />
+              {selectedMember && (
+                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mt: 1.5 }}>
+                  <MemberAvatarImage member={selectedMember} size={32} />
+                  <Typography sx={{ fontWeight: 600 }} noWrap>
+                    {selectedMember.fullname}
+                  </Typography>
+                </Stack>
+              )}
+            </Box>
+          </Stack>
+
+          <Stack direction="row" spacing={2}>
+            <Button variant="contained" disabled={!selectedMember || submitting} onClick={handleLink}>
+              {submitting ? 'Connecting…' : 'Connect account → member'}
+            </Button>
+            <Button variant="text" disabled={submitting} onClick={() => setMode('create')}>
+              Create new member instead
+            </Button>
+          </Stack>
+        </>
       ) : (
         <Stack spacing={2}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
-              label="First name"
-              required
-              value={form.firstname}
-              onChange={handleFormChange('firstname')}
-              fullWidth
-            />
-            <TextField
-              label="Last name"
-              required
-              value={form.lastname}
-              onChange={handleFormChange('lastname')}
-              fullWidth
-            />
-            <TextField
-              select
-              label="Gender"
-              required
-              value={form.gender}
-              onChange={handleFormChange('gender')}
-              fullWidth
-            >
-              <MenuItem value="Male">Male</MenuItem>
-              <MenuItem value="Female">Female</MenuItem>
-              <MenuItem value="Other">Other</MenuItem>
-            </TextField>
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField label="Email" value={form.email} onChange={handleFormChange('email')} fullWidth />
-            <TextField label="Phone" value={form.phone} onChange={handleFormChange('phone')} fullWidth />
-            <TextField label="Address" value={form.address} onChange={handleFormChange('address')} fullWidth />
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField label="Birthdate" value={form.birthdate} onChange={handleFormChange('birthdate')} fullWidth />
-            <TextField label="Deathdate" value={form.deathdate} onChange={handleFormChange('deathdate')} fullWidth />
-            <TextField
-              label="Mother's name"
-              value={form.mothersname}
-              onChange={handleFormChange('mothersname')}
-              fullWidth
-            />
-          </Stack>
+          {accountBlock}
+
+          <MemberFields
+            form={form}
+            onChange={handleFieldChange}
+            withPhoto
+            photoPreviewUrl={photoPreviewUrl}
+            onPickPhoto={handlePickPhoto}
+            onClearPhoto={clearPhoto}
+          />
+
           <Stack direction="row" spacing={2}>
             <Button
               variant="contained"
@@ -393,6 +452,7 @@ function UnlinkedUserRow({ user, familyMembers, onLinked }) {
               onClick={() => {
                 setMode('pick');
                 setForm(EMPTY_LINK_FORM);
+                clearPhoto();
               }}
             >
               Back
@@ -400,6 +460,16 @@ function UnlinkedUserRow({ user, familyMembers, onLinked }) {
           </Stack>
         </Stack>
       )}
+
+      <PhotoCropDialog
+        open={cropOpen}
+        file={cropFile}
+        onClose={() => {
+          setCropOpen(false);
+          setCropFile(null);
+        }}
+        onCropped={handleCropped}
+      />
     </Stack>
   );
 }

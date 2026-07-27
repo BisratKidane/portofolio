@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import ManagePage from './ManagePage.jsx';
 import ProtectedRoute from '../components/ProtectedRoute.jsx';
 
@@ -21,8 +23,17 @@ vi.mock('../api/photoClient.js', () => ({
   fetchMemberPhotoBlob: vi.fn().mockRejectedValue(new Error('not needed in this test'))
 }));
 
+vi.mock('react-easy-crop', () => ({
+  default: ({ onCropComplete }) => {
+    if (onCropComplete) {
+      onCropComplete({ x: 0, y: 0, width: 100, height: 100 }, { x: 0, y: 0, width: 100, height: 100 });
+    }
+    return <div data-testid="mock-cropper" />;
+  }
+}));
+
 import { graphqlRequest } from '../api/graphqlClient.js';
-import { removeMemberPhoto } from '../api/photoClient.js';
+import { removeMemberPhoto, uploadMemberPhoto } from '../api/photoClient.js';
 
 const SELF_ROW = {
   id: '1',
@@ -110,7 +121,11 @@ beforeEach(() => {
 });
 
 function renderPage() {
-  return render(<ManagePage />);
+  return render(
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <ManagePage />
+    </LocalizationProvider>
+  );
 }
 
 describe('ManagePage (member branch)', () => {
@@ -446,6 +461,64 @@ describe('ManagePage (admin branch — account linking, MNG-03)', () => {
     expect(await screen.findByText('No accounts are waiting to be linked.')).toBeInTheDocument();
   });
 
+  it('renders the connection card: account, member picker, and the Connect action', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyMembers: FAMILY_MEMBERS_FOR_LINKING });
+    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: ONE_UNLINKED_USER });
+
+    renderPage();
+
+    await screen.findByText('ada@example.com');
+    expect(screen.getByLabelText('Family member', { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Connect account → member' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Connect account → member' })).toBeDisabled();
+  });
+
+  it('uploads a deferred photo to the linked member id after create-and-link', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+    URL.revokeObjectURL = vi.fn();
+    HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ drawImage: vi.fn() }));
+    HTMLCanvasElement.prototype.toBlob = vi.fn(function toBlob(callback) {
+      callback(new Blob(['fake-cropped'], { type: 'image/jpeg' }));
+    });
+    global.Image = class {
+      set src(value) {
+        this._src = value;
+        if (this.onload) this.onload();
+      }
+      get src() {
+        return this._src;
+      }
+    };
+
+    graphqlRequest.mockResolvedValueOnce({ familyMembers: FAMILY_MEMBERS_FOR_LINKING });
+    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: ONE_UNLINKED_USER });
+    graphqlRequest.mockResolvedValueOnce({ linkUserToMember: { id: '1', familyMemberId: '77' } });
+    uploadMemberPhoto.mockResolvedValueOnce({ photoUrl: '/api/family-members/77/photo' });
+
+    renderPage();
+
+    await screen.findByText('ada@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Create new member instead' }));
+
+    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Bob');
+    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Builder');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
+
+    const file = new File(['bytes'], 'photo.jpg', { type: 'image/jpeg' });
+    await userEvent.upload(document.querySelector('input[type="file"]'), file);
+    await userEvent.click(await screen.findByRole('button', { name: 'Save photo' }));
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Change photo' })).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Create & link' }));
+
+    await waitFor(() => {
+      expect(uploadMemberPhoto).toHaveBeenCalledWith('77', expect.any(Blob));
+    });
+  });
+
   it('links an existing member via the Autocomplete and removes the row', async () => {
     graphqlRequest.mockResolvedValueOnce({ familyMembers: FAMILY_MEMBERS_FOR_LINKING });
     graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: ONE_UNLINKED_USER });
@@ -458,10 +531,10 @@ describe('ManagePage (admin branch — account linking, MNG-03)', () => {
     const autocomplete = screen.getByLabelText('Family member', { exact: false });
     await userEvent.click(autocomplete);
     await userEvent.type(autocomplete, 'John');
-    const option = await screen.findByRole('option', { name: 'John Doe' });
+    const option = await screen.findByRole('option', { name: /John Doe/ });
     await userEvent.click(option);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Link' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Connect account → member' }));
 
     await waitFor(() => {
       expect(graphqlRequest).toHaveBeenCalledWith(LINK_USER_TO_MEMBER_MUTATION, {
@@ -526,10 +599,10 @@ describe('ManagePage (admin branch — account linking, MNG-03)', () => {
     const autocomplete = screen.getByLabelText('Family member', { exact: false });
     await userEvent.click(autocomplete);
     await userEvent.type(autocomplete, 'John');
-    const option = await screen.findByRole('option', { name: 'John Doe' });
+    const option = await screen.findByRole('option', { name: /John Doe/ });
     await userEvent.click(option);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Link' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Connect account → member' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'This family member is already linked to an account.'
@@ -541,14 +614,16 @@ describe('ManagePage (admin branch — account linking, MNG-03)', () => {
 describe('ManagePage route gating (MNG-04, T-15-09, real /manage path)', () => {
   function renderManageRoute() {
     return render(
-      <MemoryRouter initialEntries={['/manage']}>
-        <Routes>
-          <Route path="/pending" element={<div>Pending Sentinel</div>} />
-          <Route element={<ProtectedRoute />}>
-            <Route path="/manage" element={<ManagePage />} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <MemoryRouter initialEntries={['/manage']}>
+          <Routes>
+            <Route path="/pending" element={<div>Pending Sentinel</div>} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/manage" element={<ManagePage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </LocalizationProvider>
     );
   }
 
