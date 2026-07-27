@@ -66,7 +66,7 @@ export default function MemberAvatarImage({ member, size = 42, variant = 'circul
 
   if (!member.photoUrl) {
     return (
-      <Avatar variant={variant} sx={{ ...dims, '& > svg': { width: '100%', height: '100%' } }}>
+      <Avatar variant={variant} sx={{ ...dims, '& > svg, & > img': { width: '100%', height: '100%', objectFit: 'cover' } }}>
         <MemberFallbackAvatar gender={member.gender} />
       </Avatar>
     );
@@ -87,7 +87,7 @@ export default function MemberAvatarImage({ member, size = 42, variant = 'circul
   }
 
   return (
-    <Avatar variant={variant} sx={{ ...dims, '& > svg': { width: '100%', height: '100%' } }}>
+    <Avatar variant={variant} sx={{ ...dims, '& > svg, & > img': { width: '100%', height: '100%', objectFit: 'cover' } }}>
       <MemberFallbackAvatar gender={member.gender} />
     </Avatar>
   );
