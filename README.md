@@ -279,6 +279,25 @@ This project has no migration framework. `sequelize.sync()` creates tables for b
 
 3. The full functional boot-and-verify (login gate against unverified accounts, and the end-to-end register/verify-email flow) happens once the whole phase's resolvers and frontend route land — see Plan 11-07's final manual-verification task for that proof rather than repeating it here.
 
+### Add isAlive + provenance to family_members (member provenance + isAlive)
+
+This migration adds a living-status boolean (`isAlive`) that supersedes `deathdate`, plus `createdByUserId`/`updatedByUserId` provenance columns. **`deathdate` is kept, not dropped** — the app stops reading/writing it, but historical death dates are preserved. Run it **before** deploying the new backend (the resolvers reference `isAlive`/`createdByUserId`, so an un-migrated DB will error with `Unknown column 'isAlive'`).
+
+1. Apply the migration against your database, using the `DB_USER`/`DB_PASSWORD`/`DB_NAME` values from the active env file:
+
+   ```bash
+   docker compose --env-file env/local.env exec -T mysql mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < backend/migrations/manual/014-add-family-members-isalive-and-provenance.sql
+   ```
+
+   Or run the equivalent statements with any MySQL client pointed at your `DB_HOST`/`DB_PORT`/`DB_NAME`.
+
+2. Boot the backend against that same database and confirm:
+   - No `Unknown column 'isAlive'` (or `createdByUserId`) error appears in the startup/request logs.
+   - `curl http://localhost:4000/health` returns `{"status":"ok"}`.
+   - The `/family` tree and `/manage` list load; existing members show as **Living** unless they had a `deathdate` (backfilled to Deceased).
+
+3. As an admin, toggle a member's living status from the `/manage` list or the `/family` detail panel and confirm the **Last edited by** provenance updates.
+
 ## Project structure
 
 ```text

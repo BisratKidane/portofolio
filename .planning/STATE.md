@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 Phase: Milestone v2.0 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-07-27 — Completed quick task 260727-rvt: Dashboard user management
+Last activity: 2026-07-27 — Completed quick task 260727-tb1: Member provenance + isAlive
 
 ## Deferred Items
 
@@ -148,6 +148,7 @@ Items acknowledged and carried forward from previous milestone close:
 | 260726-wn2 | Agne rebrand: themed tree-of-people logo + favicon, gender default avatars, rename Portofolio→Agne — on branch `agne-rebrand` | complete ✓ | 2026-07-26 |
 | 260727-byh | /manage forms pass 1: role clarity (names active member), shared MemberFields ≤2 cols + MUI X DatePicker, photo-on-create, side-by-side account↔member connection card — on branch `manage-forms` | complete ✓ | 2026-07-27 |
 | 260727-rvt | Dashboard user management (TDD): updateUser/changePassword/setUserPassword mutations + Edit/Change-password/Set-password dialogs, richer users list (last-updated + Unverified chip), self-vs-admin authz, last-admin guard, email re-verification — on branch `dashboard-user-management` | complete ✓ | 2026-07-27 |
+| 260727-tb1 | Family member provenance + isAlive (TDD): createdBy/updatedBy + timestamps (admin-only), isAlive replaces deathdate in API/UI (deathdate column kept), admin isAlive toggle in /manage list + /family detail panel, provenance columns; manual migration 014 — on branch `member-provenance-isalive` (stacked on dashboard-user-management) | complete ✓ | 2026-07-27 |
 
 ## Session Continuity
 
