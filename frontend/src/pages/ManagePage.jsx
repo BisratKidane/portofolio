@@ -19,7 +19,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { graphqlRequest } from '../api/graphqlClient.js';
 import { removeMemberPhoto, uploadMemberPhoto } from '../api/photoClient.js';
 import { colors, getInitials } from '../theme.js';
-import RelationshipGroupedPanel from '../components/manage/RelationshipGroupedPanel.jsx';
+import RelationshipGroupedPanel, { UnclesAuntsContent } from '../components/manage/RelationshipGroupedPanel.jsx';
 import AddRelativeDialog from '../components/manage/AddRelativeDialog.jsx';
 import EditMemberDialog from '../components/manage/EditMemberDialog.jsx';
 import AdminMemberTable from '../components/manage/AdminMemberTable.jsx';
@@ -388,14 +388,14 @@ function UnlinkedUserRow({ user, familyMembers, onLinked }) {
       {mode === 'pick' ? (
         <>
           <Stack
-            direction={{ xs: 'column', md: 'row' }}
+            direction="column"
             spacing={2}
             alignItems={{ md: 'center' }}
             sx={{ border: `1px solid ${colors.line}`, borderRadius: 4, p: 2, bgcolor: colors.gradientSoft }}
           >
             {accountBlock}
 
-            <LinkRoundedIcon aria-hidden="true" sx={{ color: colors.primary, transform: { xs: 'rotate(90deg)', md: 'none' } }} />
+            <LinkRoundedIcon aria-hidden="true" sx={{ color: colors.primary, transform: 'rotate(90deg)' }} />
 
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Autocomplete
@@ -594,28 +594,23 @@ function AdminBranch({ user }) {
         </Typography>
       </Box>
 
-      {/* Two columns: the member list + search on the left, the selected
-          member's add/edit panel on the right, so the edit area is always
-          visible next to the list instead of pushed below it. */}
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} alignItems="flex-start">
-        <Box sx={{ width: '100%', flex: { md: '0 0 44%' }, minWidth: 0 }}>
+      {/* Three columns: member list + search (left), the selected member's
+          add/edit panel (middle), and Link accounts + Uncles & Aunts (right).
+          Stacks vertically below lg. */}
+      <Stack direction={{ xs: 'column', lg: 'row' }} spacing={4} alignItems="flex-start">
+        {/* Left: list + search */}
+        <Box sx={{ width: '100%', flex: { lg: '0 0 32%' }, minWidth: 0 }}>
           <AdminMemberTable members={members} onSelect={handleFocus} />
         </Box>
 
-        <Box
-          sx={{
-            width: '100%',
-            flex: { md: 1 },
-            minWidth: 0,
-            position: { md: 'sticky' },
-            top: { md: 88 }
-          }}
-        >
+        {/* Middle: selected member's edit panel (uncles/aunts live in the right column) */}
+        <Box sx={{ width: '100%', flex: { lg: 1 }, minWidth: 0 }}>
           {focusedScope ? (
             <RelationshipGroupedPanel
               scope={focusedScope}
               isAdmin
               actingUserId={user.id}
+              showUnclesAunts={false}
               onAddRelative={(relationType) =>
                 setDialogState({
                   open: true,
@@ -645,32 +640,55 @@ function AdminBranch({ user }) {
             </Paper>
           )}
         </Box>
-      </Stack>
 
-      <Box>
-        <Typography variant="h6">Link accounts</Typography>
-        <Paper
-          elevation={0}
-          sx={{ borderRadius: 5, border: `1px solid ${colors.line}`, overflow: 'hidden', mt: 2 }}
-        >
-          {unlinkedUsers.length === 0 ? (
-            <Box sx={{ px: { xs: 3, md: 4 }, py: 4 }}>
-              <Typography>No accounts are waiting to be linked.</Typography>
+        {/* Right: Link accounts, then Uncles & Aunts for the selected member */}
+        <Box sx={{ width: '100%', flex: { lg: '0 0 30%' }, minWidth: 0 }}>
+          <Stack spacing={4}>
+            <Box>
+              <Typography variant="h6">Link accounts</Typography>
+              <Paper
+                elevation={0}
+                sx={{ borderRadius: 5, border: `1px solid ${colors.line}`, overflow: 'hidden', mt: 2 }}
+              >
+                {unlinkedUsers.length === 0 ? (
+                  <Box sx={{ px: { xs: 3, md: 4 }, py: 4 }}>
+                    <Typography>No accounts are waiting to be linked.</Typography>
+                  </Box>
+                ) : (
+                  <Stack divider={<Box sx={{ borderBottom: `1px solid ${colors.line}` }} />}>
+                    {unlinkedUsers.map((unlinkedUser) => (
+                      <UnlinkedUserRow
+                        key={unlinkedUser.id}
+                        user={unlinkedUser}
+                        familyMembers={members}
+                        onLinked={handleLinked}
+                      />
+                    ))}
+                  </Stack>
+                )}
+              </Paper>
             </Box>
-          ) : (
-            <Stack divider={<Box sx={{ borderBottom: `1px solid ${colors.line}` }} />}>
-              {unlinkedUsers.map((unlinkedUser) => (
-                <UnlinkedUserRow
-                  key={unlinkedUser.id}
-                  user={unlinkedUser}
-                  familyMembers={members}
-                  onLinked={handleLinked}
+
+            {focusedScope && (
+              <Paper
+                elevation={0}
+                sx={{ borderRadius: 5, border: `1px solid ${colors.line}`, px: { xs: 3, md: 4 }, py: 3 }}
+              >
+                <UnclesAuntsContent
+                  members={focusedScope.unclesAunts}
+                  self={focusedScope.self}
+                  isAdmin
+                  actingUserId={user.id}
+                  onEdit={(member) => setEditTarget(member)}
+                  onDelete={(member) => setDeleteTarget(member)}
+                  onPickPhoto={(member, file) => setCropDialog({ open: true, file, member })}
+                  onRemovePhoto={(member) => setRemovePhotoTarget(member)}
                 />
-              ))}
-            </Stack>
-          )}
-        </Paper>
-      </Box>
+              </Paper>
+            )}
+          </Stack>
+        </Box>
+      </Stack>
 
       <AddRelativeDialog
         open={dialogState.open}

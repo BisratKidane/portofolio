@@ -46,6 +46,25 @@ function MemberRows({
   );
 }
 
+// Uncles & Aunts content (heading + derived member cards or an empty nudge).
+// Exported so it can be rendered inline in the panel (member view) OR standalone
+// in the admin /manage right column.
+export function UnclesAuntsContent({ members, ...rowProps }) {
+  return (
+    <>
+      <Typography variant="h6">Uncles &amp; Aunts</Typography>
+      {members.length === 0 ? (
+        <Typography color="text.secondary" variant="body2" sx={{ mt: 2 }}>
+          None yet — uncles and aunts are the siblings of the parents. Add siblings to a parent to
+          fill them in and spot who&apos;s missing.
+        </Typography>
+      ) : (
+        <MemberRows members={members} isDerived {...rowProps} />
+      )}
+    </>
+  );
+}
+
 export default function RelationshipGroupedPanel({
   scope,
   isAdmin,
@@ -54,7 +73,8 @@ export default function RelationshipGroupedPanel({
   onEdit,
   onDelete,
   onPickPhoto,
-  onRemovePhoto
+  onRemovePhoto,
+  showUnclesAunts = true
 }) {
   const { self, parents, spouses, children, siblings, unclesAunts = [] } = scope;
 
@@ -82,17 +102,11 @@ export default function RelationshipGroupedPanel({
           </Box>
         </Box>
 
-        <Box sx={{ px: { xs: 3, md: 4 }, py: 3 }}>
-          <Typography variant="h6">Uncles &amp; Aunts</Typography>
-          {unclesAunts.length === 0 ? (
-            <Typography color="text.secondary" variant="body2" sx={{ mt: 2 }}>
-              None yet — uncles and aunts are the siblings of the parents. Add siblings to a parent
-              to fill them in and spot who&apos;s missing.
-            </Typography>
-          ) : (
-            <MemberRows members={unclesAunts} isDerived {...rowProps} />
-          )}
-        </Box>
+        {showUnclesAunts && (
+          <Box sx={{ px: { xs: 3, md: 4 }, py: 3 }}>
+            <UnclesAuntsContent members={unclesAunts} {...rowProps} />
+          </Box>
+        )}
 
         {allCoreEmpty && (
           <Box sx={{ px: { xs: 3, md: 4 }, py: 3 }}>
