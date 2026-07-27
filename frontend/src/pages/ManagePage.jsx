@@ -576,27 +576,58 @@ function AdminBranch({ user }) {
         </Typography>
       </Box>
 
-      <AdminMemberTable members={members} onSelect={handleFocus} />
+      {/* Two columns: the member list + search on the left, the selected
+          member's add/edit panel on the right, so the edit area is always
+          visible next to the list instead of pushed below it. */}
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} alignItems="flex-start">
+        <Box sx={{ width: '100%', flex: { md: '0 0 44%' }, minWidth: 0 }}>
+          <AdminMemberTable members={members} onSelect={handleFocus} />
+        </Box>
 
-      {focusedScope && (
-        <RelationshipGroupedPanel
-          scope={focusedScope}
-          isAdmin
-          actingUserId={user.id}
-          onAddRelative={(relationType) =>
-            setDialogState({
-              open: true,
-              relationType,
-              targetId: focusedScope.self.id,
-              targetName: focusedScope.self.fullname
-            })
-          }
-          onEdit={(member) => setEditTarget(member)}
-          onDelete={(member) => setDeleteTarget(member)}
-          onPickPhoto={(member, file) => setCropDialog({ open: true, file, member })}
-          onRemovePhoto={(member) => setRemovePhotoTarget(member)}
-        />
-      )}
+        <Box
+          sx={{
+            width: '100%',
+            flex: { md: 1 },
+            minWidth: 0,
+            position: { md: 'sticky' },
+            top: { md: 88 }
+          }}
+        >
+          {focusedScope ? (
+            <RelationshipGroupedPanel
+              scope={focusedScope}
+              isAdmin
+              actingUserId={user.id}
+              onAddRelative={(relationType) =>
+                setDialogState({
+                  open: true,
+                  relationType,
+                  targetId: focusedScope.self.id,
+                  targetName: focusedScope.self.fullname
+                })
+              }
+              onEdit={(member) => setEditTarget(member)}
+              onDelete={(member) => setDeleteTarget(member)}
+              onPickPhoto={(member, file) => setCropDialog({ open: true, file, member })}
+              onRemovePhoto={(member) => setRemovePhotoTarget(member)}
+            />
+          ) : (
+            <Paper
+              elevation={0}
+              sx={{
+                border: `1px solid ${colors.line}`,
+                borderRadius: 5,
+                p: { xs: 3, md: 5 },
+                textAlign: 'center'
+              }}
+            >
+              <Typography color="text.secondary">
+                Select a member from the list to view and edit their relatives.
+              </Typography>
+            </Paper>
+          )}
+        </Box>
+      </Stack>
 
       <Box>
         <Typography variant="h6">Link accounts</Typography>

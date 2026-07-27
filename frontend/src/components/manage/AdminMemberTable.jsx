@@ -13,6 +13,14 @@ import {
 } from '@mui/material';
 import MemberAvatarImage from './MemberAvatarImage.jsx';
 
+// Gender is no longer its own column — the avatar already conveys it. Instead the
+// member's NAME is colour-coded: blue for Male, orange for Female (matching the
+// gender avatars), default ink for other/unknown.
+const NAME_COLOR = { Male: '#2563eb', Female: '#ea580c' };
+function nameColor(gender) {
+  return NAME_COLOR[gender] || 'text.primary';
+}
+
 export default function AdminMemberTable({ members, onSelect }) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
@@ -56,7 +64,6 @@ export default function AdminMemberTable({ members, onSelect }) {
               <TableRow>
                 <TableCell sx={{ width: 56 }} />
                 <TableCell>Name</TableCell>
-                <TableCell>Gender</TableCell>
                 <TableCell>Linked account</TableCell>
               </TableRow>
             </TableHead>
@@ -71,8 +78,11 @@ export default function AdminMemberTable({ members, onSelect }) {
                   <TableCell>
                     <MemberAvatarImage member={member} />
                   </TableCell>
-                  <TableCell>{member.fullname}</TableCell>
-                  <TableCell>{member.gender}</TableCell>
+                  <TableCell>
+                    <Typography sx={{ fontWeight: 600, color: nameColor(member.gender) }} noWrap>
+                      {member.fullname}
+                    </Typography>
+                  </TableCell>
                   <TableCell>{member.linkedUser ? member.linkedUser.name : '—'}</TableCell>
                 </TableRow>
               ))}

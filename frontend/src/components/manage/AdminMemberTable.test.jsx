@@ -51,12 +51,12 @@ describe('AdminMemberTable', () => {
     expect(screen.getByLabelText('Search members')).toBeInTheDocument();
   });
 
-  it('renders a MUI Table with Name / Gender / Linked account columns', () => {
+  it('renders a MUI Table with Name / Linked account columns (no Gender column — avatar conveys it)', () => {
     render(<AdminMemberTable members={MEMBERS} onSelect={vi.fn()} />);
 
     expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Gender' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Linked account' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Gender' })).not.toBeInTheDocument();
     expect(screen.getByText('Grace H')).toBeInTheDocument();
     expect(screen.getByText('—')).toBeInTheDocument();
   });
