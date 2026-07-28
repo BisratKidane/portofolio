@@ -78,6 +78,24 @@ export async function sendPasswordResetEmail({ to, token }) {
   return sendMail({ to, subject, text, html });
 }
 
+export async function sendInvitationEmail({ to, url, inviterName, invitedName, relationship, note }) {
+  const greeting = invitedName ? `Hi ${invitedName},` : 'Hello,';
+  const from = inviterName ? `${inviterName} has invited you` : 'You have been invited';
+  const rel = relationship ? ` as their ${relationship}` : '';
+  const subject = 'You are invited to join the family';
+  const noteLine = note ? `\n\nA note from ${inviterName || 'the inviter'}: ${note}` : '';
+  const text = `${greeting}\n\n${from}${rel} to join the family platform.\n\nRegister here (this link expires soon and can be used once):\n${url}${noteLine}\n\nAfter you register, an administrator will review and approve your account before you can sign in.`;
+  const html = renderHtml({
+    heading: 'You are invited to join the family',
+    intro: `${from}${rel} to join the family platform. Use the button below to register — the link can be used once and expires soon.${note ? `<br /><br /><em>Note: ${note}</em>` : ''}`,
+    ctaLabel: 'Register your account',
+    ctaUrl: url,
+    note: 'After registering, an administrator reviews and approves your account before you can sign in.'
+  });
+
+  return sendMail({ to, subject, text, html });
+}
+
 export async function sendVerificationEmail({ to, token }) {
   const link = `${env.clientUrl}/verify-email?token=${token}`;
   const subject = 'Verify your email';

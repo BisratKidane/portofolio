@@ -73,3 +73,18 @@ export function hashVerificationToken(token) {
 export function verificationTokenExpiry() {
   return new Date(Date.now() + 24 * 60 * 60 * 1000);
 }
+
+// Invitation tokens: same hash-at-rest scheme as reset/verification tokens —
+// the raw token is only ever returned once (to build the registration URL) and
+// never stored; only its sha256 hash lives in the DB.
+export function createInvitationToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+export function hashInvitationToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+export function invitationExpiry() {
+  return new Date(Date.now() + env.inviteExpiresDays * 24 * 60 * 60 * 1000);
+}
