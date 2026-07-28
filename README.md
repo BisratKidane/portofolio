@@ -298,6 +298,21 @@ This migration adds a living-status boolean (`isAlive`) that supersedes `deathda
 
 3. As an admin, toggle a member's living status from the `/manage` list or the `/family` detail panel and confirm the **Last edited by** provenance updates.
 
+### Add invitation-based registration schema (Invitation milestone, Phase 1)
+
+Adds `users.status` (only `Active` users may authenticate; existing users backfilled to `Active`), plus the `invitations` and `audit_logs` tables. Run all three **before** deploying the milestone backend (the auth layer and resolvers reference `users.status`, so an un-migrated DB errors with `Unknown column 'status'`). Apply in order:
+
+```bash
+for f in 015-add-users-status 016-create-invitations 017-create-audit-logs; do
+  docker compose --env-file env/local.env exec -T mysql \
+    mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < "backend/migrations/manual/$f.sql"
+done
+```
+
+Then boot the backend and confirm:
+- No `Unknown column 'status'` / missing-table errors in the logs; `curl http://localhost:4000/health` returns `{"status":"ok"}`.
+- An existing (now `Active`) user can still log in; the `invitations` and `audit_logs` tables exist and are empty.
+
 ## Project structure
 
 ```text

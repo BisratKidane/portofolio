@@ -28,6 +28,10 @@ export async function getUserFromRequest(req, models) {
 
   if (!user.emailVerified) return null;
 
+  // Only Active accounts may authenticate. A Pending (awaiting-approval),
+  // Rejected, or Disabled user's token is treated as not-logged-in.
+  if (user.status !== 'Active') return null;
+
   return user;
 }
 

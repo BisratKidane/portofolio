@@ -29,12 +29,12 @@ describe('getUserFromRequest', () => {
     const token = signToken({ id: 7, role: 'USER' });
     const req = { headers: { authorization: `Bearer ${token}` } };
     let calledWith;
-    const models = { User: { findByPk: (id) => { calledWith = id; return { id, role: 'USER', emailVerified: true }; } } };
+    const models = { User: { findByPk: (id) => { calledWith = id; return { id, role: 'USER', emailVerified: true, status: 'Active' }; } } };
 
     const result = await getUserFromRequest(req, models);
 
     expect(calledWith).toBe(7);
-    expect(result).toEqual({ id: 7, role: 'USER', emailVerified: true });
+    expect(result).toEqual({ id: 7, role: 'USER', emailVerified: true, status: 'Active' });
   });
 
   it('returns null without invoking findByPk when there is no Authorization header', async () => {
@@ -99,7 +99,7 @@ describe('getUserFromRequest — passwordChangedAt revocation (SESS-03)', () => 
     // the same-second boundary, and must not accidentally expire relative to the real wall clock.
     const token = jwt.sign({ sub: 7, role: 'USER', iat: iatSameSecond }, env.jwtSecret, { expiresIn: '3650d' });
     const req = { headers: { authorization: `Bearer ${token}` } };
-    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', passwordChangedAt: changedAt, emailVerified: true }) } };
+    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', passwordChangedAt: changedAt, emailVerified: true, status: 'Active' }) } };
 
     const result = await getUserFromRequest(req, models);
 
@@ -122,7 +122,7 @@ describe('getUserFromRequest — passwordChangedAt revocation (SESS-03)', () => 
   it('does not revoke when passwordChangedAt is NULL (D-05 — no backfill)', async () => {
     const token = signToken({ id: 7, role: 'USER' });
     const req = { headers: { authorization: `Bearer ${token}` } };
-    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', passwordChangedAt: null, emailVerified: true }) } };
+    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', passwordChangedAt: null, emailVerified: true, status: 'Active' }) } };
 
     const result = await getUserFromRequest(req, models);
 
@@ -134,7 +134,7 @@ describe('getUserFromRequest — email verification gate (VERIFY-05)', () => {
   it('resolves the user when emailVerified is true for an otherwise-valid token', async () => {
     const token = signToken({ id: 7, role: 'USER' });
     const req = { headers: { authorization: `Bearer ${token}` } };
-    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', emailVerified: true }) } };
+    const models = { User: { findByPk: async () => ({ id: 7, role: 'USER', emailVerified: true, status: 'Active' }) } };
 
     const result = await getUserFromRequest(req, models);
 

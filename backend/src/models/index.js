@@ -2,10 +2,14 @@ import { sequelize } from '../config/database.js';
 import { initUser } from './User.js';
 import { initFamilyMember, FamilyMember } from './FamilyMember.js';
 import { initSpouse, Spouse } from './Spouse.js';
+import { initInvitation, Invitation } from './Invitation.js';
+import { initAuditLog, AuditLog } from './AuditLog.js';
 
 const User = initUser(sequelize);
 initFamilyMember(sequelize);
 initSpouse(sequelize);
+initInvitation(sequelize);
+initAuditLog(sequelize);
 
 // --- Associations (first use of Sequelize associations in this codebase) ---
 
@@ -59,10 +63,56 @@ FamilyMember.belongsTo(User, {
   onUpdate: 'CASCADE'
 });
 
+// --- Invitation associations (Phase 1, invitation-based registration) ---
+// inviter is required; deleting the inviter cascades their invitations away.
+// approver/registeredUser are optional back-references filled during the
+// approval / registration flows.
+Invitation.belongsTo(User, {
+  as: 'inviter',
+  foreignKey: { name: 'inviterId', allowNull: false },
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE'
+});
+User.hasMany(Invitation, { as: 'sentInvitations', foreignKey: 'inviterId' });
+Invitation.belongsTo(User, {
+  as: 'approver',
+  foreignKey: { name: 'approvedBy', allowNull: true },
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE'
+});
+Invitation.belongsTo(User, {
+  as: 'registeredUser',
+  foreignKey: { name: 'registeredUserId', allowNull: true },
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE'
+});
+
+// --- Audit log associations ---
+AuditLog.belongsTo(User, {
+  as: 'actor',
+  foreignKey: { name: 'actorUserId', allowNull: true },
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE'
+});
+AuditLog.belongsTo(Invitation, {
+  as: 'invitation',
+  foreignKey: { name: 'invitationId', allowNull: true },
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE'
+});
+AuditLog.belongsTo(User, {
+  as: 'targetUser',
+  foreignKey: { name: 'targetUserId', allowNull: true },
+  onDelete: 'SET NULL',
+  onUpdate: 'CASCADE'
+});
+
 export const models = {
   User,
   FamilyMember,
-  Spouse
+  Spouse,
+  Invitation,
+  AuditLog
 };
 
 export async function initializeDatabase() {

@@ -32,6 +32,8 @@ export async function resetTables() {
   // gone. Disabling FK checks around the truncate sequence is the standard
   // pattern for FK-constrained test resets.
   await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+  await models.AuditLog.destroy({ where: {}, truncate: true });
+  await models.Invitation.destroy({ where: {}, truncate: true });
   await models.Spouse.destroy({ where: {}, truncate: true });
   await models.FamilyMember.destroy({ where: {}, truncate: true });
   await models.User.destroy({ where: {}, truncate: true });
@@ -47,6 +49,9 @@ export async function createTestUser(overrides = {}) {
     passwordHash: 'Password123!',
     role: 'USER',
     emailVerified: true,
+    // Existing/seed users represent already-approved accounts; invitation-flow
+    // tests opt into 'Pending'/'Rejected'/'Disabled' explicitly.
+    status: 'Active',
     ...overrides
   });
 }

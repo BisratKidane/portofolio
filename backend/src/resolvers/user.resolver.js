@@ -97,6 +97,12 @@ export const userResolvers = {
       const user = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
       if (!user || !(await user.validatePassword(password))) throw new Error('Invalid email or password.');
       if (!user.emailVerified) throw new Error('Please verify your email before signing in.');
+      if (user.status !== 'Active') {
+        if (user.status === 'Pending') throw new Error('Your account is awaiting administrator approval.');
+        if (user.status === 'Rejected') throw new Error('Your registration was not approved.');
+        if (user.status === 'Disabled') throw new Error('Your account has been disabled.');
+        throw new Error('Your account is not active.');
+      }
       return { token: signToken(user), user };
     },
     logout: (_parent, _args, { user }) => {

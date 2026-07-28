@@ -49,7 +49,15 @@ export function initUser(sequelize) {
       },
       emailVerified: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
       emailVerificationToken: { type: DataTypes.STRING, allowNull: true },
-      emailVerificationExpiresAt: { type: DataTypes.DATE, allowNull: true }
+      emailVerificationExpiresAt: { type: DataTypes.DATE, allowNull: true },
+      // Account lifecycle for invitation-based access. Only 'Active' users may
+      // authenticate. New registrations start 'Pending' (awaiting admin
+      // approval); existing users are backfilled 'Active' by migration 015.
+      status: {
+        type: DataTypes.ENUM('Pending', 'Active', 'Rejected', 'Disabled'),
+        allowNull: false,
+        defaultValue: 'Pending'
+      }
       // familyMemberId is added by the User.belongsTo(FamilyMember) association in
       // models/index.js (Phase 13, D-07) -- not redeclared here.
     },
