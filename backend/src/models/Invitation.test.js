@@ -13,7 +13,6 @@ describe('Invitation model', () => {
       tokenHash: 'hash-1',
       inviterId: inviter.id,
       invitedEmail: 'invitee@example.com',
-      invitationMethod: 'email',
       expiresAt: future()
     });
     expect(inv.status).toBe('Pending');
@@ -22,29 +21,11 @@ describe('Invitation model', () => {
     expect(inv.approvedAt).toBeNull();
   });
 
-  it('rejects an invitation with neither email nor phone', async () => {
+  it('requires an invited email', async () => {
     const inviter = await createTestUser({ email: 'inviter2@example.com' });
     await expect(
-      models.Invitation.create({
-        tokenHash: 'hash-2',
-        inviterId: inviter.id,
-        invitationMethod: 'email',
-        expiresAt: future()
-      })
-    ).rejects.toThrow('An invitation needs an email or a phone number.');
-  });
-
-  it('requires a phone number for a whatsapp invitation', async () => {
-    const inviter = await createTestUser({ email: 'inviter3@example.com' });
-    await expect(
-      models.Invitation.create({
-        tokenHash: 'hash-3',
-        inviterId: inviter.id,
-        invitedEmail: 'has-email@example.com',
-        invitationMethod: 'whatsapp',
-        expiresAt: future()
-      })
-    ).rejects.toThrow('A WhatsApp invitation needs a phone number.');
+      models.Invitation.create({ tokenHash: 'hash-2', inviterId: inviter.id, expiresAt: future() })
+    ).rejects.toThrow();
   });
 
   it('enforces a unique tokenHash', async () => {
@@ -52,16 +33,14 @@ describe('Invitation model', () => {
     await models.Invitation.create({
       tokenHash: 'dup-hash',
       inviterId: inviter.id,
-      invitedPhone: '+15551230000',
-      invitationMethod: 'whatsapp',
+      invitedEmail: 'one@example.com',
       expiresAt: future()
     });
     await expect(
       models.Invitation.create({
         tokenHash: 'dup-hash',
         inviterId: inviter.id,
-        invitedPhone: '+15551230001',
-        invitationMethod: 'whatsapp',
+        invitedEmail: 'two@example.com',
         expiresAt: future()
       })
     ).rejects.toThrow();
@@ -73,7 +52,6 @@ describe('Invitation model', () => {
       tokenHash: 'hash-5',
       inviterId: inviter.id,
       invitedEmail: 'x@example.com',
-      invitationMethod: 'email',
       expiresAt: future()
     });
     const loaded = await models.Invitation.findByPk(inv.id, { include: [{ association: 'inviter' }] });

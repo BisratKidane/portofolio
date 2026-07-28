@@ -27,14 +27,6 @@ export const env = {
   resetTokenExpiresMinutes: Number(process.env.RESET_TOKEN_EXPIRES_MINUTES || 30),
   // Invitation links expire after this many days (configurable per SEC req).
   inviteExpiresDays: Number(process.env.INVITE_EXPIRES_DAYS || 7),
-  // WhatsApp Business API — dormant until all four are set. Until then, WhatsApp
-  // invites fall back to a shareable wa.me link (see services/whatsapp.js).
-  whatsapp: {
-    provider: process.env.WHATSAPP_PROVIDER || null,
-    apiUrl: process.env.WHATSAPP_API_URL || null,
-    token: process.env.WHATSAPP_API_TOKEN || null,
-    from: process.env.WHATSAPP_FROM || null
-  },
   // CR-03: 12 selection levels comfortably covers realistic family-tree
   // traversals while bounding the exponential amplification available on a
   // schema where mother/father/children/spouses/siblings are mutually

@@ -1,9 +1,4 @@
 export const invitationTypeDefs = `#graphql
-  enum InvitationMethod {
-    email
-    whatsapp
-  }
-
   enum InvitationStatus {
     Pending
     Registered
@@ -15,9 +10,7 @@ export const invitationTypeDefs = `#graphql
   type Invitation {
     id: ID!
     invitedName: String
-    invitedEmail: String
-    invitedPhone: String
-    invitationMethod: InvitationMethod!
+    invitedEmail: String!
     relationshipToFamily: String
     invitationNote: String
     expiresAt: String!
@@ -32,20 +25,16 @@ export const invitationTypeDefs = `#graphql
 
   input CreateInvitationInput {
     invitedName: String
-    invitedEmail: String
-    invitedPhone: String
-    invitationMethod: InvitationMethod!
+    invitedEmail: String!
     relationshipToFamily: String
     invitationNote: String
   }
 
-  # The raw registration URL (and, for WhatsApp, a shareable wa.me link) is
-  # returned ONCE here at creation — the token behind it is never stored or
-  # returned again.
+  # The raw registration URL is returned ONCE here at creation — the token
+  # behind it is never stored or returned again.
   type CreateInvitationResult {
     invitation: Invitation!
     registrationUrl: String!
-    whatsappUrl: String
   }
 
   extend type Query {

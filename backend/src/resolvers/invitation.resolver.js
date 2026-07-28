@@ -1,7 +1,6 @@
 import { requireAdmin, requireFamilyAccess, createInvitationToken, hashInvitationToken, invitationExpiry } from '../utils/auth.js';
 import { writeAuditLog } from '../utils/audit.js';
 import { sendInvitationEmail } from '../services/mailer.js';
-import { buildWhatsappShareUrl, sendWhatsappMessage } from '../services/whatsapp.js';
 import { env } from '../config/env.js';
 
 function blankToNull(value) {
@@ -30,14 +29,11 @@ export const invitationResolvers = {
     createInvitation: async (_parent, { input }, { models, user }) => {
       requireFamilyAccess(user);
 
-      const method = input.invitationMethod;
       const invitedEmail = blankToNull(input.invitedEmail);
-      const invitedPhone = blankToNull(input.invitedPhone);
 
       // The mutation is the integrity boundary — validate here, not just in the
       // model, so we can give a precise message before creating a token.
-      if (method === 'email' && !invitedEmail) throw new Error('An email invitation needs an email address.');
-      if (method === 'whatsapp' && !invitedPhone) throw new Error('A WhatsApp invitation needs a phone number.');
+      if (!invitedEmail) throw new Error('An invitation needs an email address.');
 
       const rawToken = createInvitationToken();
       const invitation = await models.Invitation.create({
@@ -45,8 +41,6 @@ export const invitationResolvers = {
         inviterId: user.id,
         invitedName: blankToNull(input.invitedName),
         invitedEmail,
-        invitedPhone,
-        invitationMethod: method,
         relationshipToFamily: blankToNull(input.relationshipToFamily),
         invitationNote: blankToNull(input.invitationNote),
         expiresAt: invitationExpiry(),
@@ -54,35 +48,24 @@ export const invitationResolvers = {
       });
 
       const registrationUrl = `${env.clientUrl}/register?token=${rawToken}`;
-      const shareMessage = `You've been invited to join the family platform. Register here (single-use, expires soon): ${registrationUrl}`;
-      let whatsappUrl = null;
 
-      if (method === 'email') {
-        sendInvitationEmail({
-          to: invitedEmail,
-          url: registrationUrl,
-          inviterName: user.name,
-          invitedName: invitation.invitedName,
-          relationship: invitation.relationshipToFamily,
-          note: invitation.invitationNote
-        }).catch((err) => console.error('Failed to send invitation email:', err));
-      } else {
-        // WhatsApp: always provide the shareable link; the Business-API send is
-        // attempted too but stays dormant until credentials are configured.
-        whatsappUrl = buildWhatsappShareUrl(invitedPhone, shareMessage);
-        sendWhatsappMessage({ to: invitedPhone, message: shareMessage }).catch((err) =>
-          console.error('Failed to send WhatsApp invitation:', err)
-        );
-      }
+      sendInvitationEmail({
+        to: invitedEmail,
+        url: registrationUrl,
+        inviterName: user.name,
+        invitedName: invitation.invitedName,
+        relationship: invitation.relationshipToFamily,
+        note: invitation.invitationNote
+      }).catch((err) => console.error('Failed to send invitation email:', err));
 
       writeAuditLog(models, {
         action: 'invitation.created',
         actorUserId: user.id,
         invitationId: invitation.id,
-        metadata: { method, invitedEmail, invitedPhone }
+        metadata: { invitedEmail }
       }).catch((err) => console.error('Failed to write audit log:', err));
 
-      return { invitation, registrationUrl, whatsappUrl };
+      return { invitation, registrationUrl };
     }
   },
   Invitation: {
