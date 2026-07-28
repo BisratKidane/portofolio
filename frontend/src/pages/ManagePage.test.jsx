@@ -339,6 +339,48 @@ describe('ManagePage (admin branch)', () => {
     expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('familyMember('), { id: '1' });
   });
 
+  it('opens the Edit dialog fully pre-filled for a spouse card in the admin-focused panel', async () => {
+    const FULL_FOCUS = {
+      ...ADMIN_FOCUS_ROW,
+      spouses: [
+        {
+          id: '3',
+          firstname: 'John',
+          lastname: 'Doe',
+          fullname: 'John Doe',
+          gender: 'Male',
+          mothersname: 'Mary Doe',
+          email: 'john@example.com',
+          birthdate: '1979-05-04',
+          isAlive: true,
+          phone: '555-9000',
+          address: '2 Oak St',
+          photoUrl: null
+        }
+      ]
+    };
+
+    graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
+    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: [] });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: FULL_FOCUS });
+
+    renderPage();
+
+    await userEvent.click(await screen.findByText('Ada Lovelace'));
+    await screen.findByText('John Doe');
+
+    // Cards render in order: self, parent (mother), spouse, child, sibling.
+    const editButtons = screen.getAllByRole('button', { name: 'Edit' });
+    await userEvent.click(editButtons[2]); // spouse
+
+    expect(await screen.findByText('Edit member')).toBeInTheDocument();
+    expect(screen.getByLabelText('First name', { exact: false })).toHaveValue('John');
+    expect(screen.getByLabelText('Last name', { exact: false })).toHaveValue('Doe');
+    expect(screen.getByLabelText('Email', { exact: false })).toHaveValue('john@example.com');
+    expect(screen.getByLabelText('Phone', { exact: false })).toHaveValue('555-9000');
+    expect(screen.getByLabelText("Mother's name", { exact: false })).toHaveValue('Mary Doe');
+  });
+
   it('shows an active Edit button for every card in the admin-focused panel regardless of linkedUser (D-06 bypass)', async () => {
     graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
     graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: [] });

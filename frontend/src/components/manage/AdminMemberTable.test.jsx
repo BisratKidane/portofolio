@@ -51,16 +51,31 @@ describe('AdminMemberTable', () => {
     expect(screen.getByLabelText('Search members')).toBeInTheDocument();
   });
 
-  it('renders a MUI Table with Name / Linked account columns (no Gender column — avatar conveys it)', () => {
+  it('renders a Name column but no Born, Gender, or Linked account column headers', () => {
     render(<AdminMemberTable members={MEMBERS} onSelect={vi.fn()} />);
 
     expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Born' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Linked account' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Born' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Linked account' })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: 'Gender' })).not.toBeInTheDocument();
-    expect(screen.getByText('Grace H')).toBeInTheDocument();
-    // '—' now appears for empty Born and empty Linked-account cells.
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+  });
+
+  it('marks a member with a linked account with an icon (named after the account), and leaves unlinked rows empty', () => {
+    render(<AdminMemberTable members={MEMBERS} onSelect={vi.fn()} />);
+
+    // Ada (row 0) has no account; Grace (row 1) does.
+    expect(screen.getByRole('img', { name: 'Linked to Grace H' })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Linked to Ada Lovelace' })).not.toBeInTheDocument();
+  });
+
+  it('does not render any birth date in the rows', () => {
+    render(
+      <AdminMemberTable
+        members={[{ ...MEMBERS[0], birthdate: '1815-12-10' }]}
+        onSelect={vi.fn()}
+      />
+    );
+    expect(screen.queryByText('1815-12-10')).not.toBeInTheDocument();
   });
 
   it('renders MUI TablePagination navigation controls', () => {

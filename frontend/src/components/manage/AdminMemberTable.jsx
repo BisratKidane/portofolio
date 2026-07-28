@@ -13,7 +13,9 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
+import LinkRoundedIcon from '@mui/icons-material/LinkRounded';
 import MemberAvatarImage from './MemberAvatarImage.jsx';
+import { colors } from '../../theme.js';
 
 function formatWhen(value) {
   if (!value) return null;
@@ -89,9 +91,9 @@ export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
               <TableRow>
                 <TableCell sx={{ width: 56 }} />
                 <TableCell>Name</TableCell>
-                <TableCell>Born</TableCell>
+                {/* Headerless: a link icon marks members with a linked account. */}
+                <TableCell sx={{ width: 44 }} />
                 <TableCell>Living</TableCell>
-                <TableCell>Linked account</TableCell>
                 <TableCell>Last edited by</TableCell>
               </TableRow>
             </TableHead>
@@ -111,7 +113,17 @@ export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
                       {member.fullname}
                     </Typography>
                   </TableCell>
-                  <TableCell>{member.birthdate || '—'}</TableCell>
+                  <TableCell sx={{ textAlign: 'center' }}>
+                    {member.linkedUser && (
+                      <Tooltip title={`Linked to ${member.linkedUser.name}`}>
+                        <LinkRoundedIcon
+                          fontSize="small"
+                          titleAccess={`Linked to ${member.linkedUser.name}`}
+                          sx={{ color: colors.primary, verticalAlign: 'middle' }}
+                        />
+                      </Tooltip>
+                    )}
+                  </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()} sx={{ cursor: 'default' }}>
                     <Tooltip title={member.isAlive !== false ? 'Living — click to mark deceased' : 'Deceased — click to mark living'}>
                       <Switch
@@ -122,7 +134,6 @@ export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
                       />
                     </Tooltip>
                   </TableCell>
-                  <TableCell>{member.linkedUser ? member.linkedUser.name : '—'}</TableCell>
                   <TableCell><Provenance who={member.updatedBy} when={member.updatedAt} /></TableCell>
                 </TableRow>
               ))}

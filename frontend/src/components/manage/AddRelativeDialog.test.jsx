@@ -96,14 +96,12 @@ describe('AddRelativeDialog - parent', () => {
     expect(screen.getByRole('button', { name: 'Add member' })).toBeInTheDocument();
   });
 
-  it('names the active member in the role helper text', () => {
-    renderDialog({ relationType: 'parent', targetName: 'Almaz Kidane' });
-    expect(
-      screen.getByText('Is this person the mother or father of Almaz Kidane?')
-    ).toBeInTheDocument();
+  it('does not render a manual Role field for parent (role is derived from gender)', () => {
+    renderDialog({ relationType: 'parent' });
+    expect(screen.queryByLabelText('Role', { exact: false })).not.toBeInTheDocument();
   });
 
-  it('submits addParent with role and form fields, then calls onCreated and onClose', async () => {
+  it('submits addParent with role FATHER derived from a Male gender', async () => {
     graphqlRequest.mockResolvedValueOnce({ addParent: { id: '30', fullname: 'Byron Lovelace' } });
     const { onClose, onCreated } = renderDialog({ relationType: 'parent' });
 
@@ -113,15 +111,12 @@ describe('AddRelativeDialog - parent', () => {
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
-    await userEvent.click(screen.getByLabelText('Role', { exact: false }));
-    await userEvent.click(await screen.findByRole('option', { name: 'Mother' }));
-
     await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
 
     await waitFor(() => {
       expect(graphqlRequest).toHaveBeenCalledWith(ADD_PARENT_MUTATION, {
         memberId: '1',
-        role: 'MOTHER',
+        role: 'FATHER',
         newMember: {
           firstname: 'Byron',
           lastname: 'Lovelace',
@@ -138,6 +133,37 @@ describe('AddRelativeDialog - parent', () => {
 
     expect(onCreated).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('submits addParent with role MOTHER derived from a Female gender', async () => {
+    graphqlRequest.mockResolvedValueOnce({ addParent: { id: '31', fullname: 'Ada Lovelace' } });
+    renderDialog({ relationType: 'parent' });
+
+    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Ada');
+    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
+
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Female' }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => {
+      expect(graphqlRequest).toHaveBeenCalledWith(
+        ADD_PARENT_MUTATION,
+        expect.objectContaining({ role: 'MOTHER' })
+      );
+    });
+  });
+
+  it('keeps submit disabled for an Other-gender parent (no father/mother slot)', async () => {
+    renderDialog({ relationType: 'parent' });
+
+    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Sky');
+    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Doe');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Other' }));
+
+    expect(screen.getByRole('button', { name: 'Add member' })).toBeDisabled();
   });
 });
 

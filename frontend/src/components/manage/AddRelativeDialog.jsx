@@ -51,7 +51,19 @@ const EMPTY_FORM = {
   address: ''
 };
 
-const NEEDS_ROLE = new Set(['parent', 'child']);
+// Only a child still needs a manually-picked role — it describes whether the
+// anchor member is the child's mother or father, which the new child's own
+// gender can't tell us. A parent's role is instead derived from the parent's
+// own gender (Male → FATHER, Female → MOTHER); see parentRoleFromGender.
+const NEEDS_ROLE = new Set(['child']);
+
+// A parent occupies the mother or father slot, so their role follows directly
+// from their gender. 'Other'/unset yields no slot — submit stays disabled.
+function parentRoleFromGender(gender) {
+  if (gender === 'Male') return 'FATHER';
+  if (gender === 'Female') return 'MOTHER';
+  return '';
+}
 
 export default function AddRelativeDialog({
   open,
@@ -126,7 +138,11 @@ export default function AddRelativeDialog({
     try {
       let created;
       if (relationType === 'parent') {
-        const data = await graphqlRequest(ADD_PARENT_MUTATION, { memberId: targetId, role, newMember: form });
+        const data = await graphqlRequest(ADD_PARENT_MUTATION, {
+          memberId: targetId,
+          role: parentRoleFromGender(form.gender),
+          newMember: form
+        });
         created = data.addParent;
       } else if (relationType === 'spouse') {
         const data = await graphqlRequest(ADD_SPOUSE_MUTATION, { memberId: targetId, newMember: form });
@@ -165,11 +181,19 @@ export default function AddRelativeDialog({
 
   const needsRole = NEEDS_ROLE.has(relationType);
   const who = targetName || 'this person';
-  const roleHelperText =
-    relationType === 'child'
-      ? `${who} is this child's mother or father.`
-      : `Is this person the mother or father of ${who}?`;
-  const disableSubmit = !form.firstname || !form.lastname || !form.gender || (needsRole && !role) || submitting;
+  const roleHelperText = `${who} is this child's mother or father.`;
+  const isParent = relationType === 'parent';
+  const parentRole = parentRoleFromGender(form.gender);
+  // Parent role is derived from gender; an 'Other'/unset gender maps to no
+  // father/mother slot, so we block submit and explain why.
+  const parentNeedsBinaryGender = isParent && Boolean(form.gender) && !parentRole;
+  const disableSubmit =
+    !form.firstname ||
+    !form.lastname ||
+    !form.gender ||
+    (needsRole && !role) ||
+    (isParent && !parentRole) ||
+    submitting;
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
@@ -201,6 +225,12 @@ export default function AddRelativeDialog({
             onPickPhoto={handlePickPhoto}
             onClearPhoto={clearPhoto}
           />
+
+          {parentNeedsBinaryGender && (
+            <Alert severity="info">
+              Set the gender to Male or Female so this parent can be recorded as a father or mother.
+            </Alert>
+          )}
 
           {relationType === 'child' &&
             (showPicker ? (

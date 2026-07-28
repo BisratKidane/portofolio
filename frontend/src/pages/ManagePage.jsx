@@ -27,10 +27,17 @@ import MemberAvatarImage from '../components/manage/MemberAvatarImage.jsx';
 import MemberFields from '../components/manage/MemberFields.jsx';
 import PhotoCropDialog from '../components/manage/PhotoCropDialog.jsx';
 
+// The scalar fields both the avatar (gender, photoUrl) and the edit form
+// (all editable fields incl. mothersname) need on any member card. Requested
+// on nested relatives so a relative's Edit dialog opens fully populated, not
+// just with an id + fullname.
+const EDITABLE_MEMBER_FIELDS =
+  'id firstname lastname fullname gender mothersname email birthdate isAlive phone address photoUrl';
+
 const MY_EDITABLE_MEMBERS_QUERY = `
   query MyEditableMembers {
     myEditableMembers {
-      id firstname lastname fullname gender birthdate isAlive phone email address photoUrl
+      ${EDITABLE_MEMBER_FIELDS}
       mother { id siblings { id fullname gender birthdate photoUrl } }
       father { id siblings { id fullname gender birthdate photoUrl } }
       spouses { id fullname } children { id fullname } siblings { id fullname }
@@ -55,19 +62,19 @@ const TOGGLE_ALIVE_MUTATION = `
   }
 `;
 
-// Deviation (Rule 1): the plan's <interfaces> block wrote `mother { id } father { id }`
-// (copy-pasted from MY_EDITABLE_MEMBERS_QUERY's shape), but 15-RESEARCH.md's "Admin table
-// + focus query shape" section -- the canonical source this task's read_first points to --
-// specifies `mother { id fullname }` / `father { id fullname }`. Without fullname these
-// flattened parent rows would render blank names in the Parents section, so this follows
-// RESEARCH.md.
+// Every relative is fetched with the full editable field set (not just id +
+// fullname) so the admin panel renders correct gendered/photo avatars AND each
+// relative's Edit dialog opens fully populated. Parents' siblings (uncles &
+// aunts) get the same treatment for the same reason.
 const FAMILY_MEMBER_FOCUS_QUERY = `
   query FamilyMemberFocus($id: ID!) {
     familyMember(id: $id) {
-      id firstname lastname fullname gender birthdate isAlive phone email address photoUrl
-      mother { id fullname siblings { id fullname gender birthdate photoUrl } }
-      father { id fullname siblings { id fullname gender birthdate photoUrl } }
-      spouses { id fullname } children { id fullname } siblings { id fullname }
+      ${EDITABLE_MEMBER_FIELDS}
+      mother { ${EDITABLE_MEMBER_FIELDS} siblings { ${EDITABLE_MEMBER_FIELDS} } }
+      father { ${EDITABLE_MEMBER_FIELDS} siblings { ${EDITABLE_MEMBER_FIELDS} } }
+      spouses { ${EDITABLE_MEMBER_FIELDS} }
+      children { ${EDITABLE_MEMBER_FIELDS} }
+      siblings { ${EDITABLE_MEMBER_FIELDS} }
       linkedUser { id name email }
     }
   }
