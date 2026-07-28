@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import FamilyTreePage from './pages/FamilyTreePage.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import Login from './pages/Login.jsx';
+import InvitePage from './pages/InvitePage.jsx';
 import ManagePage from './pages/ManagePage.jsx';
 import Pending from './pages/Pending.jsx';
 import Register from './pages/Register.jsx';
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="manage" element={<ManagePage />} />
           <Route path="family" element={<FamilyTreePage />} />
+          <Route path="invite" element={<InvitePage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
           <Route path="admin/link-members" element={<Navigate to="/manage" replace />} />

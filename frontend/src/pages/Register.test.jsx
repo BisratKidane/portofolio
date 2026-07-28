@@ -11,67 +11,60 @@ vi.mock('../api/graphqlClient.js', () => ({
 
 import { graphqlRequest } from '../api/graphqlClient.js';
 
-const { navigateSpy } = vi.hoisted(() => ({ navigateSpy: vi.fn() }));
-
-vi.mock('react-router-dom', async (importOriginal) => ({
-  ...(await importOriginal()),
-  useNavigate: () => navigateSpy
-}));
-
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
 });
 
-function renderRegister() {
+function renderRegister(token = 'invite-token-123') {
+  const path = token ? `/register?token=${token}` : '/register';
   return render(
     <AuthProvider>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <Register />
       </MemoryRouter>
     </AuthProvider>
   );
 }
 
-describe('Register page', () => {
-  it('shows a check-your-email confirmation panel and never navigates on successful registration', async () => {
-    graphqlRequest.mockResolvedValueOnce({
-      register: { message: 'Registration successful. Please check your email to verify your account.' }
-    });
-
-    renderRegister();
-
-    await userEvent.type(screen.getByLabelText('Full name', { exact: false }), 'Ada');
-    await userEvent.type(screen.getByLabelText('Email address', { exact: false }), 'ada@example.com');
-    await userEvent.type(screen.getByLabelText('Password', { exact: false }), 'secret123');
-    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
-
-    expect(
-      await screen.findByText('Registration successful. Please check your email to verify your account.')
-    ).toBeInTheDocument();
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Registration successful. Please check your email to verify your account.'
-    );
+describe('Register page (invitation-only)', () => {
+  it('shows an "invitation required" notice and no form when there is no token', () => {
+    renderRegister(null);
+    expect(screen.getByText(/invitation only/i)).toBeInTheDocument();
     expect(screen.queryByLabelText('Full name', { exact: false })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Email address', { exact: false })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Password', { exact: false })).not.toBeInTheDocument();
-    expect(navigateSpy).not.toHaveBeenCalled();
   });
 
-  it('shows an error alert, keeps the form visible, and does not navigate on rejected registration', async () => {
-    graphqlRequest.mockRejectedValueOnce(new Error('A user with this email already exists.'));
+  it('registers with the token + name + password (no email field) and shows the confirmation', async () => {
+    graphqlRequest.mockResolvedValueOnce({
+      register: { message: 'Registration received. Verify your email — then an administrator will review your account.' }
+    });
 
-    renderRegister();
+    renderRegister('tok-abc');
+
+    expect(screen.queryByLabelText('Email address', { exact: false })).not.toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText('Full name', { exact: false }), 'Ada');
-    await userEvent.type(screen.getByLabelText('Email address', { exact: false }), 'ada@example.com');
     await userEvent.type(screen.getByLabelText('Password', { exact: false }), 'secret123');
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('A user with this email already exists.');
+    expect(await screen.findByText(/an administrator will review your account/i)).toBeInTheDocument();
+    expect(graphqlRequest).toHaveBeenCalledWith(
+      expect.stringContaining('register(token'),
+      { token: 'tok-abc', name: 'Ada', password: 'secret123' }
+    );
+    expect(screen.queryByLabelText('Full name', { exact: false })).not.toBeInTheDocument();
+  });
+
+  it('shows an error alert and keeps the form on a rejected registration', async () => {
+    graphqlRequest.mockRejectedValueOnce(new Error('This invitation link has expired.'));
+
+    renderRegister('tok-expired');
+
+    await userEvent.type(screen.getByLabelText('Full name', { exact: false }), 'Ada');
+    await userEvent.type(screen.getByLabelText('Password', { exact: false }), 'secret123');
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('This invitation link has expired.');
     expect(screen.getByLabelText('Full name', { exact: false })).toBeInTheDocument();
-    expect(screen.getByLabelText('Email address', { exact: false })).toBeInTheDocument();
-    expect(screen.getByLabelText('Password', { exact: false })).toBeInTheDocument();
-    expect(navigateSpy).not.toHaveBeenCalled();
   });
 });

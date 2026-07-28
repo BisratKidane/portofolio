@@ -16,14 +16,14 @@ const LOGIN_MUTATION = `
 `;
 
 const REGISTER_MUTATION = `
-  mutation Register($name: String!, $email: String!, $password: String!) {
-    register(name: $name, email: $email, password: $password) { message }
+  mutation Register($token: String!, $name: String!, $password: String!) {
+    register(token: $token, name: $name, password: $password) { message }
   }
 `;
 
 const VERIFY_EMAIL_MUTATION = `
   mutation VerifyEmail($token: String!) {
-    verifyEmail(token: $token) { token user { id name email role familyMemberId } }
+    verifyEmail(token: $token) { token user { id name email role status familyMemberId } }
   }
 `;
 
@@ -68,13 +68,28 @@ export function AuthProvider({ children }) {
     return payload.user;
   };
 
+  // Email verification can succeed while the account is still Pending admin
+  // approval. In that case the returned token is not yet usable, so DON'T
+  // establish a session — just return the user so the page can route to
+  // /pending.
+  const verifyEmail = async (token) => {
+    const data = await graphqlRequest(VERIFY_EMAIL_MUTATION, { token });
+    const payload = data.verifyEmail;
+    if (payload.user.status && payload.user.status !== 'Active') {
+      return payload.user;
+    }
+    localStorage.setItem('authToken', payload.token);
+    setUser(payload.user);
+    return payload.user;
+  };
+
   const value = useMemo(() => ({
     user,
     loading,
     isAuthenticated: Boolean(user),
     login: (email, password) => authenticate(LOGIN_MUTATION, { email, password }),
-    register: (name, email, password) => graphqlRequest(REGISTER_MUTATION, { name, email, password }).then((data) => data.register),
-    verifyEmail: (token) => authenticate(VERIFY_EMAIL_MUTATION, { token }),
+    register: (token, name, password) => graphqlRequest(REGISTER_MUTATION, { token, name, password }).then((data) => data.register),
+    verifyEmail,
     // Changing your own password rotates the JWT (the old one is revoked by
     // passwordChangedAt on the backend), so persist the fresh token to stay
     // signed in and refresh the cached user.

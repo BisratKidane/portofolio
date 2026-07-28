@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Alert, Box, Button, Link, Stack, TextField, Typography } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import AuthShell from '../components/AuthShell.jsx';
 
 export default function Register() {
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+  const [form, setForm] = useState({ name: '', password: '' });
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,7 +18,7 @@ export default function Register() {
     setError('');
     setLoading(true);
     try {
-      const data = await register(form.name, form.email, form.password);
+      const data = await register(token, form.name, form.password);
       setResult(data);
     } catch (err) {
       setError(err.message);
@@ -25,11 +27,35 @@ export default function Register() {
     }
   };
 
+  // Public self-registration is disabled — an account can only be created from
+  // a valid invitation link (?token=...).
+  if (!token) {
+    return (
+      <AuthShell
+        eyebrow="Invitation required"
+        title="You need an invitation"
+        subtitle="Agne is invitation-only."
+        footer={
+          <Typography variant="body2" color="text.secondary">
+            Already have an account?{' '}
+            <Link component={RouterLink} to="/login">
+              Sign in
+            </Link>
+          </Typography>
+        }
+      >
+        <Alert severity="info">
+          Registration is by invitation only. Ask a family member to invite you, then open the link they send.
+        </Alert>
+      </AuthShell>
+    );
+  }
+
   return (
     <AuthShell
       eyebrow="Get started"
       title="Create your account"
-      subtitle="Set up your Agne profile in a few seconds."
+      subtitle="You've been invited — set up your Agne profile."
       footer={
         <Typography variant="body2" color="text.secondary">
           Already have an account?{' '}
@@ -45,7 +71,8 @@ export default function Register() {
           <>
             <Alert severity="success">{result.message}</Alert>
             <Typography variant="body2" color="text.secondary">
-              We&apos;ve sent a verification link to your email — click it to activate your account.
+              We&apos;ve sent a verification link to your email. After you verify, an administrator will review and
+              approve your account before you can sign in.
             </Typography>
           </>
         ) : (
@@ -58,15 +85,6 @@ export default function Register() {
                 required
                 fullWidth
                 autoComplete="name"
-              />
-              <TextField
-                label="Email address"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                required
-                fullWidth
-                autoComplete="email"
               />
               <TextField
                 label="Password"

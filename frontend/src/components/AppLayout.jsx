@@ -63,6 +63,13 @@ export default function AppLayout() {
                 >
                   Manage
                 </Button>
+                <Button
+                  component={RouterLink}
+                  to="/invite"
+                  sx={{ color: colors.slate, fontWeight: 600, display: { xs: 'none', sm: 'inline-flex' } }}
+                >
+                  Invite
+                </Button>
                 <Avatar
                   sx={{
                     width: 38,
@@ -81,11 +88,8 @@ export default function AppLayout() {
               </Stack>
             ) : (
               <Stack direction="row" spacing={{ xs: 1, sm: 1.5 }} alignItems="center">
-                <Button component={RouterLink} to="/login" sx={{ color: colors.slate, fontWeight: 600 }}>
+                <Button component={RouterLink} to="/login" variant="contained">
                   Login
-                </Button>
-                <Button component={RouterLink} to="/register" variant="contained">
-                  Get started
                 </Button>
               </Stack>
             )}

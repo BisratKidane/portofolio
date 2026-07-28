@@ -78,6 +78,24 @@ export async function sendPasswordResetEmail({ to, token }) {
   return sendMail({ to, subject, text, html });
 }
 
+export async function sendPendingRegistrationEmail({ to, newUserName, newUserEmail, inviterName, relationship, note, registeredAt }) {
+  const when = registeredAt ? new Date(registeredAt).toISOString() : new Date().toISOString();
+  const relLine = relationship ? `\nRelationship to the family: ${relationship}` : '';
+  const noteLine = note ? `\nInvitation note: ${note}` : '';
+  const reviewUrl = `${env.clientUrl}/manage`;
+  const subject = `New account awaiting approval: ${newUserName}`;
+  const text = `A new account has registered via invitation and is awaiting your approval.\n\nName: ${newUserName}\nEmail: ${newUserEmail}\nInvited by: ${inviterName}${relLine}${noteLine}\nRegistered: ${when}\n\nReview pending registrations: ${reviewUrl}`;
+  const html = renderHtml({
+    heading: 'New account awaiting approval',
+    intro: `<strong>${newUserName}</strong> (${newUserEmail}) registered via an invitation from <strong>${inviterName}</strong>${relationship ? ` as their ${relationship}` : ''} and is awaiting approval.${note ? `<br /><br /><em>Note: ${note}</em>` : ''}`,
+    ctaLabel: 'Review pending registrations',
+    ctaUrl: reviewUrl,
+    note: `Registered ${when}.`
+  });
+
+  return sendMail({ to, subject, text, html });
+}
+
 export async function sendInvitationEmail({ to, url, inviterName, invitedName, relationship, note }) {
   const greeting = invitedName ? `Hi ${invitedName},` : 'Hello,';
   const from = inviterName ? `${inviterName} has invited you` : 'You have been invited';

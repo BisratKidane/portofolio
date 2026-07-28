@@ -2,6 +2,7 @@ import { Op, UniqueConstraintError } from 'sequelize';
 import {
   createResetToken,
   createVerificationToken,
+  hashInvitationToken,
   hashResetToken,
   hashVerificationToken,
   requireAdmin,
@@ -12,7 +13,30 @@ import {
   verificationTokenExpiry
 } from '../utils/auth.js';
 import { assertPasswordStrength } from '../utils/passwordPolicy.js';
-import { sendPasswordResetEmail, sendVerificationEmail } from '../services/mailer.js';
+import { writeAuditLog } from '../utils/audit.js';
+import { sendPasswordResetEmail, sendPendingRegistrationEmail, sendVerificationEmail } from '../services/mailer.js';
+
+// Best-effort: email every Active admin that a new invited account has
+// registered and is awaiting approval. Failure here must never fail the
+// registration itself (the caller wraps this in .catch).
+async function notifyAdminsOfPendingRegistration(models, { invitation, user }) {
+  const admins = await models.User.findAll({ where: { role: 'ADMIN', status: 'Active' } });
+  if (admins.length === 0) return;
+  const inviter = invitation.inviterId ? await models.User.findByPk(invitation.inviterId) : null;
+  await Promise.all(
+    admins.map((admin) =>
+      sendPendingRegistrationEmail({
+        to: admin.email,
+        newUserName: user.name,
+        newUserEmail: user.email,
+        inviterName: inviter?.name || 'Unknown',
+        relationship: invitation.relationshipToFamily,
+        note: invitation.invitationNote,
+        registeredAt: user.createdAt || new Date()
+      })
+    )
+  );
+}
 
 export const OPTIONAL_FAMILY_MEMBER_FIELDS = ['mothersname', 'email', 'birthdate', 'deathdate', 'phone', 'address'];
 
@@ -72,26 +96,75 @@ export const userResolvers = {
     }
   },
   Mutation: {
-    register: async (_parent, { name, email, password }, { models }) => {
+    // Public self-registration is DISABLED: registration requires a valid,
+    // unused, unexpired invitation token. The account is created in the
+    // 'Pending' state (email still needs verifying AND an admin still needs to
+    // approve before the user can sign in — two gates).
+    register: async (_parent, { token, name, password }, { models }) => {
       assertPasswordStrength(password);
 
+      const invitation = await models.Invitation.findOne({ where: { tokenHash: hashInvitationToken(token) } });
+      if (!invitation) throw new Error('This invitation link is invalid.');
+      if (invitation.status === 'Expired' || invitation.expiresAt < new Date()) {
+        if (invitation.status === 'Pending') {
+          invitation.status = 'Expired';
+          await invitation.save();
+        }
+        throw new Error('This invitation link has expired.');
+      }
+      if (invitation.status !== 'Pending') throw new Error('This invitation has already been used.');
+
+      const email = invitation.invitedEmail;
       const existingUser = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
-      if (existingUser) throw new Error('A user with this email already exists.');
+      if (existingUser) throw new Error('An account with this email already exists.');
 
       const verificationToken = createVerificationToken();
-      const user = await models.User.create({
-        name,
-        email,
-        passwordHash: password,
-        emailVerificationToken: hashVerificationToken(verificationToken),
-        emailVerificationExpiresAt: verificationTokenExpiry()
+      const sequelize = models.User.sequelize;
+
+      let createdUser;
+      await sequelize.transaction(async (t) => {
+        createdUser = await models.User.create(
+          {
+            name,
+            email,
+            passwordHash: password,
+            status: 'Pending',
+            emailVerificationToken: hashVerificationToken(verificationToken),
+            emailVerificationExpiresAt: verificationTokenExpiry()
+          },
+          { transaction: t }
+        );
+
+        // One-time-use: consume the invitation only if it is STILL Pending. Two
+        // concurrent registrations on the same token race here; the conditional
+        // update means exactly one wins and the loser's transaction rolls back.
+        const [affected] = await models.Invitation.update(
+          { status: 'Registered', registeredAt: new Date(), registeredUserId: createdUser.id },
+          { where: { id: invitation.id, status: 'Pending' }, transaction: t }
+        );
+        if (affected === 0) throw new Error('This invitation has already been used.');
       });
 
-      sendVerificationEmail({ to: user.email, token: verificationToken }).catch((err) => {
+      sendVerificationEmail({ to: email, token: verificationToken }).catch((err) => {
         console.error('Failed to send verification email:', err);
       });
 
-      return { message: 'Registration successful. Please check your email to verify your account.' };
+      notifyAdminsOfPendingRegistration(models, { invitation, user: createdUser }).catch((err) => {
+        console.error('Failed to notify admins of pending registration:', err);
+      });
+
+      writeAuditLog(models, {
+        action: 'invitation.registered',
+        actorUserId: createdUser.id,
+        invitationId: invitation.id,
+        targetUserId: createdUser.id,
+        metadata: { email }
+      }).catch((err) => console.error('Failed to write audit log:', err));
+
+      return {
+        message:
+          'Registration received. Verify your email — then an administrator will review and approve your account before you can sign in.'
+      };
     },
     login: async (_parent, { email, password }, { models }) => {
       const user = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });

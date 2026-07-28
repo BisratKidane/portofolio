@@ -4,12 +4,20 @@ export const userTypeDefs = `#graphql
     USER
   }
 
+  enum AccountStatus {
+    Pending
+    Active
+    Rejected
+    Disabled
+  }
+
   type User {
     id: ID!
     name: String!
     email: String!
     role: Role!
     emailVerified: Boolean!
+    status: AccountStatus!
     familyMemberId: ID
     createdAt: String!
     updatedAt: String!
@@ -48,7 +56,7 @@ export const userTypeDefs = `#graphql
   }
 
   type Mutation {
-    register(name: String!, email: String!, password: String!): RegisterPayload!
+    register(token: String!, name: String!, password: String!): RegisterPayload!
     login(email: String!, password: String!): AuthPayload!
     logout: Boolean!
     requestPasswordReset(email: String!): PasswordResetPayload!

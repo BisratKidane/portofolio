@@ -19,7 +19,11 @@ export default function VerifyEmail() {
       return;
     }
     verifyEmail(token)
-      .then(() => navigate('/dashboard'))
+      .then((user) => {
+        // Email verified, but the account may still be awaiting admin approval
+        // (two-gate flow) — route there instead of the dashboard.
+        navigate(user && user.status && user.status !== 'Active' ? '/pending' : '/dashboard');
+      })
       .catch((err) => {
         setError(err.message);
         setLoading(false);

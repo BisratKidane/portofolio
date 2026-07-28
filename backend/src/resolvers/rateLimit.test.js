@@ -43,8 +43,8 @@ const NAMED_FRAGMENT_LOGIN_MUTATION = `
 `;
 
 const REGISTER_MUTATION = `
-  mutation Register($name: String!, $email: String!, $password: String!) {
-    register(name: $name, email: $email, password: $password) {
+  mutation Register($token: String!, $name: String!, $password: String!) {
+    register(token: $token, name: $name, password: $password) {
       message
     }
   }
@@ -185,11 +185,14 @@ describe('register rate limiting (RATE-02)', () => {
     const clientIp = '10.10.20.1';
     const responses = [];
 
+    // The rate limiter runs BEFORE the resolver, so even failing (invalid-token)
+    // attempts count. The first 5 fail with the invalid-invitation error (not
+    // rate-limited); the 6th is blocked by the limiter.
     for (let i = 0; i < 6; i += 1) {
       responses.push(
         await graphql(
           REGISTER_MUTATION,
-          { name: 'X', email: `rl-user-${i}@example.com`, password: 'Password123!' },
+          { token: `invalid-token-${i}`, name: 'X', password: 'Password123!' },
           null,
           clientIp
         )
@@ -197,14 +200,9 @@ describe('register rate limiting (RATE-02)', () => {
     }
 
     for (let i = 0; i < 5; i += 1) {
-      expect(responses[i].errors).toBeUndefined();
+      expect(responses[i].errors[0].message).toBe('This invitation link is invalid.');
     }
     expect(responses[5].errors[0].message).toBe(TOO_MANY_REQUESTS_MESSAGE);
-
-    const createdCount = await models.User.count({
-      where: { email: { [Op.like]: 'rl-user-%@example.com' } }
-    });
-    expect(createdCount).toBe(5);
   });
 });
 
