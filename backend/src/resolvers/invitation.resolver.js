@@ -1,6 +1,6 @@
 import { requireAdmin, requireFamilyAccess, createInvitationToken, hashInvitationToken, invitationExpiry } from '../utils/auth.js';
 import { writeAuditLog } from '../utils/audit.js';
-import { sendInvitationEmail } from '../services/mailer.js';
+import { sendInvitationEmail, sendAccountApprovedEmail, sendAccountRejectedEmail } from '../services/mailer.js';
 import { env } from '../config/env.js';
 
 function blankToNull(value) {
@@ -16,10 +16,15 @@ export const invitationResolvers = {
       requireFamilyAccess(user);
       return models.Invitation.findAll({ where: { inviterId: user.id }, order: [['createdAt', 'DESC']] });
     },
-    // Admin-only: every invitation (feeds the approval dashboard in Phase 4).
+    // Admin-only: every invitation.
     invitations: async (_parent, _args, { models, user }) => {
       requireAdmin(user);
       return models.Invitation.findAll({ order: [['createdAt', 'DESC']] });
+    },
+    // Admin-only: invitations awaiting an approval decision.
+    pendingRegistrations: async (_parent, _args, { models, user }) => {
+      requireAdmin(user);
+      return models.Invitation.findAll({ where: { status: 'Registered' }, order: [['registeredAt', 'DESC']] });
     }
   },
   Mutation: {
@@ -66,6 +71,71 @@ export const invitationResolvers = {
       }).catch((err) => console.error('Failed to write audit log:', err));
 
       return { invitation, registrationUrl };
+    },
+    // Admin approves a registered invitation: activate the user and stamp the
+    // decision. Only a 'Registered' invitation (invitee has registered, awaiting
+    // review) can be approved.
+    approveInvitation: async (_parent, { invitationId }, { models, user }) => {
+      requireAdmin(user);
+      const invitation = await models.Invitation.findByPk(invitationId);
+      if (!invitation) throw new Error('Invitation not found.');
+      if (invitation.status !== 'Registered') throw new Error('This registration is not awaiting approval.');
+
+      const target = invitation.registeredUserId ? await models.User.findByPk(invitation.registeredUserId) : null;
+      if (!target) throw new Error('The registered user no longer exists.');
+
+      const sequelize = models.User.sequelize;
+      await sequelize.transaction(async (t) => {
+        await target.update({ status: 'Active' }, { transaction: t });
+        await invitation.update({ status: 'Approved', approvedAt: new Date(), approvedBy: user.id }, { transaction: t });
+      });
+
+      sendAccountApprovedEmail({ to: target.email, name: target.name }).catch((err) =>
+        console.error('Failed to send approval email:', err)
+      );
+      writeAuditLog(models, {
+        action: 'invitation.approved',
+        actorUserId: user.id,
+        invitationId: invitation.id,
+        targetUserId: target.id
+      }).catch((err) => console.error('Failed to write audit log:', err));
+
+      return invitation;
+    },
+    // Admin rejects a registered invitation: mark the user Rejected (login stays
+    // blocked) and record the optional reason for auditing.
+    rejectInvitation: async (_parent, { invitationId, reason }, { models, user }) => {
+      requireAdmin(user);
+      const invitation = await models.Invitation.findByPk(invitationId);
+      if (!invitation) throw new Error('Invitation not found.');
+      if (invitation.status !== 'Registered') throw new Error('This registration is not awaiting approval.');
+
+      const target = invitation.registeredUserId ? await models.User.findByPk(invitation.registeredUserId) : null;
+      const cleanReason = typeof reason === 'string' && reason.trim() ? reason.trim() : null;
+
+      const sequelize = models.User.sequelize;
+      await sequelize.transaction(async (t) => {
+        if (target) await target.update({ status: 'Rejected' }, { transaction: t });
+        await invitation.update(
+          { status: 'Rejected', rejectedAt: new Date(), rejectionReason: cleanReason },
+          { transaction: t }
+        );
+      });
+
+      if (target) {
+        sendAccountRejectedEmail({ to: target.email, name: target.name, reason: cleanReason }).catch((err) =>
+          console.error('Failed to send rejection email:', err)
+        );
+      }
+      writeAuditLog(models, {
+        action: 'invitation.rejected',
+        actorUserId: user.id,
+        invitationId: invitation.id,
+        targetUserId: target?.id ?? null,
+        metadata: { reason: cleanReason }
+      }).catch((err) => console.error('Failed to write audit log:', err));
+
+      return invitation;
     }
   },
   Invitation: {
@@ -78,6 +148,12 @@ export const invitationResolvers = {
         return loaders.userById.load(Number(invitation.inviterId));
       }
       return null;
+    },
+    // Admin-only: the account that registered against this invitation (feeds the
+    // approval dashboard with the name/email/verification the invitee chose).
+    registeredUser: async (invitation, _args, { user, loaders }) => {
+      if (invitation.registeredUserId == null || user?.role !== 'ADMIN') return null;
+      return loaders.userById.load(Number(invitation.registeredUserId));
     }
   }
 };

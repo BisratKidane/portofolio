@@ -78,11 +78,39 @@ export async function sendPasswordResetEmail({ to, token }) {
   return sendMail({ to, subject, text, html });
 }
 
+export async function sendAccountApprovedEmail({ to, name }) {
+  const loginUrl = `${env.clientUrl}/login`;
+  const subject = 'Your account has been approved';
+  const text = `Hi ${name || 'there'},\n\nGood news — an administrator has approved your account. You can now sign in:\n${loginUrl}\n\nWelcome to the family.`;
+  const html = renderHtml({
+    heading: 'Your account is approved',
+    intro: 'An administrator has reviewed and approved your account. You can now sign in.',
+    ctaLabel: 'Sign in',
+    ctaUrl: loginUrl,
+    note: 'Welcome to the family.'
+  });
+  return sendMail({ to, subject, text, html });
+}
+
+export async function sendAccountRejectedEmail({ to, name, reason }) {
+  const subject = 'About your registration';
+  const reasonLine = reason ? `\n\nReason: ${reason}` : '';
+  const text = `Hi ${name || 'there'},\n\nThank you for your interest. Unfortunately your registration was not approved at this time.${reasonLine}\n\nIf you believe this is a mistake, please reach out to a family administrator.`;
+  const html = renderHtml({
+    heading: 'Registration update',
+    intro: `Thank you for your interest. Unfortunately your registration was not approved at this time.${reason ? `<br /><br /><em>Reason: ${reason}</em>` : ''}`,
+    ctaLabel: 'Visit Agne',
+    ctaUrl: env.clientUrl,
+    note: 'If you believe this is a mistake, please reach out to a family administrator.'
+  });
+  return sendMail({ to, subject, text, html });
+}
+
 export async function sendPendingRegistrationEmail({ to, newUserName, newUserEmail, inviterName, relationship, note, registeredAt }) {
   const when = registeredAt ? new Date(registeredAt).toISOString() : new Date().toISOString();
   const relLine = relationship ? `\nRelationship to the family: ${relationship}` : '';
   const noteLine = note ? `\nInvitation note: ${note}` : '';
-  const reviewUrl = `${env.clientUrl}/manage`;
+  const reviewUrl = `${env.clientUrl}/approvals`;
   const subject = `New account awaiting approval: ${newUserName}`;
   const text = `A new account has registered via invitation and is awaiting your approval.\n\nName: ${newUserName}\nEmail: ${newUserEmail}\nInvited by: ${inviterName}${relLine}${noteLine}\nRegistered: ${when}\n\nReview pending registrations: ${reviewUrl}`;
   const html = renderHtml({

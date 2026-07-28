@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from './components/AppLayout.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import ApprovalsPage from './pages/ApprovalsPage.jsx';
 import FamilyTreePage from './pages/FamilyTreePage.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import Login from './pages/Login.jsx';
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="invite" element={<InvitePage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+          <Route path="approvals" element={<ApprovalsPage />} />
           <Route path="admin/link-members" element={<Navigate to="/manage" replace />} />
         </Route>
       </Route>

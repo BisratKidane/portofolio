@@ -70,6 +70,15 @@ export default function AppLayout() {
                 >
                   Invite
                 </Button>
+                {user.role === 'ADMIN' && (
+                  <Button
+                    component={RouterLink}
+                    to="/approvals"
+                    sx={{ color: colors.slate, fontWeight: 600, display: { xs: 'none', sm: 'inline-flex' } }}
+                  >
+                    Approvals
+                  </Button>
+                )}
                 <Avatar
                   sx={{
                     width: 38,

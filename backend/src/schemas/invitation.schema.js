@@ -21,6 +21,7 @@ export const invitationTypeDefs = `#graphql
     status: InvitationStatus!
     createdAt: String!
     inviter: User
+    registeredUser: User
   }
 
   input CreateInvitationInput {
@@ -40,9 +41,14 @@ export const invitationTypeDefs = `#graphql
   extend type Query {
     myInvitations: [Invitation!]!
     invitations: [Invitation!]!
+    # Admin-only: invitations whose invitee has registered and is awaiting a
+    # decision (status Registered).
+    pendingRegistrations: [Invitation!]!
   }
 
   extend type Mutation {
     createInvitation(input: CreateInvitationInput!): CreateInvitationResult!
+    approveInvitation(invitationId: ID!): Invitation!
+    rejectInvitation(invitationId: ID!, reason: String): Invitation!
   }
 `;
