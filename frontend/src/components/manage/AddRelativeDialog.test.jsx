@@ -286,41 +286,59 @@ describe('AddRelativeDialog - spouse', () => {
 });
 
 describe('AddRelativeDialog - child', () => {
-  it('renders the role field and the in-scope-only "other parent" picker toggle', () => {
-    renderDialog({ relationType: 'child' });
-    expect(screen.getByLabelText('Role', { exact: false })).toBeInTheDocument();
+  it('renders no manual role field, and shows the in-scope-only "other parent" picker toggle', () => {
+    renderDialog({ relationType: 'child', targetGender: 'Male', targetFirstname: 'Almaz' });
+    expect(screen.queryByLabelText('Role', { exact: false })).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'or pick someone already in your family' })
     ).toBeInTheDocument();
   });
 
-  it('names the active member in the child role helper text', () => {
-    renderDialog({ relationType: 'child', targetName: 'Almaz Kidane' });
+  it('states that a male anchor will be recorded as the child\'s father', () => {
+    renderDialog({ relationType: 'child', targetName: 'Almaz Kidane', targetGender: 'Male', targetFirstname: 'Almaz' });
     expect(
-      screen.getByText("Almaz Kidane is this child's mother or father.")
+      screen.getByText("Almaz Kidane will be recorded as this child's father.")
     ).toBeInTheDocument();
   });
 
-  it('submits addChild with otherParentId null when no picker selection is made', async () => {
-    graphqlRequest.mockResolvedValueOnce({ addChild: { id: '40', fullname: 'Byron Lovelace' } });
-    const { onClose, onCreated } = renderDialog({ relationType: 'child' });
+  it('states that a female anchor will be recorded as the child\'s mother', () => {
+    renderDialog({ relationType: 'child', targetName: 'Almaz Kidane', targetGender: 'Female', targetFirstname: 'Almaz' });
+    expect(
+      screen.getByText("Almaz Kidane will be recorded as this child's mother.")
+    ).toBeInTheDocument();
+  });
+
+  it('prefills the last name with a male anchor\'s first name', () => {
+    renderDialog({ relationType: 'child', targetGender: 'Male', targetFirstname: 'Almaz' });
+    expect(screen.getByLabelText('Last name', { exact: false })).toHaveValue('Almaz');
+  });
+
+  it('does not prefill the last name for a female anchor', () => {
+    renderDialog({ relationType: 'child', targetGender: 'Female', targetFirstname: 'Almaz' });
+    expect(screen.getByLabelText('Last name', { exact: false })).toHaveValue('');
+  });
+
+  it('submits addChild with role FATHER derived from a male anchor (otherParentId null)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ addChild: { id: '40', fullname: 'Byron Almaz' } });
+    const { onClose, onCreated } = renderDialog({
+      relationType: 'child',
+      targetGender: 'Male',
+      targetFirstname: 'Almaz'
+    });
 
     await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Byron');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
-    await userEvent.click(screen.getByLabelText('Role', { exact: false }));
-    await userEvent.click(await screen.findByRole('option', { name: 'Mother' }));
 
     await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
 
     await waitFor(() => {
       expect(graphqlRequest).toHaveBeenCalledWith(ADD_CHILD_MUTATION, {
         memberId: '1',
-        role: 'MOTHER',
+        role: 'FATHER',
         newMember: {
           firstname: 'Byron',
-          lastname: 'Lovelace',
+          lastname: 'Almaz',
           gender: 'Male',
           mothersname: '',
           email: '',
@@ -337,16 +355,37 @@ describe('AddRelativeDialog - child', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('submits addChild with otherParentId set from the in-scope Autocomplete selection', async () => {
-    graphqlRequest.mockResolvedValueOnce({ addChild: { id: '41', fullname: 'Byron Lovelace' } });
-    const { onCreated } = renderDialog({ relationType: 'child' });
+  it('submits addChild with role MOTHER derived from a female anchor', async () => {
+    graphqlRequest.mockResolvedValueOnce({ addChild: { id: '42', fullname: 'Byron Lovelace' } });
+    renderDialog({ relationType: 'child', targetGender: 'Female', targetFirstname: 'Ada' });
 
     await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Byron');
     await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
-    await userEvent.click(screen.getByLabelText('Role', { exact: false }));
-    await userEvent.click(await screen.findByRole('option', { name: 'Mother' }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => {
+      expect(graphqlRequest).toHaveBeenCalledWith(
+        ADD_CHILD_MUTATION,
+        expect.objectContaining({ role: 'MOTHER' })
+      );
+    });
+  });
+
+  it('submits addChild with otherParentId set from the in-scope Autocomplete selection', async () => {
+    graphqlRequest.mockResolvedValueOnce({ addChild: { id: '41', fullname: 'Byron Lovelace' } });
+    const { onCreated } = renderDialog({
+      relationType: 'child',
+      targetGender: 'Female',
+      targetFirstname: 'Ada'
+    });
+
+    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Byron');
+    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
     await userEvent.click(screen.getByRole('button', { name: 'or pick someone already in your family' }));
     const picker = screen.getByLabelText('Other parent (optional)', { exact: false });
@@ -368,7 +407,12 @@ describe('AddRelativeDialog - child', () => {
   });
 
   it('binds the Autocomplete options strictly to the inScopeMembers prop', async () => {
-    renderDialog({ relationType: 'child', inScopeMembers: IN_SCOPE_MEMBERS });
+    renderDialog({
+      relationType: 'child',
+      targetGender: 'Female',
+      targetFirstname: 'Ada',
+      inScopeMembers: IN_SCOPE_MEMBERS
+    });
     await userEvent.click(screen.getByRole('button', { name: 'or pick someone already in your family' }));
     const picker = screen.getByLabelText('Other parent (optional)', { exact: false });
     await userEvent.click(picker);
@@ -379,22 +423,33 @@ describe('AddRelativeDialog - child', () => {
     expect(screen.queryByText('Someone Not In Scope')).not.toBeInTheDocument();
   });
 
+  it('blocks submit and warns when the anchor has no Male/Female gender', async () => {
+    renderDialog({ relationType: 'child', targetGender: 'Other', targetFirstname: 'Sky' });
+
+    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Byron');
+    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
+
+    expect(screen.getByRole('button', { name: 'Add member' })).toBeDisabled();
+    expect(screen.getByText(/can't be set as this child's mother or father/i)).toBeInTheDocument();
+  });
+
   it('renders the exact REL-06 dedup rejection message inside role="alert"', async () => {
     const rel06Message =
       "A child named 'Sara' already exists under Almaz Kidane. Pick a different name, or edit the existing member.";
     graphqlRequest.mockRejectedValueOnce(new Error(rel06Message));
-    renderDialog({ relationType: 'child' });
+    renderDialog({ relationType: 'child', targetGender: 'Female', targetFirstname: 'Almaz' });
 
     await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Sara');
     await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Kidane');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Female' }));
-    await userEvent.click(screen.getByLabelText('Role', { exact: false }));
-    await userEvent.click(await screen.findByRole('option', { name: 'Mother' }));
 
     await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(rel06Message);
+    // A derived-role info alert is also present, so assert on the error text.
+    expect(await screen.findByText(rel06Message)).toBeInTheDocument();
   });
 });
 

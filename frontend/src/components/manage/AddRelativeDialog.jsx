@@ -6,7 +6,6 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  MenuItem,
   Stack,
   TextField
 } from '@mui/material';
@@ -51,14 +50,11 @@ const EMPTY_FORM = {
   address: ''
 };
 
-// Only a child still needs a manually-picked role — it describes whether the
-// anchor member is the child's mother or father, which the new child's own
-// gender can't tell us. A parent's role is instead derived from the parent's
-// own gender (Male → FATHER, Female → MOTHER); see parentRoleFromGender.
-const NEEDS_ROLE = new Set(['child']);
-
-// A parent occupies the mother or father slot, so their role follows directly
-// from their gender. 'Other'/unset yields no slot — submit stays disabled.
+// Maps a gender to the mother/father slot that gender occupies. Used for BOTH
+// relations that need a role: a new parent's role follows the parent's own
+// gender, and a child's role follows the ANCHOR's gender (the anchor is the
+// child's father if male, mother if female). 'Other'/unset yields no slot, so
+// submit stays disabled. No role is ever picked manually.
 function parentRoleFromGender(gender) {
   if (gender === 'Male') return 'FATHER';
   if (gender === 'Female') return 'MOTHER';
@@ -70,12 +66,13 @@ export default function AddRelativeDialog({
   relationType,
   targetId,
   targetName,
+  targetGender,
+  targetFirstname,
   inScopeMembers,
   onClose,
   onCreated
 }) {
   const [form, setForm] = useState(EMPTY_FORM);
-  const [role, setRole] = useState('');
   const [showPicker, setShowPicker] = useState(false);
   const [otherParent, setOtherParent] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -105,9 +102,17 @@ export default function AddRelativeDialog({
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  // When adding a child to a male anchor, the child inherits the anchor's first
+  // name as its last name (father's-first-name convention). Prefill it on open;
+  // it stays editable.
+  useEffect(() => {
+    if (open && relationType === 'child' && targetGender === 'Male' && targetFirstname) {
+      setForm((prev) => ({ ...prev, lastname: targetFirstname }));
+    }
+  }, [open, relationType, targetGender, targetFirstname]);
+
   const resetState = () => {
     setForm(EMPTY_FORM);
-    setRole('');
     setShowPicker(false);
     setOtherParent(null);
     setError('');
@@ -150,7 +155,7 @@ export default function AddRelativeDialog({
       } else if (relationType === 'child') {
         const data = await graphqlRequest(ADD_CHILD_MUTATION, {
           memberId: targetId,
-          role,
+          role: parentRoleFromGender(targetGender),
           newMember: form,
           otherParentId: otherParent?.id ?? null
         });
@@ -179,20 +184,21 @@ export default function AddRelativeDialog({
     }
   };
 
-  const needsRole = NEEDS_ROLE.has(relationType);
   const who = targetName || 'this person';
-  const roleHelperText = `${who} is this child's mother or father.`;
   const isParent = relationType === 'parent';
+  const isChild = relationType === 'child';
+  // Parent role follows the new parent's gender; child role follows the
+  // anchor's gender. Either can be missing when the relevant gender is 'Other'.
   const parentRole = parentRoleFromGender(form.gender);
-  // Parent role is derived from gender; an 'Other'/unset gender maps to no
-  // father/mother slot, so we block submit and explain why.
+  const childRole = parentRoleFromGender(targetGender);
   const parentNeedsBinaryGender = isParent && Boolean(form.gender) && !parentRole;
+  const childAnchorNotBinary = isChild && !childRole;
   const disableSubmit =
     !form.firstname ||
     !form.lastname ||
     !form.gender ||
-    (needsRole && !role) ||
     (isParent && !parentRole) ||
+    (isChild && !childRole) ||
     submitting;
 
   return (
@@ -202,19 +208,19 @@ export default function AddRelativeDialog({
         <Stack spacing={2} sx={{ pt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}
 
-          {needsRole && (
-            <TextField
-              select
-              label="Role"
-              required
-              value={role}
-              onChange={(event) => setRole(event.target.value)}
-              helperText={roleHelperText}
-              fullWidth
-            >
-              <MenuItem value="MOTHER">Mother</MenuItem>
-              <MenuItem value="FATHER">Father</MenuItem>
-            </TextField>
+          {isChild && childRole && (
+            <Alert severity="info">
+              {childRole === 'FATHER'
+                ? `${who} will be recorded as this child's father.`
+                : `${who} will be recorded as this child's mother.`}
+            </Alert>
+          )}
+
+          {childAnchorNotBinary && (
+            <Alert severity="warning">
+              {who} has no recorded gender of Male or Female, so they can&apos;t be set as this
+              child&apos;s mother or father. Set their gender first.
+            </Alert>
           )}
 
           <MemberFields

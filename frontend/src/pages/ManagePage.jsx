@@ -155,7 +155,14 @@ function flattenFocusedRow(focusedRow) {
   ].filter(Boolean);
 }
 
-const EMPTY_DIALOG_STATE = { open: false, relationType: '', targetId: null, targetName: '' };
+const EMPTY_DIALOG_STATE = {
+  open: false,
+  relationType: '',
+  targetId: null,
+  targetName: '',
+  targetGender: '',
+  targetFirstname: ''
+};
 const EMPTY_CROP_STATE = { open: false, file: null, member: null };
 
 function MemberBranch({ user }) {
@@ -233,7 +240,9 @@ function MemberBranch({ user }) {
             open: true,
             relationType,
             targetId: scope.self.id,
-            targetName: scope.self.fullname
+            targetName: scope.self.fullname,
+            targetGender: scope.self.gender,
+            targetFirstname: scope.self.firstname
           })
         }
         onEdit={(member) => setEditTarget(member)}
@@ -247,6 +256,8 @@ function MemberBranch({ user }) {
         relationType={dialogState.relationType}
         targetId={dialogState.targetId}
         targetName={dialogState.targetName}
+        targetGender={dialogState.targetGender}
+        targetFirstname={dialogState.targetFirstname}
         inScopeMembers={inScopeMembers}
         onClose={() => setDialogState(EMPTY_DIALOG_STATE)}
         onCreated={refetch}
@@ -649,7 +660,9 @@ function AdminBranch({ user }) {
                   open: true,
                   relationType,
                   targetId: focusedScope.self.id,
-                  targetName: focusedScope.self.fullname
+                  targetName: focusedScope.self.fullname,
+                  targetGender: focusedScope.self.gender,
+                  targetFirstname: focusedScope.self.firstname
                 })
               }
               onEdit={(member) => setEditTarget(member)}
@@ -728,6 +741,8 @@ function AdminBranch({ user }) {
         relationType={dialogState.relationType}
         targetId={dialogState.targetId}
         targetName={dialogState.targetName}
+        targetGender={dialogState.targetGender}
+        targetFirstname={dialogState.targetFirstname}
         inScopeMembers={inScopeMembers}
         onClose={() => setDialogState(EMPTY_DIALOG_STATE)}
         onCreated={() => {

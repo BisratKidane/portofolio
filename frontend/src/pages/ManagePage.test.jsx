@@ -171,8 +171,6 @@ describe('ManagePage (member branch)', () => {
     await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Female' }));
-    await userEvent.click(screen.getByLabelText('Role', { exact: false }));
-    await userEvent.click(await screen.findByRole('option', { name: 'Mother' }));
 
     await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
 
@@ -214,8 +212,6 @@ describe('ManagePage (member branch)', () => {
     await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Child');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Female' }));
-    await userEvent.click(screen.getByLabelText('Role', { exact: false }));
-    await userEvent.click(await screen.findByRole('option', { name: 'Mother' }));
     await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
 
     expect(await screen.findByText('New Child')).toBeInTheDocument();
