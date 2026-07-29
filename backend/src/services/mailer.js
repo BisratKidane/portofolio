@@ -110,7 +110,7 @@ export async function sendPendingRegistrationEmail({ to, newUserName, newUserEma
   const when = registeredAt ? new Date(registeredAt).toISOString() : new Date().toISOString();
   const relLine = relationship ? `\nRelationship to the family: ${relationship}` : '';
   const noteLine = note ? `\nInvitation note: ${note}` : '';
-  const reviewUrl = `${env.clientUrl}/approvals`;
+  const reviewUrl = `${env.clientUrl}/invitations`;
   const subject = `New account awaiting approval: ${newUserName}`;
   const text = `A new account has registered via invitation and is awaiting your approval.\n\nName: ${newUserName}\nEmail: ${newUserEmail}\nInvited by: ${inviterName}${relLine}${noteLine}\nRegistered: ${when}\n\nReview pending registrations: ${reviewUrl}`;
   const html = renderHtml({

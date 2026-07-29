@@ -102,12 +102,6 @@ export default function RelationshipGroupedPanel({
           </Box>
         </Box>
 
-        {showUnclesAunts && (
-          <Box sx={{ px: { xs: 3, md: 4 }, py: 3 }}>
-            <UnclesAuntsContent members={unclesAunts} {...rowProps} />
-          </Box>
-        )}
-
         {allCoreEmpty && (
           <Box sx={{ px: { xs: 3, md: 4 }, py: 3 }}>
             <Typography variant="h6">Just you so far.</Typography>
@@ -142,6 +136,12 @@ export default function RelationshipGroupedPanel({
             <MemberRows members={siblings} isDerived {...rowProps} />
           )}
         </Box>
+
+        {showUnclesAunts && (
+          <Box sx={{ px: { xs: 3, md: 4 }, py: 3 }}>
+            <UnclesAuntsContent members={unclesAunts} {...rowProps} />
+          </Box>
+        )}
       </Stack>
     </Paper>
   );

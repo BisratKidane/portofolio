@@ -309,7 +309,6 @@ describe('ManagePage (admin branch)', () => {
 
   it('fetches familyMembers and renders AdminMemberTable under the admin subtitle', async () => {
     graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: [] });
 
     renderPage();
 
@@ -320,7 +319,6 @@ describe('ManagePage (admin branch)', () => {
 
   it('selecting a row fetches familyMember(id) and renders the grouped panel via the shared groupByRelation helper', async () => {
     graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: [] });
     graphqlRequest.mockResolvedValueOnce({ familyMember: ADMIN_FOCUS_ROW });
 
     renderPage();
@@ -357,7 +355,6 @@ describe('ManagePage (admin branch)', () => {
     };
 
     graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: [] });
     graphqlRequest.mockResolvedValueOnce({ familyMember: FULL_FOCUS });
 
     renderPage();
@@ -379,7 +376,6 @@ describe('ManagePage (admin branch)', () => {
 
   it('shows an active Edit button for every card in the admin-focused panel regardless of linkedUser (D-06 bypass)', async () => {
     graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: [] });
     graphqlRequest.mockResolvedValueOnce({ familyMember: ADMIN_FOCUS_ROW });
 
     renderPage();
@@ -393,7 +389,6 @@ describe('ManagePage (admin branch)', () => {
 
   it('opens the two-step confirm dialog with UI-SPEC-exact copy and calls deleteMember on confirm, clearing focus and refetching', async () => {
     graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: [] });
     graphqlRequest.mockResolvedValueOnce({ familyMember: ADMIN_FOCUS_ROW });
     graphqlRequest.mockResolvedValueOnce({ deleteMember: true });
     graphqlRequest.mockResolvedValueOnce({ familyMembers: [] });
@@ -425,7 +420,6 @@ describe('ManagePage (admin branch)', () => {
     const ADMIN_FOCUS_WITH_PHOTO = { ...ADMIN_FOCUS_ROW, photoUrl: '/api/family-members/1/photo' };
 
     graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: [] });
     graphqlRequest.mockResolvedValueOnce({ familyMember: ADMIN_FOCUS_WITH_PHOTO });
     removeMemberPhoto.mockResolvedValueOnce({});
     graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
@@ -448,204 +442,6 @@ describe('ManagePage (admin branch)', () => {
     await waitFor(() => {
       expect(removeMemberPhoto).toHaveBeenCalledWith('1');
     });
-  });
-});
-
-const LINK_USER_TO_MEMBER_MUTATION = `
-  mutation LinkUserToMember($userId: ID!, $memberId: ID, $newMember: NewFamilyMemberInput) {
-    linkUserToMember(userId: $userId, memberId: $memberId, newMember: $newMember) { id familyMemberId }
-  }
-`;
-
-const TWO_UNLINKED_USERS = [
-  { id: '1', name: 'Ada Lovelace', email: 'ada@example.com', createdAt: '2026-01-01T00:00:00.000Z' },
-  { id: '2', name: 'Grace Hopper', email: 'grace@example.com', createdAt: '2026-01-02T00:00:00.000Z' }
-];
-
-const ONE_UNLINKED_USER = [
-  { id: '1', name: 'Ada Lovelace', email: 'ada@example.com', createdAt: '2026-01-01T00:00:00.000Z' }
-];
-
-const FAMILY_MEMBERS_FOR_LINKING = [
-  { id: '10', firstname: 'John', lastname: 'Doe', fullname: 'John Doe', gender: 'Male', linkedUser: null },
-  { id: '11', firstname: 'Jane', lastname: 'Doe', fullname: 'Jane Doe', gender: 'Female', linkedUser: null }
-];
-
-describe('ManagePage (admin branch — account linking, MNG-03)', () => {
-  beforeEach(() => {
-    useAuthMock.mockReturnValue({
-      user: { id: 99, role: 'ADMIN' },
-      loading: false
-    });
-  });
-
-  it('renders the "Link accounts" section listing fetched unlinked users', async () => {
-    graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: TWO_UNLINKED_USERS });
-
-    renderPage();
-
-    expect(await screen.findByText('Link accounts')).toBeInTheDocument();
-    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
-    expect(screen.getByText('ada@example.com')).toBeInTheDocument();
-  });
-
-  it('renders the empty-state message when there are no unlinked users', async () => {
-    graphqlRequest.mockResolvedValueOnce({ familyMembers: ADMIN_TABLE_MEMBERS });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: [] });
-
-    renderPage();
-
-    expect(await screen.findByText('No accounts are waiting to be linked.')).toBeInTheDocument();
-  });
-
-  it('renders the connection card: account, member picker, and the Connect action', async () => {
-    graphqlRequest.mockResolvedValueOnce({ familyMembers: FAMILY_MEMBERS_FOR_LINKING });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: ONE_UNLINKED_USER });
-
-    renderPage();
-
-    await screen.findByText('ada@example.com');
-    expect(screen.getByLabelText('Family member', { exact: false })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Connect account → member' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Connect account → member' })).toBeDisabled();
-  });
-
-  it('uploads a deferred photo to the linked member id after create-and-link', async () => {
-    URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-    URL.revokeObjectURL = vi.fn();
-    HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ drawImage: vi.fn() }));
-    HTMLCanvasElement.prototype.toBlob = vi.fn(function toBlob(callback) {
-      callback(new Blob(['fake-cropped'], { type: 'image/jpeg' }));
-    });
-    global.Image = class {
-      set src(value) {
-        this._src = value;
-        if (this.onload) this.onload();
-      }
-      get src() {
-        return this._src;
-      }
-    };
-
-    graphqlRequest.mockResolvedValueOnce({ familyMembers: FAMILY_MEMBERS_FOR_LINKING });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: ONE_UNLINKED_USER });
-    graphqlRequest.mockResolvedValueOnce({ linkUserToMember: { id: '1', familyMemberId: '77' } });
-    uploadMemberPhoto.mockResolvedValueOnce({ photoUrl: '/api/family-members/77/photo' });
-
-    renderPage();
-
-    await screen.findByText('ada@example.com');
-    await userEvent.click(screen.getByRole('button', { name: 'Create new member instead' }));
-
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Bob');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Builder');
-    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
-    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
-
-    const file = new File(['bytes'], 'photo.jpg', { type: 'image/jpeg' });
-    await userEvent.upload(document.querySelector('input[type="file"]'), file);
-    await userEvent.click(await screen.findByRole('button', { name: 'Save photo' }));
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Change photo' })).toBeInTheDocument();
-    });
-
-    await userEvent.click(screen.getByRole('button', { name: 'Create & link' }));
-
-    await waitFor(() => {
-      expect(uploadMemberPhoto).toHaveBeenCalledWith('77', expect.any(Blob));
-    });
-  });
-
-  it('links an existing member via the Autocomplete and removes the row', async () => {
-    graphqlRequest.mockResolvedValueOnce({ familyMembers: FAMILY_MEMBERS_FOR_LINKING });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: ONE_UNLINKED_USER });
-    graphqlRequest.mockResolvedValueOnce({ linkUserToMember: { id: '1', familyMemberId: '10' } });
-
-    renderPage();
-
-    await screen.findByText('ada@example.com');
-
-    const autocomplete = screen.getByLabelText('Family member', { exact: false });
-    await userEvent.click(autocomplete);
-    await userEvent.type(autocomplete, 'John');
-    const option = await screen.findByRole('option', { name: /John Doe/ });
-    await userEvent.click(option);
-
-    await userEvent.click(screen.getByRole('button', { name: 'Connect account → member' }));
-
-    await waitFor(() => {
-      expect(graphqlRequest).toHaveBeenCalledWith(LINK_USER_TO_MEMBER_MUTATION, {
-        userId: '1',
-        memberId: '10',
-        newMember: undefined
-      });
-    });
-
-    expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
-  });
-
-  it('creates and links a bare member when switched to create-mode', async () => {
-    graphqlRequest.mockResolvedValueOnce({ familyMembers: FAMILY_MEMBERS_FOR_LINKING });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: ONE_UNLINKED_USER });
-    graphqlRequest.mockResolvedValueOnce({ linkUserToMember: { id: '1', familyMemberId: '99' } });
-
-    renderPage();
-
-    await screen.findByText('ada@example.com');
-
-    await userEvent.click(screen.getByRole('button', { name: 'Create new member instead' }));
-
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Bob');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Builder');
-
-    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
-    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
-
-    await userEvent.click(screen.getByRole('button', { name: 'Create & link' }));
-
-    await waitFor(() => {
-      expect(graphqlRequest).toHaveBeenCalledWith(LINK_USER_TO_MEMBER_MUTATION, {
-        userId: '1',
-        memberId: undefined,
-        newMember: {
-          firstname: 'Bob',
-          lastname: 'Builder',
-          gender: 'Male',
-          mothersname: '',
-          email: '',
-          birthdate: '',
-          isAlive: true,
-          phone: '',
-          address: ''
-        }
-      });
-    });
-
-    expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
-  });
-
-  it('renders a per-row error and keeps the row when the mutation is rejected', async () => {
-    graphqlRequest.mockResolvedValueOnce({ familyMembers: FAMILY_MEMBERS_FOR_LINKING });
-    graphqlRequest.mockResolvedValueOnce({ unlinkedUsers: ONE_UNLINKED_USER });
-    graphqlRequest.mockRejectedValueOnce(new Error('This family member is already linked to an account.'));
-
-    renderPage();
-
-    await screen.findByText('ada@example.com');
-
-    const autocomplete = screen.getByLabelText('Family member', { exact: false });
-    await userEvent.click(autocomplete);
-    await userEvent.type(autocomplete, 'John');
-    const option = await screen.findByRole('option', { name: /John Doe/ });
-    await userEvent.click(option);
-
-    await userEvent.click(screen.getByRole('button', { name: 'Connect account → member' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This family member is already linked to an account.'
-    );
-    expect(screen.getByText('ada@example.com')).toBeInTheDocument();
   });
 });
 

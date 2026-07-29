@@ -74,6 +74,20 @@ describe('RelationshipGroupedPanel', () => {
     expect(screen.queryByText('Just you so far.')).not.toBeInTheDocument();
   });
 
+  it('renders the Uncles & Aunts section after the Siblings section', () => {
+    renderPanel({
+      scope: { ...EMPTY_SCOPE, siblings: [SIBLING], unclesAunts: [{ id: 9, fullname: 'Uncle Bob', linkedUser: null }] }
+    });
+
+    const siblingsHeading = screen.getByText('Siblings');
+    const unclesHeading = screen.getByText('Uncles & Aunts');
+    expect(screen.getByText('Uncle Bob')).toBeInTheDocument();
+    // Uncles & Aunts must come AFTER Siblings in document order.
+    expect(
+      siblingsHeading.compareDocumentPosition(unclesHeading) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
   it('renders sibling rows via MemberCard with isDerived=true (Derived chip)', () => {
     renderPanel({ scope: { ...EMPTY_SCOPE, siblings: [SIBLING] } });
 

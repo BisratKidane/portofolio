@@ -65,18 +65,18 @@ export default function AppLayout() {
                 </Button>
                 <Button
                   component={RouterLink}
-                  to="/invite"
+                  to="/invitations"
                   sx={{ color: colors.slate, fontWeight: 600, display: { xs: 'none', sm: 'inline-flex' } }}
                 >
-                  Invite
+                  Invitations
                 </Button>
                 {user.role === 'ADMIN' && (
                   <Button
                     component={RouterLink}
-                    to="/approvals"
+                    to="/link-accounts"
                     sx={{ color: colors.slate, fontWeight: 600, display: { xs: 'none', sm: 'inline-flex' } }}
                   >
-                    Approvals
+                    Link accounts
                   </Button>
                 )}
                 <Avatar

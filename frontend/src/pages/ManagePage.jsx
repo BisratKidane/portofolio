@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
-  Autocomplete,
-  Avatar,
   Box,
   Button,
   CircularProgress,
@@ -11,20 +9,16 @@ import {
   DialogTitle,
   Paper,
   Stack,
-  TextField,
   Typography
 } from '@mui/material';
-import LinkRoundedIcon from '@mui/icons-material/LinkRounded';
 import { useAuth } from '../context/AuthContext.jsx';
 import { graphqlRequest } from '../api/graphqlClient.js';
-import { removeMemberPhoto, uploadMemberPhoto } from '../api/photoClient.js';
-import { colors, getInitials } from '../theme.js';
-import RelationshipGroupedPanel, { UnclesAuntsContent } from '../components/manage/RelationshipGroupedPanel.jsx';
+import { removeMemberPhoto } from '../api/photoClient.js';
+import { colors } from '../theme.js';
+import RelationshipGroupedPanel from '../components/manage/RelationshipGroupedPanel.jsx';
 import AddRelativeDialog from '../components/manage/AddRelativeDialog.jsx';
 import EditMemberDialog from '../components/manage/EditMemberDialog.jsx';
 import AdminMemberTable from '../components/manage/AdminMemberTable.jsx';
-import MemberAvatarImage from '../components/manage/MemberAvatarImage.jsx';
-import MemberFields from '../components/manage/MemberFields.jsx';
 import PhotoCropDialog from '../components/manage/PhotoCropDialog.jsx';
 
 // The scalar fields both the avatar (gender, photoUrl) and the edit form
@@ -83,32 +77,6 @@ const FAMILY_MEMBER_FOCUS_QUERY = `
 const DELETE_MEMBER_MUTATION = `
   mutation DeleteMember($id: ID!) { deleteMember(id: $id) }
 `;
-
-// Re-homed verbatim from AdminLinkMembers.jsx (pre-15-05-redirect, commit 9082440) --
-// MNG-03: account-linking moves into /manage, /admin/link-members no longer hosts it.
-const UNLINKED_USERS_QUERY = `
-  query UnlinkedUsers {
-    unlinkedUsers { id name email createdAt }
-  }
-`;
-
-const LINK_USER_TO_MEMBER_MUTATION = `
-  mutation LinkUserToMember($userId: ID!, $memberId: ID, $newMember: NewFamilyMemberInput) {
-    linkUserToMember(userId: $userId, memberId: $memberId, newMember: $newMember) { id familyMemberId }
-  }
-`;
-
-const EMPTY_LINK_FORM = {
-  firstname: '',
-  lastname: '',
-  gender: '',
-  mothersname: '',
-  email: '',
-  birthdate: '',
-  isAlive: true,
-  phone: '',
-  address: ''
-};
 
 // Uncles & aunts = the siblings of the person's parents. Derived from the
 // nested `mother.siblings` / `father.siblings` the queries fetch, deduped by id,
@@ -301,228 +269,8 @@ function MemberBranch({ user }) {
   );
 }
 
-// Builds the muted secondary line for a member option: "Gender · b. YYYY".
-function memberOptionSubtitle(member) {
-  const parts = [];
-  if (member.gender) parts.push(member.gender);
-  const year = member.birthdate ? String(member.birthdate).slice(0, 4) : null;
-  if (year) parts.push(`b. ${year}`);
-  return parts.join(' · ');
-}
-
-// Re-homed from AdminLinkMembers.jsx (pre-15-05-redirect, commit 9082440), then
-// reworked into a side-by-side "connection card": the account on the left, a
-// link/chain cue in the middle, and the member picker (avatars + subtitle) on
-// the right, so the account <-> member relationship is visually explicit.
-function UnlinkedUserRow({ user, familyMembers, onLinked }) {
-  const [mode, setMode] = useState('pick');
-  const [selectedMember, setSelectedMember] = useState(null);
-  const [form, setForm] = useState(EMPTY_LINK_FORM);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [croppedBlob, setCroppedBlob] = useState(null);
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
-  const [cropFile, setCropFile] = useState(null);
-  const [cropOpen, setCropOpen] = useState(false);
-
-  const handleFieldChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const clearPhoto = () => {
-    setPhotoPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return null;
-    });
-    setCroppedBlob(null);
-  };
-
-  const handlePickPhoto = (file) => {
-    setCropFile(file);
-    setCropOpen(true);
-  };
-
-  const handleCropped = (blob) => {
-    clearPhoto();
-    setCroppedBlob(blob);
-    setPhotoPreviewUrl(URL.createObjectURL(blob));
-  };
-
-  const handleLink = async () => {
-    setError('');
-    setSubmitting(true);
-    try {
-      await graphqlRequest(LINK_USER_TO_MEMBER_MUTATION, {
-        userId: user.id,
-        memberId: selectedMember.id,
-        newMember: undefined
-      });
-      onLinked(user.id);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleCreateAndLink = async () => {
-    setError('');
-    setSubmitting(true);
-    try {
-      const data = await graphqlRequest(LINK_USER_TO_MEMBER_MUTATION, {
-        userId: user.id,
-        memberId: undefined,
-        newMember: form
-      });
-      const linked = data.linkUserToMember;
-
-      // Photo-on-create is best-effort: a failed upload must NOT lose the member.
-      if (croppedBlob && linked?.familyMemberId) {
-        try {
-          await uploadMemberPhoto(linked.familyMemberId, croppedBlob);
-        } catch (photoErr) {
-          console.warn(`Member created, but the photo could not be uploaded: ${photoErr.message}`);
-        }
-      }
-
-      onLinked(user.id);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const accountBlock = (
-    <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0, flex: 1 }}>
-      <Avatar sx={{ width: 42, height: 42, bgcolor: '#eef1f8', color: colors.slate }}>
-        {getInitials(user.name)}
-      </Avatar>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontWeight: 600 }} noWrap>
-          {user.name}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" noWrap>
-          {user.email}
-        </Typography>
-      </Box>
-    </Stack>
-  );
-
-  return (
-    <Stack spacing={2} sx={{ px: { xs: 3, md: 4 }, py: 3 }}>
-      {error && <Alert severity="error">{error}</Alert>}
-
-      {mode === 'pick' ? (
-        <>
-          <Stack
-            direction="column"
-            spacing={2}
-            alignItems={{ md: 'center' }}
-            sx={{ border: `1px solid ${colors.line}`, borderRadius: 4, p: 2, bgcolor: colors.gradientSoft }}
-          >
-            {accountBlock}
-
-            <LinkRoundedIcon aria-hidden="true" sx={{ color: colors.primary, transform: 'rotate(90deg)' }} />
-
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Autocomplete
-                options={familyMembers}
-                getOptionLabel={(member) => member.fullname}
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                value={selectedMember}
-                onChange={(_event, value) => setSelectedMember(value)}
-                renderOption={(props, member) => {
-                  const { key, ...optionProps } = props;
-                  const subtitle = memberOptionSubtitle(member);
-                  return (
-                    <Box component="li" key={key} {...optionProps} sx={{ gap: 1.5 }}>
-                      <MemberAvatarImage member={member} size={32} />
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography noWrap>{member.fullname}</Typography>
-                        {subtitle && (
-                          <Typography variant="body2" color="text.secondary" noWrap>
-                            {subtitle}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-                  );
-                }}
-                renderInput={(params) => <TextField {...params} label="Family member" />}
-              />
-              {selectedMember && (
-                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mt: 1.5 }}>
-                  <MemberAvatarImage member={selectedMember} size={32} />
-                  <Typography sx={{ fontWeight: 600 }} noWrap>
-                    {selectedMember.fullname}
-                  </Typography>
-                </Stack>
-              )}
-            </Box>
-          </Stack>
-
-          <Stack direction="row" spacing={2}>
-            <Button variant="contained" disabled={!selectedMember || submitting} onClick={handleLink}>
-              {submitting ? 'Connecting…' : 'Connect account → member'}
-            </Button>
-            <Button variant="text" disabled={submitting} onClick={() => setMode('create')}>
-              Create new member instead
-            </Button>
-          </Stack>
-        </>
-      ) : (
-        <Stack spacing={2}>
-          {accountBlock}
-
-          <MemberFields
-            form={form}
-            onChange={handleFieldChange}
-            withPhoto
-            photoPreviewUrl={photoPreviewUrl}
-            onPickPhoto={handlePickPhoto}
-            onClearPhoto={clearPhoto}
-          />
-
-          <Stack direction="row" spacing={2}>
-            <Button
-              variant="contained"
-              disabled={!form.firstname || !form.lastname || !form.gender || submitting}
-              onClick={handleCreateAndLink}
-            >
-              {submitting ? 'Creating…' : 'Create & link'}
-            </Button>
-            <Button
-              variant="text"
-              disabled={submitting}
-              onClick={() => {
-                setMode('pick');
-                setForm(EMPTY_LINK_FORM);
-                clearPhoto();
-              }}
-            >
-              Back
-            </Button>
-          </Stack>
-        </Stack>
-      )}
-
-      <PhotoCropDialog
-        open={cropOpen}
-        file={cropFile}
-        onClose={() => {
-          setCropOpen(false);
-          setCropFile(null);
-        }}
-        onCropped={handleCropped}
-      />
-    </Stack>
-  );
-}
-
 function AdminBranch({ user }) {
   const [members, setMembers] = useState([]);
-  const [unlinkedUsers, setUnlinkedUsers] = useState([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [pageError, setPageError] = useState('');
   const [focusedScope, setFocusedScope] = useState(null);
@@ -558,18 +306,11 @@ function AdminBranch({ user }) {
 
   useEffect(() => {
     setPageLoading(true);
-    Promise.all([graphqlRequest(FAMILY_MEMBERS_QUERY), graphqlRequest(UNLINKED_USERS_QUERY)])
-      .then(([membersData, unlinkedData]) => {
-        setMembers(membersData.familyMembers);
-        setUnlinkedUsers(unlinkedData.unlinkedUsers);
-      })
+    graphqlRequest(FAMILY_MEMBERS_QUERY)
+      .then((membersData) => setMembers(membersData.familyMembers))
       .catch((err) => setPageError(err.message))
       .finally(() => setPageLoading(false));
   }, []);
-
-  const handleLinked = (userId) => {
-    setUnlinkedUsers((prev) => prev.filter((u) => u.id !== userId));
-  };
 
   const handleFocus = useCallback((member) => {
     return graphqlRequest(FAMILY_MEMBER_FOCUS_QUERY, { id: member.id })
@@ -638,23 +379,22 @@ function AdminBranch({ user }) {
         </Typography>
       </Box>
 
-      {/* Three columns: member list + search (left), the selected member's
-          add/edit panel (middle), and Link accounts + Uncles & Aunts (right).
-          Stacks vertically below lg. */}
+      {/* Two equal (50/50) columns on lg+: member list + search (left) and the
+          selected member's add/edit panel (right, with Uncles & Aunts below
+          Siblings). Stacks vertically below lg. */}
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={4} alignItems="flex-start">
         {/* Left: list + search */}
-        <Box sx={{ width: '100%', flex: { lg: '0 0 32%' }, minWidth: 0 }}>
+        <Box sx={{ width: '100%', flex: { lg: '1 1 0' }, minWidth: 0 }}>
           <AdminMemberTable members={members} onSelect={handleFocus} onToggleAlive={handleToggleMemberAlive} />
         </Box>
 
-        {/* Middle: selected member's edit panel (uncles/aunts live in the right column) */}
-        <Box sx={{ width: '100%', flex: { lg: 1 }, minWidth: 0 }}>
+        {/* Right: selected member's edit panel (Uncles & Aunts render below Siblings) */}
+        <Box sx={{ width: '100%', flex: { lg: '1 1 0' }, minWidth: 0 }}>
           {focusedScope ? (
             <RelationshipGroupedPanel
               scope={focusedScope}
               isAdmin
               actingUserId={user.id}
-              showUnclesAunts={false}
               onAddRelative={(relationType) =>
                 setDialogState({
                   open: true,
@@ -685,54 +425,6 @@ function AdminBranch({ user }) {
               </Typography>
             </Paper>
           )}
-        </Box>
-
-        {/* Right: Link accounts, then Uncles & Aunts for the selected member */}
-        <Box sx={{ width: '100%', flex: { lg: '0 0 30%' }, minWidth: 0 }}>
-          <Stack spacing={4}>
-            <Box>
-              <Typography variant="h6">Link accounts</Typography>
-              <Paper
-                elevation={0}
-                sx={{ borderRadius: 5, border: `1px solid ${colors.line}`, overflow: 'hidden', mt: 2 }}
-              >
-                {unlinkedUsers.length === 0 ? (
-                  <Box sx={{ px: { xs: 3, md: 4 }, py: 4 }}>
-                    <Typography>No accounts are waiting to be linked.</Typography>
-                  </Box>
-                ) : (
-                  <Stack divider={<Box sx={{ borderBottom: `1px solid ${colors.line}` }} />}>
-                    {unlinkedUsers.map((unlinkedUser) => (
-                      <UnlinkedUserRow
-                        key={unlinkedUser.id}
-                        user={unlinkedUser}
-                        familyMembers={members}
-                        onLinked={handleLinked}
-                      />
-                    ))}
-                  </Stack>
-                )}
-              </Paper>
-            </Box>
-
-            {focusedScope && (
-              <Paper
-                elevation={0}
-                sx={{ borderRadius: 5, border: `1px solid ${colors.line}`, px: { xs: 3, md: 4 }, py: 3 }}
-              >
-                <UnclesAuntsContent
-                  members={focusedScope.unclesAunts}
-                  self={focusedScope.self}
-                  isAdmin
-                  actingUserId={user.id}
-                  onEdit={(member) => setEditTarget(member)}
-                  onDelete={(member) => setDeleteTarget(member)}
-                  onPickPhoto={(member, file) => setCropDialog({ open: true, file, member })}
-                  onRemovePhoto={(member) => setRemovePhotoTarget(member)}
-                />
-              </Paper>
-            )}
-          </Stack>
         </Box>
       </Stack>
 
