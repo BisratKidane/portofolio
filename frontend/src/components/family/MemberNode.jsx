@@ -12,6 +12,7 @@
 import { Handle, Position } from '@xyflow/react';
 import { Box, IconButton, Paper, Typography } from '@mui/material';
 import { colors } from '../../theme.js';
+import { getGeezDisplay } from '../../utils/displayName.js';
 import MemberAvatarImage from '../manage/MemberAvatarImage.jsx';
 
 // Gender is now depicted by the card's COLOR (border + soft background tint)
@@ -62,6 +63,7 @@ export default function MemberNode({ data }) {
   } = data;
 
   const birthday = formatDate(member.birthdate);
+  const geez = getGeezDisplay(member);
   const motherName = member.mother?.fullname || member.mothersname;
   const showAddress = member.isAlive !== false && Boolean(member.address);
   const { label: genderLabel, tint: genderTint } = genderMeta(member.gender);
@@ -164,7 +166,7 @@ export default function MemberNode({ data }) {
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
         {/* Top row: shows a "Head" tag when this card is the re-rooted tree
             head; otherwise reserved (kept for a future edit action). */}
-        <Box sx={{ height: 18, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+        <Box sx={{ height: isFocusRoot ? 18 : 0, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
           {isFocusRoot && (
             <Typography
               component="span"
@@ -189,6 +191,12 @@ export default function MemberNode({ data }) {
         <Typography sx={{ fontSize: 14, fontWeight: 600 }} noWrap>
           {member.fullname}
         </Typography>
+
+        {geez && (
+          <Typography sx={ROW_SX} lang={geez.lang} noWrap>
+            {geez.text}
+          </Typography>
+        )}
 
         {birthday && (
           <Typography sx={ROW_SX} noWrap>
