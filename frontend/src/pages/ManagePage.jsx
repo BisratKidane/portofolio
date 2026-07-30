@@ -26,7 +26,7 @@ import PhotoCropDialog from '../components/manage/PhotoCropDialog.jsx';
 // on nested relatives so a relative's Edit dialog opens fully populated, not
 // just with an id + fullname.
 const EDITABLE_MEMBER_FIELDS =
-  'id firstname lastname fullname gender mothersname email birthdate isAlive phone address photoUrl';
+  'id firstname lastname fullname geezFullname gender mothersname email birthdate isAlive phone address photoUrl';
 
 const MY_EDITABLE_MEMBERS_QUERY = `
   query MyEditableMembers {
@@ -43,7 +43,7 @@ const MY_EDITABLE_MEMBERS_QUERY = `
 const FAMILY_MEMBERS_QUERY = `
   query FamilyMembersTable {
     familyMembers {
-      id firstname lastname fullname gender birthdate isAlive photoUrl
+      id firstname lastname fullname geezFullname gender birthdate isAlive photoUrl
       linkedUser { id name email }
       createdBy { id name } updatedBy { id name } createdAt updatedAt
     }
