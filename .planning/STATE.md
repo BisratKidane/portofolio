@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Ge'ez Native-Script Names
-status: executing
-stopped_at: Phase 20 complete (executed + UAT + secure), ready to plan Phase 21
-last_updated: "2026-07-30T20:43:31.868Z"
-last_activity: 2026-07-30 -- Phase 21 execution started
+status: ready_to_plan
+stopped_at: Phase 21 complete (1/1) — ready to discuss Phase 22
+last_updated: 2026-07-30T20:53:48.573Z
+last_activity: 2026-07-30 -- Phase 21 complete (executed + verified + secure); ready to plan Phase 22
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 5
-  completed_plans: 4
-  percent: 50
+  completed_plans: 5
+  percent: 67
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-30)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 21 — shared-display-helper
+**Current focus:** Phase 22 — render surfaces (read path)
 
 ## Current Position
 
-Phase: 21 (shared-display-helper) — EXECUTING
-Plan: 1 of 1
-Status: Executing Phase 21
-Last activity: 2026-07-30 -- Phase 21 execution started
+Phase: 22 (render-surfaces-read-path)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-30 -- Phase 21 complete (executed + verified + threat-secure); ready to plan Phase 22
 
-Milestone progress: [█████░░░░░] 3/6 phases (18, 19, 20 complete) · 50%
+Milestone progress: [███████░░░] 4/6 phases (18, 19, 20, 21 complete) · 67%
 
-Phase 20 is fully closed: all 4 UAT tests passed, T-20-SC threat CLOSED, FONT-01/FONT-02 marked complete.
+Phase 21 fully closed: getGeezDisplay helper verified 8/8, threats_open: 0, VIEW-03 complete. Phase 22 will consume this helper to render Ge'ez names on /family + /manage.
 
 ## Deferred Items
 
@@ -49,7 +49,7 @@ Both are browser-only manual checks from Phase 16 (Photo Upload); the underlying
 
 **Velocity:**
 
-- Total plans completed: 54 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0
+- Total plans completed: 55 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0
 - Average duration: - min
 - Total execution time: 0 hours (v3.0)
 
@@ -63,6 +63,7 @@ Both are browser-only manual checks from Phase 16 (Photo Upload); the underlying
 | 18–23 (v3.0) | TBD | - | - |
 | 18 | 2 | - | - |
 | 20 | 1 | - | - |
+| 21 | 1 | - | - |
 
 **Recent Trend:**
 
@@ -131,10 +132,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-30T20:20:41.815Z
-Stopped at: Phase 20 complete (executed + UAT + secure), ready to plan Phase 21
+Last session: 2026-07-30T20:53:48.573Z
+Stopped at: Phase 21 complete (executed + verified + secure), ready to plan Phase 22
 Resume file: None
 
 ## Operator Next Steps
 
-- Run `/gsd:plan-phase 21` to plan the Shared Display Helper phase (VIEW-03). Phase 21 has no CONTEXT.md yet — plan-phase will offer to discuss first or plan directly.
+- Run `/gsd:plan-phase 22` to plan Render Surfaces (Read Path) — VIEW-01, VIEW-02, FIND-01. Phase 22 retrofits `/family` tree cards + `/manage` surfaces to consume the `getGeezDisplay` helper (Phase 21) and adds Ge'ez-aware admin-table search. This is a frontend/visual phase — plan-phase's UI-SPEC gate will fire (unlike 20/21, this one has real render surfaces, so a UI-SPEC is likely warranted). Also note the STATE blocker: the 252×120px tree card needs a manual visual pass against the longest real Ge'ez name.

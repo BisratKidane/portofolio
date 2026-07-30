@@ -30,7 +30,7 @@
 
 - [ ] **VIEW-01**: On the `/family` tree, a member card shows the member's Ge'ez name stacked below the Latin name when a Ge'ez name is present, and renders nothing extra (no empty row, dash, or separator) when it is absent.
 - [ ] **VIEW-02**: Across `/manage` — the relationship panels and the admin member table — a member's Ge'ez name is shown alongside the Latin name when present.
-- [ ] **VIEW-03**: A single shared `displayName` helper drives the Latin/Ge'ez precedence and empty-handling identically across every render surface, and Ge'ez runs are marked with a `lang` attribute (Ge'ez is LTR — no `dir` change).
+- [x] **VIEW-03**: A single shared `displayName` helper drives the Latin/Ge'ez precedence and empty-handling identically across every render surface, and Ge'ez runs are marked with a `lang` attribute (Ge'ez is LTR — no `dir` change).
 
 ### EDIT — Entry
 
@@ -78,7 +78,7 @@
 | DATA-03 | Phase 19 | Complete |
 | VIEW-01 | Phase 22 | Pending |
 | VIEW-02 | Phase 22 | Pending |
-| VIEW-03 | Phase 21 | Pending |
+| VIEW-03 | Phase 21 | Complete |
 | EDIT-01 | Phase 23 | Pending |
 | FIND-01 | Phase 22 | Pending |
 | FIND-02 | Phase 23 | Pending |
