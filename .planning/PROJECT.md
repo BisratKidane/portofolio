@@ -8,6 +8,18 @@ A full-stack authentication application built as a portfolio piece: a React + MU
 
 Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
 
+## Current Milestone: v3.0 Ge'ez Native-Script Names
+
+**Goal:** Family members can carry their name in Ge'ez script (ግዕዝ) alongside the existing Latin name, rendered with a self-hosted Ge'ez-capable webfont so it displays correctly on every device — deepening the app's fit for the Tigrinya/Eritrean family it serves.
+
+**Target features:**
+- Bundle a self-hosted Ge'ez webfont (e.g. Noto Sans Ethiopic / Abyssinica SIL) — no external CDN, matching the app's self-contained deploy — so Ge'ez text renders consistently regardless of the viewer's OS fonts.
+- Add optional Ge'ez name columns to the `FamilyMember` model — `geezFirstname`, `geezLastname`, `geezMothersname`, plus a derived `geezFullname` VIRTUAL mirroring `fullname`. All optional; a member with no Ge'ez name shows the Latin name as today.
+- Enter/edit the Ge'ez names through the existing Manage add/edit dialogs, using the person's own device keyboard/IME (no in-app transliteration helper).
+- Render the Ge'ez name on `/family` tree cards and across `/manage` (relationship panels, member table, pickers).
+
+**Explicitly out of scope this milestone:** Latin↔Ge'ez display toggle; Ge'ez in the detail panel / dashboard; full Amharic/Tigrinya UI translation (label/button i18n); in-app Latin→Ge'ez transliteration input; Ge'ez equivalents for address/email/phone.
+
 ## Shipped Milestone: v2.0 Collaborative Family Tree (2026-07-25)
 
 **Goal (met):** Add a family-tree domain where app access is gated on being an admin-linked member; members collaboratively edit their immediate relatives on `/manage`, and any linked member views a deep, pan/zoom tree on `/family` — built test-first (TDD) with CI staying green. All 6 phases (12–17) verified; 35/35 v2.0 requirements delivered. Shipped as 31 plans / 68 tasks.
@@ -67,9 +79,9 @@ Changes to the app can be made with confidence — auth and core flows are prote
 
 ### Active
 
-<!-- v2.0 Collaborative Family Tree scoped and confirmed. REQ-IDs defined in REQUIREMENTS.md at milestone start; see "Current Milestone: v2.0" above for target features. -->
+<!-- v3.0 Ge'ez Native-Script Names scoped and confirmed. REQ-IDs defined in REQUIREMENTS.md at milestone start; see "Current Milestone: v3.0" above for target features. v2.0 Collaborative Family Tree shipped and archived (see Shipped Milestone sections). -->
 
-- v2.0 Collaborative Family Tree requirements being defined in `.planning/REQUIREMENTS.md` (see Current Milestone section above).
+- v3.0 Ge'ez Native-Script Names requirements being defined in `.planning/REQUIREMENTS.md` (see Current Milestone section above).
 
 ### Out of Scope
 
@@ -157,4 +169,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-25 — after v2.0 Collaborative Family Tree milestone (shipped; archived)*
+*Last updated: 2026-07-30 — starting v3.0 Ge'ez Native-Script Names milestone*

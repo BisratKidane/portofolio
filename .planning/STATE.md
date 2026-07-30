@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Collaborative Family Tree
-status: Awaiting next milestone
-stopped_at: Completed 17-04-PLAN.md
-last_updated: "2026-07-25T19:21:45.785Z"
-last_activity: 2026-07-25 — Milestone v2.0 completed and archived
+milestone: v3.0
+milestone_name: Ge'ez Native-Script Names
+status: planning
+last_updated: "2026-07-30T13:22:26.157Z"
+last_activity: 2026-07-30
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 31
-  completed_plans: 31
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-21)
 
 ## Current Position
 
-Phase: Milestone v2.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-07-27 — Completed quick task 260727-tb1: Member provenance + isAlive
+Status: Defining requirements
+Last activity: 2026-07-30 — Milestone v3.0 started
 
 ## Deferred Items
 
