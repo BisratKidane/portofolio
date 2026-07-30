@@ -76,6 +76,7 @@ Changes to the app can be made with confidence — auth and core flows are prote
 - ✓ Server-side 8-char password strength validation — v1.1 (Phase 7)
 - ✓ Email verification on registration, with a DB-enforced race-safe first-user-ADMIN assignment — v1.1 (Phase 11)
 - ✓ CORS rejection no longer leaks the rejected origin — v1.1 (Phase 7)
+- ✓ `FamilyMember` stores an optional Ge'ez name (three nullable `utf8mb4` columns + a defensive `geezFullname` VIRTUAL getter), with a portable manual migration (`018-*.sql`) proven against local MariaDB — Validated in Phase 18: Data Model & Migration (DATA-01, DATA-02) (`backend/src/models/FamilyMember.js`, `backend/migrations/manual/018-add-family-members-geez-names.sql`)
 
 ### Active
 
@@ -144,6 +145,8 @@ Changes to the app can be made with confidence — auth and core flows are prote
 
 **Post-Phase 17 amendment (2026-07-25): `/family` edge model switched to a pure parent→child hierarchy.** The union-node "spouses-paired" rendering (TREE-01, D-11/D-12) drew an edge only for a two-parent child whose parents were a registered spouse pair — and the real data has 0 spouse rows and 0 two-parent children, so the tree rendered with no edges at all. At the user's request the model was replaced with a plain hierarchical tree: a direct edge from each present parent to each child, no synthetic union nodes. `UnionNode.jsx`, the `buildUnions`/marriage/descent assembly machinery, the dagre union-midpoint layout workaround, and the CR-01 `buildUnionConnections`/`revealConnectingUnions` reveal logic were all removed (CR-01 no longer applies — member→child edges reveal directly). TDD across 3 atomic refactor commits (305dfa6/c23f8b8/5c897e2); full suite green (backend 321/321, frontend 169/169); verified against real data (9 members → 7 direct parent→child edges). REQUIREMENTS.md TREE-01 and 17-VERIFICATION.md carry matching superseded notes.
 
+**Phase 18 (Data Model & Migration) complete (2026-07-30) — opens v3.0 Ge'ez Native-Script Names.** The `FamilyMember` model now stores an optional Ge'ez (Ethiopic-script) name before any API or UI depends on it: three nullable, unvalidated `STRING` attributes (`geezFirstname`/`geezLastname`/`geezMothersname`) plus a defensive `geezFullname` VIRTUAL getter (`[this.geezFirstname, this.geezLastname].filter(Boolean).join(' ') || null`) that joins only the two present parts, excludes `geezMothersname` (D-01), and returns `null` — never `""`/`"null"`/`"undefined"` — when both are absent (D-02). A hand-written manual migration (`018-add-family-members-geez-names.sql`) adds the matching three nullable `VARCHAR(255) CHARACTER SET utf8mb4` columns using bare `utf8mb4` with no `COLLATE`/`ENCRYPTION` tokens (D-03), proven cross-engine-portable by an isolated scratch-DB dry run on real local MariaDB 12.1.2 (Ge'ez text round-tripped byte-exact, scratch DB dropped with no residue); the prod apply is deliberately deferred (D-04). Executed as 2 plans in 1 wave (parallel worktree agents), TDD RED→GREEN throughout (8 new passing fill-matrix tests). Verified 11/11 must-haves (verifier independently re-ran the MariaDB proof); backend suite 388 passed with zero new failures (the 2 remaining failures are documented pre-existing concurrency/TOCTOU flakes). Requirements DATA-01 and DATA-02 validated. Code review found 0 blockers, 2 advisory Warnings (WR-01 undeclared VIRTUAL dependencies, a latent trap for the Phase 19 GraphQL layer if it restricts `attributes`; WR-02 the migration comment slightly overstates unverified MySQL 8.4 safety). No SECURITY.md yet for this model/migration-only phase.
+
 ## Next Milestone Goals
 
 Candidate directions after v1.1 (to be refined via `/gsd:new-milestone`):
@@ -169,4 +172,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-30 — starting v3.0 Ge'ez Native-Script Names milestone*
+*Last updated: 2026-07-30 — Phase 18 (Data Model & Migration) complete; v3.0 Ge'ez Native-Script Names in progress*
