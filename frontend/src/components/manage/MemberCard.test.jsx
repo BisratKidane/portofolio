@@ -143,4 +143,31 @@ describe('MemberCard', () => {
     renderCard({ member, actingUserId: 1, isSelf: false, isAdmin: false });
     expect(screen.queryByRole('button', { name: 'Remove photo' })).not.toBeInTheDocument();
   });
+
+  it("renders the Ge'ez name line (lang=ti) below the Latin fullname when geezFullname is present (VIEW-02)", () => {
+    renderCard({ member: { ...BASE_MEMBER, geezFullname: 'ጃነ ዶ' } });
+    const geezLine = screen.getByText('ጃነ ዶ');
+    expect(geezLine).toBeInTheDocument();
+    expect(geezLine).toHaveAttribute('lang', 'ti');
+    const latin = screen.getByText('Ada Lovelace');
+    expect(latin.compareDocumentPosition(geezLine) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders no Ge'ez line when geezFullname is absent", () => {
+    renderCard();
+    expect(screen.queryByText('ጃነ ዶ')).not.toBeInTheDocument();
+  });
+
+  it("renders the Ge'ez line alongside the Derived chip without disturbing it", () => {
+    renderCard({ isDerived: true, member: { ...BASE_MEMBER, geezFullname: 'ጃነ ዶ' } });
+    expect(screen.getByText('Derived')).toBeInTheDocument();
+    expect(screen.getByText('ጃነ ዶ')).toBeInTheDocument();
+  });
+
+  it("renders the Ge'ez line alongside the locked caption without disturbing it", () => {
+    const member = { id: 5, fullname: 'Ada Lovelace', linkedUser: { id: 99 }, geezFullname: 'ጃነ ዶ' };
+    renderCard({ member, actingUserId: 1, isSelf: false, isAdmin: false });
+    expect(screen.getByText('Manages their own profile.')).toBeInTheDocument();
+    expect(screen.getByText('ጃነ ዶ')).toBeInTheDocument();
+  });
 });

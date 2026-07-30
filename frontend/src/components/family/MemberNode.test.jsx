@@ -219,4 +219,37 @@ describe('MemberNode', () => {
     expect(ancestorBadge).toBeInTheDocument();
     expect(descendantBadge).not.toBe(ancestorBadge);
   });
+
+  it("renders the Ge'ez name line (lang=ti) after the Latin fullname when geezFullname is present (VIEW-01)", () => {
+    renderNode({ member: { ...BASE_MEMBER, geezFullname: 'ጃነ ዶ' } });
+    const geezLine = screen.getByText('ጃነ ዶ');
+    expect(geezLine).toBeInTheDocument();
+    expect(geezLine).toHaveAttribute('lang', 'ti');
+    // Ge'ez line follows the Latin fullname in DOM order.
+    const latin = screen.getByText('Ada Lovelace');
+    expect(latin.compareDocumentPosition(geezLine) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("renders no Ge'ez line when geezFullname is null (L-04)", () => {
+    renderNode({ member: { ...BASE_MEMBER, geezFullname: null } });
+    expect(screen.queryByText('ጃነ ዶ')).not.toBeInTheDocument();
+  });
+
+  it("renders no Ge'ez line when the geezFullname key is absent (L-04)", () => {
+    renderNode();
+    expect(screen.queryByText('ጃነ ዶ')).not.toBeInTheDocument();
+  });
+
+  it("renders no Ge'ez line when geezFullname is an empty string (helper normalizes to null)", () => {
+    renderNode({ member: { ...BASE_MEMBER, geezFullname: '' } });
+    expect(screen.queryByText('ጃነ ዶ')).not.toBeInTheDocument();
+  });
+
+  it("renders both the 'Head' tag and the Ge'ez line when isFocusRoot and geezFullname coexist", () => {
+    renderNode({ isFocusRoot: true, member: { ...BASE_MEMBER, geezFullname: 'ጃነ ዶ' } });
+    expect(screen.getByText('Head')).toBeInTheDocument();
+    const geezLine = screen.getByText('ጃነ ዶ');
+    expect(geezLine).toBeInTheDocument();
+    expect(geezLine).toHaveAttribute('lang', 'ti');
+  });
 });

@@ -158,4 +158,75 @@ describe('AdminMemberTable', () => {
     expect(screen.getByRole('columnheader', { name: 'Last edited by' })).toBeInTheDocument();
     expect(screen.getByText('Grace H')).toBeInTheDocument();
   });
+
+  it("renders the Ge'ez name line (lang=ti) below the Latin fullname in the same name cell (VIEW-02)", () => {
+    render(
+      <AdminMemberTable
+        members={[{ ...MEMBERS[0], geezFullname: 'ጃነ ዶ' }]}
+        onSelect={vi.fn()}
+      />
+    );
+    const geezLine = screen.getByText('ጃነ ዶ');
+    expect(geezLine).toBeInTheDocument();
+    expect(geezLine).toHaveAttribute('lang', 'ti');
+    const latin = screen.getByText('Ada Lovelace');
+    // Same name cell: shared TableCell ancestor.
+    expect(latin.closest('td')).toBe(geezLine.closest('td'));
+  });
+
+  it("renders no Ge'ez line when geezFullname is absent", () => {
+    render(<AdminMemberTable members={MEMBERS} onSelect={vi.fn()} />);
+    expect(screen.queryByText('ጃነ ዶ')).not.toBeInTheDocument();
+  });
+
+  it("filters rows by a typed Ge'ez substring matched against geezFullname (FIND-01)", async () => {
+    render(
+      <AdminMemberTable
+        members={[
+          { ...MEMBERS[0], geezFullname: 'ጃነ ዶ' },
+          { ...MEMBERS[1] }
+        ]}
+        onSelect={vi.fn()}
+      />
+    );
+
+    await userEvent.type(screen.getByLabelText('Search members'), 'ጃነ');
+
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument();
+  });
+
+  it("still filters by a Latin substring after the Ge'ez extension (regression guard)", async () => {
+    render(
+      <AdminMemberTable
+        members={[
+          { ...MEMBERS[0], geezFullname: 'ጃነ ዶ' },
+          { ...MEMBERS[1] }
+        ]}
+        onSelect={vi.fn()}
+      />
+    );
+
+    await userEvent.type(screen.getByLabelText('Search members'), 'grace');
+
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
+  });
+
+  it('does not throw when searching and a member has a null/undefined geezFullname (null-guard)', async () => {
+    render(
+      <AdminMemberTable
+        members={[
+          { ...MEMBERS[0], geezFullname: null },
+          { ...MEMBERS[1] }
+        ]}
+        onSelect={vi.fn()}
+      />
+    );
+
+    await userEvent.type(screen.getByLabelText('Search members'), 'ada');
+
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument();
+  });
 });
