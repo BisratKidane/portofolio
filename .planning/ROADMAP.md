@@ -61,7 +61,7 @@ _Post-milestone note: the `/family` tree edge model was later changed from the u
 **Milestone Goal:** Family members can carry their name in Ge'ez script (ግዕዝ) alongside the existing Latin name, rendered with a self-hosted Ge'ez-capable webfont so it displays correctly on every device — deepening the app's fit for the Tigrinya/Eritrean family it serves.
 
 - [x] **Phase 18: Data Model & Migration** - Ge'ez name columns exist on `family_members`, with a correctly-derived `geezFullname`, before anything above depends on them. (completed 2026-07-30)
-- [ ] **Phase 19: GraphQL Layer** - Ge'ez name fields are readable and writable over the GraphQL API.
+- [x] **Phase 19: GraphQL Layer** - Ge'ez name fields are readable and writable over the GraphQL API. (completed 2026-07-30)
 - [ ] **Phase 20: Self-Hosted Font & Theme** - Ge'ez script renders correctly and consistently via a self-hosted webfont, with zero CDN dependency and no Latin regression.
 - [ ] **Phase 21: Shared Display Helper** - One helper drives Latin/Ge'ez precedence and empty-handling identically everywhere.
 - [ ] **Phase 22: Render Surfaces (Read Path)** - A member's Ge'ez name is visible on `/family` tree cards and across `/manage`, and searchable in the admin table.
@@ -96,7 +96,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 19-01-PLAN.md — Expose Ge'ez fields on the GraphQL type + inputs, extend OPTIONAL_FAMILY_MEMBER_FIELDS, harden geezFullname VIRTUAL, add integration test (DATA-03)
+- [x] 19-01-PLAN.md — Expose Ge'ez fields on the GraphQL type + inputs, extend OPTIONAL_FAMILY_MEMBER_FIELDS, harden geezFullname VIRTUAL, add integration test (DATA-03)
 
 ### Phase 20: Self-Hosted Font & Theme
 **Goal**: Ge'ez script renders correctly and consistently on every device via a self-hosted webfont, with zero CDN dependency and no regression to existing Latin rendering.
@@ -169,7 +169,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22 → 23. (Phase 2
 | 16. Photo Upload | v2.0 | 7/7 | Complete | 2026-07-24 |
 | 17. /family Deep Tree Visualization | v2.0 | 4/4 | Complete | 2026-07-25 |
 | 18. Data Model & Migration | v3.0 | 2/2 | Complete    | 2026-07-30 |
-| 19. GraphQL Layer | v3.0 | 0/1 | Not started | - |
+| 19. GraphQL Layer | v3.0 | 1/1 | Complete   | 2026-07-30 |
 | 20. Self-Hosted Font & Theme | v3.0 | 0/TBD | Not started | - |
 | 21. Shared Display Helper | v3.0 | 0/TBD | Not started | - |
 | 22. Render Surfaces (Read Path) | v3.0 | 0/TBD | Not started | - |
