@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import LinkAccountsPage from './LinkAccountsPage.jsx';
+
+const navigateMock = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, useNavigate: () => navigateMock };
+});
 
 vi.mock('../api/graphqlClient.js', () => ({
   graphqlRequest: vi.fn()
@@ -52,9 +59,11 @@ beforeEach(() => {
 
 function renderPage() {
   return render(
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <LinkAccountsPage />
-    </LocalizationProvider>
+    <MemoryRouter>
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <LinkAccountsPage />
+      </LocalizationProvider>
+    </MemoryRouter>
   );
 }
 
@@ -70,7 +79,7 @@ describe('LinkAccountsPage', () => {
     expect(screen.getByText('ada@example.com')).toBeInTheDocument();
   });
 
-  it('lists accounts that are already linked, showing the account and its member', async () => {
+  it('lists a linked account as a single entity (account name + email, member fullname not shown twice) and opens the tree on click', async () => {
     const MEMBERS_WITH_A_LINK = [
       ...FAMILY_MEMBERS_FOR_LINKING,
       {
@@ -88,11 +97,17 @@ describe('LinkAccountsPage', () => {
     renderPage();
 
     expect(await screen.findByText('Linked accounts')).toBeInTheDocument();
+    expect(screen.getByText('Ada Account')).toBeInTheDocument(); // the account name
     expect(screen.getByText('ada.king@example.com')).toBeInTheDocument();
-    expect(screen.getByText('Ada Account')).toBeInTheDocument(); // the linked account
-    expect(screen.getByText('Ada King')).toBeInTheDocument(); // the family member
+    // The member IS the account holder, so the member fullname is not shown a
+    // second time next to the account.
+    expect(screen.queryByText('Ada King')).not.toBeInTheDocument();
     // Nothing waiting → the waiting section shows its empty state.
     expect(screen.getByText('No accounts are waiting to be linked.')).toBeInTheDocument();
+
+    // Clicking the row opens the family tree headed on that member.
+    await userEvent.click(screen.getByRole('button', { name: 'View Ada Account in the family tree' }));
+    expect(navigateMock).toHaveBeenCalledWith('/family?head=12');
   });
 
   it('shows the "no accounts are linked yet" empty state when none are linked', async () => {

@@ -150,20 +150,45 @@ export function computeCollapsedSet(focalId, membersById) {
   return set;
 }
 
-export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, viewerId, rootId, onMemberClick }) {
-  const [expandedIds, setExpandedIds] = useState(() => new Set(initialExpandedIds));
+export default function FamilyTreeCanvas({
+  nodes,
+  edges,
+  initialExpandedIds,
+  viewerId,
+  rootId,
+  onMemberClick,
+  initialFocusRootId
+}) {
+  const membersById = useMemo(() => buildMembersById(nodes), [nodes]);
+
+  // When navigated in with a head (e.g. from the Linked accounts list), open
+  // already re-rooted on that member: seed focusRootId and show only their
+  // descendant branch instead of the whole forest. Ignored if the id isn't a
+  // real member in this forest.
+  const seededFocusId =
+    initialFocusRootId != null && membersById.has(String(initialFocusRootId))
+      ? String(initialFocusRootId)
+      : null;
+
+  const [expandedIds, setExpandedIds] = useState(() => {
+    if (seededFocusId) {
+      const branch = collectDescendantIds(seededFocusId, membersById, { includeSpouses: true });
+      return branch.size ? branch : new Set([seededFocusId]);
+    }
+    return new Set(initialExpandedIds);
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [collapsed, setCollapsed] = useState(false);
   // The member the tree is currently re-rooted ("headed") on. null = the full
-  // forest from the top ancestor. Set by a single click on a member card.
-  const [focusRootId, setFocusRootId] = useState(null);
+  // forest from the top ancestor. Set by a single click on a member card, or
+  // seeded from the initialFocusRootId navigation prop.
+  const [focusRootId, setFocusRootId] = useState(seededFocusId);
   const { fitView, getNode } = useReactFlow();
   const didInitialFit = useRef(false);
   // Distinguishes a single click (re-root) from a double click (open panel):
   // a click schedules the re-root, a double click cancels it and opens the panel.
   const clickTimerRef = useRef(null);
 
-  const membersById = useMemo(() => buildMembersById(nodes), [nodes]);
   const viewerNodeId = viewerId != null ? String(viewerId) : null;
   const rootNodeId = rootId != null ? String(rootId) : null;
 

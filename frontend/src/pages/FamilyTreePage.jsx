@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { graphqlRequest } from '../api/graphqlClient.js';
@@ -34,6 +34,10 @@ const TOGGLE_ALIVE_MUTATION = `
 
 export default function FamilyTreePage() {
   const { user } = useAuth();
+  // Optional ?head=<memberId> (e.g. from the Linked accounts list) opens the
+  // tree already re-rooted on that member.
+  const [searchParams] = useSearchParams();
+  const headId = searchParams.get('head');
   const [members, setMembers] = useState([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [pageError, setPageError] = useState('');
@@ -124,6 +128,7 @@ export default function FamilyTreePage() {
           viewerId={user.familyMemberId}
           rootId={forest.rootAncestorId}
           onMemberClick={(id) => setSelectedMemberId(id)}
+          initialFocusRootId={headId}
         />
       </ReactFlowProvider>
       <MemberDetailPanel

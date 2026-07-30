@@ -85,9 +85,9 @@ const ADA = {
   children: []
 };
 
-function renderPage() {
+function renderPage(initialEntries = ['/family']) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <FamilyTreePage />
     </MemoryRouter>
   );
@@ -142,6 +142,49 @@ describe('FamilyTreePage', () => {
     fireEvent.click(node);
 
     await waitFor(() => expect(screen.getByText('Dates unknown')).toBeInTheDocument());
+  });
+
+  it('opens the tree headed on the ?head= member, hiding unrelated members', async () => {
+    // Ada (id '1') heads her branch (child Byron, id '3'); John (id '4') is an
+    // unrelated member and must not show when the tree opens headed on Ada.
+    const ADA_WITH_CHILD = { ...ADA, children: [{ id: '3' }] };
+    const BYRON = {
+      id: '3',
+      firstname: 'Byron',
+      lastname: 'Lovelace',
+      fullname: 'Byron Lovelace',
+      gender: 'Male',
+      birthdate: null,
+      isAlive: true,
+      photoUrl: null,
+      mother: { id: '1' },
+      father: null,
+      spouses: [],
+      children: []
+    };
+    const JOHN = {
+      id: '4',
+      firstname: 'John',
+      lastname: 'Doe',
+      fullname: 'John Doe',
+      gender: 'Male',
+      birthdate: null,
+      isAlive: true,
+      photoUrl: null,
+      mother: null,
+      father: null,
+      spouses: [],
+      children: []
+    };
+    graphqlRequest.mockResolvedValueOnce({ familyMembers: [ADA_WITH_CHILD, BYRON, JOHN] });
+    renderPage(['/family?head=1']);
+
+    await waitFor(() => {
+      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByText('Byron Lovelace')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show full tree' })).toBeInTheDocument();
   });
 
   it('never selects linkedUser in the flat query it issues', async () => {

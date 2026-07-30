@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Autocomplete,
@@ -12,6 +13,7 @@ import {
   Typography
 } from '@mui/material';
 import LinkRoundedIcon from '@mui/icons-material/LinkRounded';
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import { graphqlRequest } from '../api/graphqlClient.js';
 import { uploadMemberPhoto } from '../api/photoClient.js';
 import { colors, getInitials } from '../theme.js';
@@ -272,39 +274,43 @@ function UnlinkedUserRow({ user, familyMembers, onLinked }) {
   );
 }
 
-// Read-only row for an already-linked account: the account on the left, a link
-// cue, and the family member it's connected to on the right.
+// Read-only row for an already-linked account. An account may only be linked to
+// the family member that IS them, so the account and the member are the same
+// person — we show a single entity (the member's photo + the account name and
+// email), not the same name/avatar twice. Clicking the row opens the family
+// tree headed on that person.
 function LinkedAccountRow({ member }) {
   const account = member.linkedUser;
+  const navigate = useNavigate();
+  const openInTree = () => navigate(`/family?head=${member.id}`);
+
   return (
     <Stack
-      direction={{ xs: 'column', sm: 'row' }}
-      spacing={2}
-      alignItems={{ sm: 'center' }}
-      sx={{ px: { xs: 3, md: 4 }, py: 2.5 }}
+      direction="row"
+      alignItems="center"
+      spacing={1.5}
+      role="button"
+      tabIndex={0}
+      aria-label={`View ${account.name} in the family tree`}
+      onClick={openInTree}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openInTree();
+        }
+      }}
+      sx={{ px: { xs: 3, md: 4 }, py: 2.5, cursor: 'pointer', '&:hover': { bgcolor: colors.gradientSoft } }}
     >
-      <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0, flex: 1 }}>
-        <Avatar sx={{ width: 38, height: 38, bgcolor: '#eef1f8', color: colors.slate }}>
-          {getInitials(account.name)}
-        </Avatar>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 600 }} noWrap>
-            {account.name}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" noWrap>
-            {account.email}
-          </Typography>
-        </Box>
-      </Stack>
-
-      <LinkRoundedIcon aria-hidden="true" sx={{ color: colors.primary }} />
-
-      <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0, flex: 1 }}>
-        <MemberAvatarImage member={member} size={32} />
+      <MemberAvatarImage member={member} size={40} />
+      <Box sx={{ minWidth: 0, flex: 1 }}>
         <Typography sx={{ fontWeight: 600 }} noWrap>
-          {member.fullname}
+          {account.name}
         </Typography>
-      </Stack>
+        <Typography variant="body2" color="text.secondary" noWrap>
+          {account.email}
+        </Typography>
+      </Box>
+      <ChevronRightRoundedIcon aria-hidden="true" sx={{ color: colors.slate }} />
     </Stack>
   );
 }

@@ -207,6 +207,31 @@ describe('FamilyTreeCanvas', () => {
     expect(screen.getByTestId('member-node-1')).toHaveAttribute('data-focus-root', 'true');
   });
 
+  it('opens already re-rooted when initialFocusRootId is provided (headed on that member, unrelated members hidden)', async () => {
+    // Navigated in with head = Ada (id '1'): her descendant Byron is shown, the
+    // unrelated John is hidden, Ada is flagged as head, and the reset button
+    // is available immediately — no click required.
+    renderCanvas({ initialFocusRootId: '1' });
+
+    await waitFor(() => {
+      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByText('Byron Lovelace')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+    expect(screen.getByTestId('member-node-1')).toHaveAttribute('data-focus-root', 'true');
+    expect(screen.getByRole('button', { name: 'Show full tree' })).toBeInTheDocument();
+  });
+
+  it('ignores an initialFocusRootId that is not a member in this forest (falls back to the full tree)', async () => {
+    renderCanvas({ initialFocusRootId: '999' });
+
+    await waitFor(() => {
+      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: 'Show full tree' })).not.toBeInTheDocument();
+  });
+
   it('shows a "Show full tree" button while focused that restores the full forest', async () => {
     renderCanvas();
     await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
