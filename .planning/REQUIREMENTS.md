@@ -69,4 +69,19 @@
 
 <!-- Filled by the roadmapper: REQ-ID → Phase mapping. -->
 
-_To be populated when the roadmap is created._
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| FONT-01 | Phase 20 | Pending |
+| FONT-02 | Phase 20 | Pending |
+| DATA-01 | Phase 18 | Pending |
+| DATA-02 | Phase 18 | Pending |
+| DATA-03 | Phase 19 | Pending |
+| VIEW-01 | Phase 22 | Pending |
+| VIEW-02 | Phase 22 | Pending |
+| VIEW-03 | Phase 21 | Pending |
+| EDIT-01 | Phase 23 | Pending |
+| FIND-01 | Phase 22 | Pending |
+| FIND-02 | Phase 23 | Pending |
+| QUAL-01 | Phase 23 | Pending |
+
+**Coverage:** 12/12 v3.0 requirements mapped. No orphans, no duplicates.

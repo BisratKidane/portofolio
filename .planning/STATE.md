@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-07-30T13:22:26.157Z"
 last_activity: 2026-07-30
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-21)
+See: .planning/PROJECT.md (updated 2026-07-30)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Milestone complete
+**Current focus:** Phase 18 — Data Model & Migration
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-07-30 — Milestone v3.0 started
+Phase: 18 of 23 (Data Model & Migration)
+Plan: — (not yet planned)
+Status: Ready to plan
+Last activity: 2026-07-30 — ROADMAP.md created for v3.0 (Phases 18–23)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Deferred Items
 
@@ -44,9 +46,9 @@ Both are browser-only manual checks from Phase 16 (Photo Upload); the underlying
 
 **Velocity:**
 
-- Total plans completed: 51 (v1.0: 13, v1.1: 19) — none yet in v2.0
+- Total plans completed: 51 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0
 - Average duration: - min
-- Total execution time: 0 hours (v2.0)
+- Total execution time: 0 hours (v3.0)
 
 **By Phase:**
 
@@ -54,27 +56,15 @@ Both are browser-only manual checks from Phase 16 (Photo Upload); the underlying
 |-------|-------|-------|----------|
 | 01–06 (v1.0) | 13 | - | - |
 | 07–11 (v1.1) | 19 | - | - |
-| 12–17 (v2.0) | TBD | - | - |
-| 12 | 4 | - | - |
-| 14 | 6 | - | - |
-| 15 | 6 | - | - |
-| 16 | 7 | - | - |
-| 17 | 4 | - | - |
+| 12–17 (v2.0) | 31 | - | - |
+| 18–23 (v3.0) | TBD | - | - |
 
 **Recent Trend:**
 
-- Last 5 plans: - (v1.1 closed 2026-07-21; v2.0 not yet started)
+- Last 5 plans: - (v2.0 closed 2026-07-25; v3.0 not yet started)
 - Trend: -
 
 *Updated after each plan completion*
-| Phase 13 P01 | 15min | 2 tasks | 6 files |
-| Phase 13 P02 | 10min | 2 tasks | 8 files |
-| Phase 13 P03 | 12min | 2 tasks | 7 files |
-| Phase 13 P04 | 12min | 2 tasks | 3 files |
-| Phase 17 P01 | 5min | 2 tasks | 2 files |
-| Phase 17 P02 | 16min | 3 tasks | 9 files |
-| Phase 17 P03 | 15min | 3 tasks | 6 files |
-| Phase 17 P04 | 7min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -82,33 +72,15 @@ Both are browser-only manual checks from Phase 16 (Photo Upload); the underlying
 
 Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecting current work:
 
-- v2.0 roadmap: Phase order is data-model-first (12) → membership gating (13) → permission-scoping/relationship-resolvers (14) → dedup+/manage UI (15) → photo upload (16) → /family tree (17), per research's dependency-ordered build order (schema/cycle/cascade decisions are expensive to retrofit; gating must land before scoped edits; permission-scoping and relationship mutations are mutually dependent; tree view consumes everything prior).
-- v2.0 roadmap: Phase 13 (membership gating) explicitly carries the manual `ALTER TABLE users ADD COLUMN familyMemberId` + boot-verify step and the first-admin carve-out, mirroring the v1.1 Phase 9/11 manual-migration pattern — `sequelize.sync()` will not add a column to the existing `users` table.
-- v2.0 roadmap: Phase 14 (permission-scoping + relationship resolvers) is a dedicated phase with mandatory adversarial tests (privilege-escalation via relationship edits, exclusion fixtures for grandparent/cousin/sibling-of-sibling) — not folded into a feature phase as an afterthought, per PITFALLS.md Pitfalls 7–8.
-- v2.0 roadmap: Photo upload (Phase 16) is sequenced as architecturally independent of Phases 14/15 and may run in parallel once Phase 12 lands, per ARCHITECTURE.md's build order.
-- v2.0 roadmap: Phase 17 (/family) opens with a spike validating the React Flow (`@xyflow/react` + `dagre`) synthetic-union-node spouse-pairing pattern against a realistic-depth fixture before the full page is built — the library choice is a confirm-not-settled decision per STACK.md/SUMMARY.md.
-- v2.0 roadmap: QUAL-01/02/03 (cross-cutting TDD/CI constraints) are baked into every phase's success criteria rather than isolated as a standalone phase, per milestone instructions; for traceability purposes QUAL-01 is anchored to Phase 16 (last new backend surface) and QUAL-02/03 to Phase 17 (milestone-closing frontend + CI validation).
-- v2.0 roadmap note: REQUIREMENTS.md's stated "34 total" header undercounts by one — the actual v1 requirements list contains 35 IDs (MEM×5, REL×6, ACC×5, PERM×5, PHOTO×3, MNG×4, TREE×4, QUAL×3). All 35 are mapped 1:1 to phases 12–17 with 100% coverage; the header count was corrected to 35 during roadmap creation.
-- [Phase 13]: requireFamilyAccess = linked-member OR ADMIN (D-06 carve-out), delegating to requireAuth for the null check
-- [Phase 13]: familyMemberId declared only via the User.belongsTo(FamilyMember) association, not redeclared in User.init() (association-owns-the-column convention, mirrors Spouse.js)
-- [Phase 13]: FamilyMember.hasOne(User) used instead of hasMany, reflecting the UNIQUE-constrained one-to-one link (D-07)
-- [Phase 13]: familyMember/familyMembers resolvers return raw Sequelize instances so the fullname VIRTUAL getter resolves via default GraphQL field resolution
-- [Phase 13]: linkUserToMember validates memberId/newMember mutual exclusivity via (memberId == null) === (newMember == null), and relies on the DB UniqueConstraintError (not a pre-emptive findOne) to catch duplicate-link races (D-07/T-13-06)
-- [Phase 13]: create-and-link path creates only a bare FamilyMember (no linkParent/addChild/setSpouse), keeping D-05's scope boundary enforced by a zero-match grep
-- [Phase 13]: ProtectedRoute's pending-gate guard sits between the !user check and the allowedRoles check so unlinked users are gated before any role-mismatch redirect
-- [Phase 13]: familyMemberId added to ME_QUERY, LOGIN_MUTATION, and VERIFY_EMAIL_MUTATION (not just ME_QUERY) since authenticate() never re-runs me after login/verifyEmail
-- [Phase 13]: Pending.jsx is deliberately static (no useEffect/polling/admin-contact link) per D-02, and bounces linked/ADMIN users to /dashboard, unauthenticated to /login
-- [Phase 13]: AdminLinkMembers.jsx wires page-level unlinkedUsers/familyMembers fetch to per-row pick-existing (Autocomplete) or create-and-link (bare-member form) submit handlers, calling linkUserToMember
-- [Phase 13]: /admin/link-members registered behind ProtectedRoute allowedRoles=['ADMIN'], reusing the existing role-gate mechanism unchanged
+- v3.0 roadmap: Phase order is data model + migration (18) → GraphQL layer (19) → self-hosted font/theme (20) → shared displayName helper (21) → read-path render surfaces (22) → write-path forms/Autocomplete (23), per RESEARCH.md SUMMARY.md's dependency-ordered build order.
+- v3.0 roadmap: Phase 20 (font/theme) is deliberately independent of Phases 18–19 (no data dependency) and may be executed in parallel — it carries the highest number of distinct "looks done but isn't" pitfalls per research (subsetting/glyph coverage, FOUT/FOIT, CDN-vs-self-host).
+- v3.0 roadmap: Phase 21 (shared `displayName` helper) is sequenced as a standalone prerequisite before Phase 22's render surfaces, to prevent each component from re-deriving the Latin/Ge'ez precedence rule slightly differently (the drift risk PITFALLS.md/ARCHITECTURE.md both flag).
+- v3.0 roadmap: Phase 22 (render, read path) is sequenced before Phase 23 (write path/forms) matching this app's established test-first convention — prove rendering against seeded/direct-mutation data before wiring end-user input, avoiding conflating "renders wrong" bugs with "form submits wrong" bugs.
+- v3.0 roadmap: QUAL-01 (cross-cutting TDD/CI constraint) is anchored to Phase 23 (milestone-closing phase) for traceability, though its constituent unit tests (`geezFullname`, `displayName`) are substantively written in Phases 18 and 21 respectively — Phase 23's criteria explicitly re-confirm both stay green plus the full-suite/CI gate and the manual glyph sign-off.
+- v3.0 roadmap: manual glyph/visual verification (font rendering, tree-card truncation, Tigrinya labialized-consonant coverage) is treated as a human sign-off gate, not an automated assertion — jsdom cannot assert real glyph rendering, per RESEARCH.md.
 - [Phase 17]: familyMembers query guard relaxed from requireAdmin to requireFamilyAccess (D-13); linkedUser field-level gate (Phase 14 CR-01) verified untouched via new D-14 regression test
-- [Phase 17]: D-11 SC-1 gate PASSED (human-approved): synthetic-union-node spouse-pairing renders cleanly at ~18-generation depth, unblocking Plan 17-03
-- [Phase 17]: D-12 locked with an implementation amendment: production spouse-pairing uses the union-node midpoint mechanism (familyTree.layout.js), not RESEARCH.md's minlen:0 dagre edge, since minlen:0 crashes @dagrejs/dagre (all versions tested); midpoint mechanism is what the SC-1 spike proved and the human approved
-- [Phase 17]: MemberNode gender matching keyed off the actual FamilyMember.gender ENUM values ('Male'/'Female'/'Other') rather than the plan text's illustrative 'MALE'/'FEMALE' — avoids silently mistinting/miciconing real production data
-- [Phase 17]: Descendant/ancestor badges implement only the 'Show N hidden {direction}' aria-label variant — badge visibility already tracks hiddenCount/ancestorHiddenCount > 0, so there is no reachable 'Hide' state through the same badge
-- [Phase 17]: layoutWithDagre is memoized on a stringified sorted expandedIds key and always receives the FULL node/edge arrays with a hidden flag, not a filtered subset — keeps dagre's rank math stable across collapse/expand toggles
-- [Phase 17]: FamilyTreePage/MemberDetailPanel: MemberDetailPanel returns null when closed/no member (not a hidden-but-mounted Drawer), per the plan's explicit behavior contract
-- [Phase 17]: FamilyTreePage error-state copy split into separate Typography spans (not text nodes joined by br) so each string stays RTL-exact-matchable
-- [Phase 17]: D-14/Pitfall 6 field-selection guard applies to code comments too -- the acceptance grep is a literal whole-file match, so the explanatory comment describes the forbidden field by purpose, not by name
+- [Phase 17]: D-12 locked with an implementation amendment: production spouse-pairing uses the union-node midpoint mechanism, not RESEARCH.md's minlen:0 dagre edge (crashes @dagrejs/dagre)
+- Post-Phase 17 (2026-07-25): `/family` edge model replaced union-node "spouses-paired" rendering with a pure parent→child hierarchy at the user's request (real data had 0 spouse rows, 0 two-parent children — the union model rendered zero edges). `UnionNode.jsx` and the union assembly/layout machinery were removed.
 
 ### Pending Todos
 
@@ -116,11 +88,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- Carry-forward from v1.1: `sequelize.sync()` does not alter existing tables — any DB schema change touching an *existing* table (this milestone: `users.familyMemberId` in Phase 13) needs a manual `ALTER TABLE` + human boot-verify; CI's force-recreate can't surface the gap. (Standing infra-debt: adopt Sequelize migrations — still deferred.)
-- Carry-forward from v1.1: branch/merge/tag strategy for this milestone (one long-lived `family` branch vs. a stale `origin/main`) should be decided at milestone start, not ship time.
-- New for v2.0: the tree-visualization library choice (`@xyflow/react` + `@dagrejs/dagre` vs. `family-chart`) is flagged MEDIUM confidence in research — Phase 17 must spike the synthetic-union-node spouse-pairing pattern before committing to the full build; `family-chart` is the documented fallback if the spike fails.
-- New for v2.0: the sibling-dedup scope ("any one shared parent" vs. "both shared parents") was an open product question in research — resolved as "any one shared parent" per REL-06's wording ("shares **either** parent"); Phase 15 implementation must document this as a deliberate, known limitation (half-siblings sharing a firstname will be blocked).
-- New for v2.0: cross-subtree relationship-edit consent (Pitfall 8) — the roadmap resolves this as "require admin approval for any edge connecting two independently-linked accounts," to be enforced in Phase 14.
+- Carry-forward from v1.1: `sequelize.sync()` does not alter existing tables — v3.0's Ge'ez columns need a manual `.sql` migration (`018-*.sql`), same as every prior schema change to an existing table (009/011/013/014/016/017).
+- New for v3.0: font subsetting/tooling risk — a generic "self-host Google Fonts" recipe can silently drop Tigrinya-specific labialized consonant glyphs (ቨ, ቐ — main Ethiopic block U+1200–137F, not the Supplement U+1380–139F as the milestone brief originally assumed). Phase 20 must verify against real Tigrinya name fixtures, not generic Ethiopic sample text.
+- New for v3.0: the fixed 252×120px `/family` tree card is already tight for Latin `noWrap` text; Ge'ez glyphs are visually wider at the same character count. Phase 22 needs a mandatory manual visual pass against the longest real Ge'ez name in the actual dataset.
+- New for v3.0: MUI Autocomplete's default filter only matches `getOptionLabel` (kept Latin-only per the no-toggle decision) — Phase 23 needs a custom `filterOptions` via `createFilterOptions`, decoupled from the visible option label.
 
 ## Deferred Items
 
@@ -137,6 +108,9 @@ Items acknowledged and carried forward from previous milestone close:
 | Removal flow | Member-initiated removal request/admin-approval flow | Deferred to v2 (RMV-01) | v2.0 requirements |
 | Genealogy | Multiple marriages, half-siblings, adoptions as first-class types | Deferred to v2 (GEN-01/02) | v2.0 requirements |
 | Tree curation | Inline tree-editing from `/family` nodes, duplicate-merge tooling | Deferred to v2 (CUR-01/02) | v2.0 requirements |
+| Ge'ez toggle | Latin ↔ Ge'ez display toggle for viewers | Deferred (v3.0 REQUIREMENTS.md Out of Scope) | v3.0 requirements |
+| Ge'ez surfaces | Detail panel / dashboard Ge'ez rendering, LinkAccounts picker Ge'ez search | Deferred | v3.0 requirements |
+| i18n | Broader Amharic/Tigrinya UI localization (labels/buttons) | Deferred | v3.0 requirements |
 
 ## Quick Tasks Completed
 
@@ -151,10 +125,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-25T14:49:12.583Z
-Stopped at: Completed 17-04-PLAN.md
+Last session: 2026-07-30T13:22:26.157Z
+Stopped at: ROADMAP.md created for v3.0 (Phases 18–23); REQUIREMENTS.md traceability populated
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Run `/gsd:plan-phase 18` to plan the Data Model & Migration phase.
