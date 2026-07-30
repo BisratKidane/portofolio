@@ -1,178 +1,169 @@
 # Project Research Summary
 
-**Project:** Portfolio Auth App — v2.0 Collaborative Family Tree
-**Domain:** Collaborative, membership-gated genealogy/family-tree web app, grafted onto an existing shipped Express + Apollo Server 4 + React 18/MUI 6 + Sequelize 6/MySQL 8 auth application
-**Researched:** 2026-07-21
-**Confidence:** HIGH overall (stack versions, Sequelize patterns, Apollo upload guidance, and `sync()`/N+1/CSRF mechanics are all verified against official docs or live registry data); MEDIUM on family-tree-specific collaboration/permission/dedup patterns (reasoned from a smaller-scale domain analogy to WikiTree/Geni/FamilySearch, which operate at far larger scale than this milestone)
+**Project:** Portfolio Auth App — v3.0 Ge'ez Native-Script Names
+**Domain:** Brownfield addition of optional native-script (Ge'ez/Ethiopic) name fields + a self-hosted Ethiopic webfont, layered onto an existing React 18.3 + MUI 6.3 + Vite 6 frontend and Express + Apollo + Sequelize + MySQL/MariaDB backend
+**Researched:** 2026-07-30
+**Confidence:** HIGH
 
 ## Executive Summary
 
-This is a subsequent-milestone addition, not a greenfield build: a self-referential genealogy graph (parent/child + spouse), a deep pan/zoom tree view, photo upload, and admin-mediated membership gating are being bolted onto an already-hardened Express/Apollo/Sequelize/React stack. The research across all four areas agrees on the shape of the solution: model parent/child as directional self-referencing FKs (`motherId`/`fatherId`) and spouse as a self-referential many-to-many join table written symmetrically (both directions on write); serve the deep tree as one flat, whole-graph GraphQL query assembled into a layout client-side rather than nested recursive resolvers (which would hit this app's documented lack of DataLoader/query-depth limiting); and keep photo upload on a dedicated REST route via `multer`, deliberately outside `/graphql`, because Apollo Server 4's default `csrfPrevention: true` and this app's Apollo-Client-less Axios frontend make GraphQL multipart uploads (`graphql-upload`) both against Apollo's own guidance and needlessly fragile here.
+This milestone is a narrow, additive feature on a mature, well-tested app: give `FamilyMember` records an optional Ge'ez-script name (three nullable columns + a derived virtual `geezFullname`), render it wherever the Latin name already renders, and make sure it actually displays correctly on every device via a self-hosted webfont. All four research tracks converge on the same shape of answer — nothing about this milestone requires new architecture, new backend dependencies, or a new data-modeling pattern; it requires careful reuse of patterns this codebase already has (VIRTUAL getters, optional-field passthrough resolvers, manual `.sql` migrations, conditional-render idioms) plus two genuinely new concerns: picking and correctly wiring a self-hosted font, and getting the MySQL-8-vs-MariaDB migration DDL portable.
 
-The single biggest risk this milestone carries is **permission and membership-gating logic**, not the tree visualization itself. Pitfalls research identifies a cluster of adversarial-thinking gaps that are easy to ship "looking done" while being wrong: cycles in the parent/child graph, asymmetric spouse writes, wrong cascade-on-delete behavior, a permission-scope function (`getEditableMemberIds`) that must be the single source of truth and tested against explicit *exclusions* (grandparents, cousins, siblings-of-siblings), relationship edits used as a privilege-escalation vector (fabricating a spouse/parent link to a stranger's subtree to expand editable reach), and a membership gate that must be enforced at the resolver layer — not just the frontend route — while still carving out an exemption for the first bootstrapped admin (who has no linked member yet, the same chicken-and-egg problem v1.1 already solved once for role assignment). These are correctness- and security-critical enough that they warrant dedicated phases with adversarial (not just happy-path) tests, TDD'd red-green per this project's established discipline.
+The clear stack recommendation is `@fontsource/noto-sans-ethiopic` (pinned `5.3.0`, static `ethiopic-400`/`ethiopic-700` subset), imported once in `main.jsx` and appended to **both** `theme.js` font-stack constants (`FONT_SANS` and `FONT_DISPLAY`) ahead of any OS-fallback font — not a CDN `<link>`, not the variable-font package, not a new bundler plugin. Storage is two/three plain `VARCHAR(255) CHARACTER SET utf8mb4` columns added via a new hand-written manual migration (`018-*.sql`), explicitly avoiding any MySQL-8-only collation or `ENCRYPTION` clause so the same file applies cleanly to both the MariaDB (local) and MySQL 8.4 (prod) engines this app already straddles. Display follows a firm, already-decided UX rule — Latin name always on top, Ge'ez name stacked underneath only when present, no toggle, LTR (Ge'ez is not RTL) — reusing the exact conditional-render idiom `MemberNode.jsx` already uses for optional fields like birthday/mother/address.
 
-The tree-visualization library choice is presented as a recommendation to confirm, not a settled fact, because the two research passes disagree in emphasis (see below), and the sibling-dedup rule has an explicit open product question that must be resolved during requirements definition before it can be implemented correctly.
+The main risks are not architectural but *verification* risks: (1) a font subsetting tool or a copy-pasted recipe silently shipping Latin-only or an Amharic-biased glyph set that drops Tigrinya-specific letters, invisible in local smoke-testing on a Mac (which has broad OS Unicode coverage masking the bug); (2) the fixed 252×120px tree card, already tight for Latin `noWrap` text, truncating a genuinely longer/wider-glyphed Ge'ez name harder than expected; (3) the MUI Autocomplete relative-picker's default filter only matching `getOptionLabel` (Latin `fullname`), meaning Ge'ez text typed into the search box will find nothing unless a custom `filterOptions` is added; and (4) a naive port of the existing `fullname` template-literal join producing stray spaces, `"null null"` literal strings, or an empty string instead of `null` when only some Ge'ez name parts are filled. All four are cheap to prevent (real Tigrinya-name test fixtures, a manual visual pass on `/family` specifically, a `createFilterOptions` extension, and a defensive `.filter(Boolean).join(' ') || null` getter) but easy to miss if treated as "just add a column and a Typography line."
 
 ## Key Findings
 
 ### Recommended Stack
 
-STACK.md recommends three additions layered onto the existing, unchanged stack (no new ORM, no Apollo Client, no bundler change): `@xyflow/react` (React Flow) + `@dagrejs/dagre` for the deep tree canvas, `multer@^2.2.0` for photo upload via a dedicated REST route, and no new Sequelize package — self-referential `belongsTo`/`hasMany`/`belongsToMany` cover both parent/child and spouse natively in Sequelize 6.37 (already installed).
+The only new dependency this milestone needs is one npm package: `@fontsource/noto-sans-ethiopic@5.3.0` (frontend workspace only). Both candidate fonts (Noto Sans Ethiopic and Abyssinica SIL) were downloaded and inspected directly from their npm tarballs — both are OFL-1.1 licensed, both cover all five Ethiopic Unicode blocks in a single ~75 KB subset file at comparable size. Noto Sans Ethiopic wins on two concrete points: it ships a 700 (bold) weight (Abyssinica SIL is regular-only, and this app's `h1`–`h6` use `fontWeight: 700–800`), and its sans-serif design visually pairs with the app's existing Inter/Sora sans stack rather than Abyssinica SIL's calligraphic/manuscript style. No backend package is needed — `mysql2` already defaults to `utf8mb4` and Sequelize's `DataTypes.STRING` is charset-agnostic.
 
 **Core technologies:**
-- `@xyflow/react ^12.11.2` (React Flow): renders the `/family` deep tree — nodes are plain React components (MUI composes in directly), pan/zoom/minimap built in, and an officially documented `hidden`-node pattern supports collapsible/lazy branches, which matters at 10–23 generations deep.
-- `@dagrejs/dagre ^3.0.0`: computes hierarchical layout coordinates before handing them to React Flow (React Flow has no built-in auto-layout). Must be the `@dagrejs` fork, not the abandoned plain `dagre` package.
-- `multer ^2.2.0`: parses the photo upload on a dedicated Express REST route, separate from `/graphql`. Must be `2.x` — `1.x` carries two unpatched DoS CVEs.
-- `sequelize@6.37.8` (unchanged): self-referential adjacency-list FKs for parent/child, self-referential `belongsToMany` join table for spouse — both stable, documented patterns, no version bump needed.
-
-**Tree-visualization library — decision to confirm, not settled:** STACK.md's live-registry comparison recommends `@xyflow/react` for being actively maintained (weekly release cadence), natively React/MUI-idiomatic (no DOM-ownership conflicts), and having official documented patterns for both auto-layout and lazy/collapsible branches — the two hardest requirements at this milestone's depth. Its gap is that React Flow has **no native spouse/couple concept**; the recommended workaround is a synthetic "union node" between two spouses (well-precedented in public React-Flow family-tree projects, and structurally mirrors GEDCOM's own `FAM` record). FEATURES.md, researching the domain independently, leaned toward `family-chart` (`donatso/family-chart`) precisely because it has the *best native spouse/parent/children genealogy modeling* of anything surveyed — but it is framework-agnostic vanilla D3 (requires manual `useEffect`+ref DOM-ownership wiring inside React, a real source of bugs on unmount/route-change) and the vendor's own site advertises a paid "premium" tier for "Performance Optimizations," a signal the free tier's headroom may not comfortably cover a 10–23-generation tree. **Net recommendation: proceed with `@xyflow/react` + `@dagrejs/dagre` as the default, but treat the synthetic-union-node spouse-pairing approach as a specific implementation risk worth an early spike/prototype before committing** — if it proves awkward in practice, `family-chart` (or `relatives-tree`'s layout math alone, paired with a different renderer) is the documented fallback. This should not be treated as a closed decision going into roadmap phase-planning.
+- `@fontsource/noto-sans-ethiopic@5.3.0` (static, `ethiopic-400.css` + optionally `ethiopic-700.css`): self-hosted Ge'ez webfont — OFL-licensed, full Ethiopic coverage in one subset file, `font-display: swap` built in, zero CDN, resolved natively by Vite 6 from `node_modules` with no config changes
+- No new bundler plugin, font-loading library, or backend package — explicitly avoid `vite-plugin-webfont-dl`, `fontfaceobserver`, `@fontsource-variable/noto-sans-ethiopic`, and any Google Fonts CDN `<link>` (the existing Inter/Sora CDN `<link>` in `index.html` is a separate, pre-existing concern — do not compound it by loading the new font the same way)
+- Storage: two/three new nullable `VARCHAR(255) CHARACTER SET utf8mb4` columns on `family_members`, no explicit `COLLATE` (neither MySQL 8.4 nor MariaDB ships an Ethiopic-specific collation, and the field is display-only, never sorted/compared) — same pattern as existing manual migrations `013`/`016`/`017`
 
 ### Expected Features
 
-FEATURES.md maps table-stakes features against genealogy-software conventions (GEDCOM, FamilySearch, WikiTree, Geni) scaled down to a single, small, admin-curated family — explicitly *not* a public "world tree," which is why several common genealogy features (global fuzzy-match dedup, merge tooling, real-time collaborative editing, self-service node-claiming) are flagged as anti-features for this milestone.
+The confirmed display rule (per PROJECT.md and cross-validated in FEATURES.md against Unicode/CLDR conventions) is: **Latin-primary, Ge'ez-secondary, stacked two-line display, rendered only when present — no toggle, ever.** Ge'ez script is LTR (unlike Arabic/Hebrew), so no `dir`/bidi wrapping is needed — only a `lang="ti"` attribute on each Ge'ez text run, for both accessibility and font-fallback correctness.
 
 **Must have (table stakes):**
-- Member model: required firstname/lastname/gender, derived fullname, optional biographical fields (birthdate, deathdate, phone, address, mothersname, email), profile photo
-- Directed parent→child + undirected spouse relationships; siblings **derived** from shared parents, never stored as their own edge
-- Pan/zoom deep tree with spouses rendered adjacent (not as a separate generation) and search-to-locate
-- Self-service `/manage` editing scoped to "my immediate relatives"; admin edits the whole tree
-- Membership gate: register → verify (existing) → pending → admin-linked
-- Visible editable-members list (doubles as dedup backstop)
-- Sibling-firstname-uniqueness dedup guard (prevention, not cure)
+- Ge'ez name renders on the `/family` tree card (`MemberNode.jsx`) — the milestone's core goal, and the layout-costliest surface (fixed 120px card, already 3–4 conditional rows deep)
+- Same stacked display across `/manage` (relationship panels via `MemberCard`, `AdminMemberTable` name cell, Autocomplete option rendering) — cheaper here, more room
+- Graceful empty handling — no member without a Ge'ez name shows any artifact (blank row, stray separator, empty parens); conditional-render the whole element, never just its contents
+- `geezFullname` derived the same way as `fullname` (VIRTUAL getter mirroring the existing pattern, but defensively — see Pitfalls)
+- `lang="ti"` on every rendered Ge'ez text run
+- Search matches Ge'ez text: trivial `.includes()` extension for the admin table; requires a **custom `filterOptions`** (via `createFilterOptions`) for the Autocomplete relative-picker, since MUI's default filter only matches the `getOptionLabel` string (which stays Latin-only for the visible label)
 
-**Should have (v2.x candidates, not blocking this milestone):**
-- Collapse/expand on the tree canvas, re-root/focus-on-person view — both cheap if the chosen library supports them, add once real trees get visually noisy
+**Should have (differentiators, P2, no trigger defined for this milestone):**
+- Mother's Ge'ez name shown as a secondary line in the tree-card mother row when available
+- Ge'ez name included in the tree card's `aria-label` for screen readers
 
-**Defer (explicitly out of scope per PROJECT.md and FEATURES.md):**
-- Real-time collaborative editing, approval workflows for edits, self-service node-claiming, auto-provisioned member nodes on registration, global fuzzy-match dedup/merge tooling, full genealogy generality (multiple marriages/half-siblings/adoption), GEDCOM import/export, per-field edit history/audit log, invitation links, object-storage photos, browser E2E for family-tree flows
+**Defer (explicit anti-features this milestone):**
+- Latin↔Ge'ez display toggle — explicitly rejected per PROJECT.md
+- Auto-transliteration input helper — rely on the member's own device IME
+- Per-field language tagging / user-configurable locale picker
+- Full UI i18n (translating labels/buttons)
+- Ge'ez-aware sort/collation of member lists — the app has no name-based sort today; don't introduce one as a side effect of this milestone
+- RTL/bidi handling — not applicable to Ge'ez script
 
 ### Architecture Approach
 
-ARCHITECTURE.md treats this as additive: new backend domain files follow the codebase's existing `user.*` aggregator-barrel convention exactly (`familyMember.schema.js`/`.resolver.js`, merged into the same `schemas/index.js`/`resolvers/index.js` pattern already anticipating multiple domains). The deep tree is served as one flat adjacency-list query (`familyTree: { members: [FamilyMember!]! }`, 1–2 SQL statements total) assembled into a graph client-side, specifically to avoid the app's documented lack of DataLoader/batching. Permission scoping is a pure, reusable in-memory set-builder (`computeEditableRelatives`) recomputed fresh per mutation, never cached — mirroring how `utils/auth.js` already centralizes cross-cutting guard logic separately from resolver bodies.
+This is a thin, mostly-passthrough addition to an already-established layering. Because `familyMember.resolver.js`'s create/update paths spread the *entire* sanitized input object into Sequelize rather than allow-listing fields, adding the three Ge'ez fields to the GraphQL input types (`NewFamilyMemberInput`/`EditFamilyMemberInput`) makes them writable with **zero resolver-map changes** — the only resolver-adjacent change needed is adding the three field names to `OPTIONAL_FAMILY_MEMBER_FIELDS` in `user.resolver.js` so blank-string-to-null trimming applies consistently with every other optional field. `geezFullname` needs no explicit GraphQL resolver function either — Apollo's default property resolver reads it straight off the Sequelize VIRTUAL getter, exactly like `fullname` today.
 
 **Major components:**
-1. `FamilyMember` / `FamilySpouse` Sequelize models (new tables) + `models/index.js` association wiring — foundational, no manual migration needed since these are brand-new tables.
-2. `utils/family.js` (`computeEditableRelatives`, sibling-derivation helpers) + `utils/auth.js` extension (`requireFamilyAccess`/`requireLinkedMember`) — the permission/gating layer every mutation depends on.
-3. `familyMember.schema.js` / `familyMember.resolver.js` — CRUD, relationship mutations, the flat `familyTree` query, account-linking mutations (admin-only).
-4. Photo upload subsystem: a dedicated `multer`-backed Express route + `express.static('/uploads')`, mounted alongside (not through) Apollo, backed by a named Docker volume.
-5. Frontend: `FamilyTree.jsx` (`/family`), `ManageFamily.jsx` (`/manage`), `Pending.jsx` (`/pending`), plus a `ProtectedRoute` variant gated on `requireFamilyAccess`.
+1. **Manual migration `018-*.sql`** — adds 3 nullable `utf8mb4` columns to `family_members`, portable to both MySQL 8.4 and MariaDB (no `COLLATE`, no `ENCRYPTION`); `sequelize.sync()` never alters existing tables, so this is a hard prerequisite for everything else
+2. **`FamilyMember.js` model** — 3 new `DataTypes.STRING` attrs + a `geezFullname` VIRTUAL getter that must filter falsy parts before joining (not a naive template-literal port of `fullname`)
+3. **GraphQL schema + `OPTIONAL_FAMILY_MEMBER_FIELDS`** — type/input additions, one array update; no other resolver code changes
+4. **`frontend/src/utils/displayName.js` (new shared helper)** — single source of truth (`getGeezName(member)`) for "does this member have a Ge'ez name," imported by every render surface instead of each component re-deriving the precedence rule (explicitly called out as a DRY/drift-prevention pattern, analogous to `ManagePage.jsx`'s existing "one grouping function, two entry points" convention)
+5. **Font wiring** — `@fontsource` import in `main.jsx` + both `theme.js` font-stack constants (`FONT_SANS` and `FONT_DISPLAY`) updated, so Ge'ez resolves app-wide through MUI's global typography rather than per-component overrides
+6. **Render surfaces** — `MemberNode.jsx`, `MemberCard.jsx`, `AdminMemberTable.jsx`, `AddRelativeDialog.jsx`'s Autocomplete (option label/filter), each modified to call the shared helper; `RelationshipGroupedPanel.jsx` and the forest-assembly module (`familyTree.assembly.js`) need **no changes** since they pass the whole `member` object through untouched
+7. **Forms** — `MemberFields.jsx` (3 new TextFields, no IME/transliteration wiring needed) feeding `AddRelativeDialog.jsx`/`EditMemberDialog.jsx`'s `EMPTY_FORM`/`formFromMember()`
+
+Verified build order (data → API → font → shared helper → passive rendering → active forms) mirrors how this repo's prior v2.0 phases were sequenced (data model foundation before resolvers before self-service UI).
 
 ### Critical Pitfalls
 
-1. **N+1 fan-out from naive recursive resolvers on a deep tree** — avoid by never resolving `parents`/`children`/`spouse` field-by-field; use the flat whole-tree fetch (Pattern 3) plus request-scoped DataLoaders for any place per-node resolution is still needed, and add `graphql-depth-limit` the same phase the recursive `FamilyMember` type ships (this app currently has zero query-depth limiting — a real DoS surface once this type exists).
-2. **Cycles in the parent/child graph** (a person becomes their own ancestor) — nothing in Sequelize/MySQL FK constraints prevents this; every parent/child mutation needs an explicit, bounded ancestor-check before committing, TDD'd with a test that attempts to create a cycle and asserts rejection.
-3. **Asymmetric spouse writes and undecided cascade/orphan behavior on delete** — spouse must be written symmetrically (both directions) on every marriage-create, and every self-referencing association needs an explicit, deliberately-chosen `onDelete` (almost certainly `SET NULL`, not cascade) — a family tree should not vanish downstream because one ancestor was removed.
-4. **Permission-scope computed wrong, or used as a privilege-escalation vector** — `getEditableMemberIds`(-style utility) must be the single source of truth, recomputed fresh per mutation, tested against explicit *exclusions* (grandparents, cousins, siblings-of-siblings); separately, a relationship-creation mutation that lets Member A unilaterally attach themselves to Member B's (already-linked) subtree without consent is itself a privilege-escalation bug, not just a data-modeling nicety.
-5. **Membership gate enforced only at the frontend route level** — a verified-but-unlinked JWT can call family GraphQL operations directly, bypassing the SPA gate entirely, unless a `requireLinkedMember` guard runs inside every family-domain resolver — with an explicit **role-based carve-out for the first bootstrapped admin**, who has no linked member yet and must still be able to create/link the first node (the same chicken-and-egg shape v1.1 already solved once for admin promotion).
-6. **Insecure file upload handling** (trusting client filename/content-type) — path traversal and stored-XSS-via-mislabeled-image are both live risks; require server-generated filenames, magic-number content validation (disallow SVG), and `nosniff` on the serving route, tested adversarially before the happy path.
-
-## Open Product Question (flag for requirements definition — do not decide here)
-
-PITFALLS.md surfaces an explicit ambiguity in the sibling-firstname-dedup rule as specified: does "sibling" for the purposes of the uniqueness check mean **shares ANY ONE parent** (catches half-siblings as false-positive duplicates) or **shares BOTH parents** (misses genuine full-sibling duplicates when only one parent has been recorded so far)? This is not an implementation detail — it is a product decision with real, differently-shaped tradeoffs (false-positive blocking of legitimate half-siblings vs. under-catching duplicates for partially-recorded families), and PITFALLS.md explicitly recommends it be decided and documented as a known, deliberate scope limitation, not left as an implicit consequence of whichever query gets written first. **This must be resolved during requirements definition, not assumed by the roadmap or by implementation.** Whichever direction is chosen, normalize the firstname comparison (trim + case-fold) and give the rejection error enough detail that a human can recognize a false positive and route around it.
+1. **Font subsetting/tooling silently drops Tigrinya-specific glyphs (e.g. ቨ *va*, ቐ *qha*)** — a generic "self-host Google Fonts" recipe defaults to a Latin-only or Amharic-biased subset; Tigrinya's labialized consonant forms live in the *main* Ethiopic block (U+1200–137F, not the Supplement U+1380–139F, correcting a milestone-brief assumption) and won't show up in Amharic-only test text. **Avoid by:** verifying against real Tigrinya family names from the actual dataset, not generic Ethiopic sample text; ship the font unsubsetted (it's already script-scoped and small) rather than running it through another subsetting pass.
+2. **`sequelize.sync()` won't add the new columns** — this app's DB changes are always hand-applied `.sql` files (`backend/migrations/manual/`); skipping the migration or only updating the model causes `Unknown column` errors in prod/staging on first touch, exactly the failure mode already documented for prior migrations (009/011/014/015). **Avoid by:** following the established `018-*.sql` numbering/header convention and adding it to README's manual-migration list.
+3. **MySQL-8-only DDL breaks MariaDB** — a migration copy-pasted from a MySQL 8 `SHOW CREATE TABLE` dump (`utf8mb4_0900_ai_ci` collation, `ENCRYPTION=...`) fails outright on MariaDB, which this app runs locally while prod runs MySQL 8.4. **Avoid by:** `CHARACTER SET utf8mb4` with no explicit `COLLATE`, no `ENCRYPTION` clause, and test-running the exact `.sql` file against both engines before calling it done.
+4. **Naive `geezFullname` getter mishandles partial fill** — porting `fullname`'s unconditional template-literal join (`${a} ${b}`) to fields that are all optional (unlike required `firstname`/`lastname`) produces trailing spaces, literal `"null"`/`"undefined"` strings, or `""` instead of `null`. **Avoid by:** `[geezFirstname, geezLastname].filter(Boolean).join(' ') || null`, unit-tested across the none/first-only/last-only/all matrix.
+5. **Fixed-width tree card (252×120px) truncates Ge'ez text harder than Latin at the same character count** — Ethiopic block-style glyphs are visually wider than Latin letters at the same font size, and this is the most width-constrained render surface. **Avoid by:** a mandatory manual visual pass against the longest real Ge'ez name in the actual dataset (jsdom/Vitest cannot detect glyph rendering or truncation — this is explicitly a human-verification item, not an automatable one).
+6. **Autocomplete search silently excludes Ge'ez text** — MUI's default filter matches only `getOptionLabel`'s string (kept Latin-only per the no-toggle decision), so a family member searching by the Ge'ez name they know a relative by finds nothing. **Avoid by:** a custom `filterOptions` (via `createFilterOptions` with a combined `fullname`+`geezFullname` stringify) decoupled from the unchanged Latin-only `getOptionLabel`.
 
 ## Implications for Roadmap
 
-Based on combined research, suggested phase structure (dependency-ordered, per ARCHITECTURE.md's build order and PITFALLS.md's phase mapping):
+Based on combined research, the dependency-ordered build order from ARCHITECTURE.md maps directly onto phase boundaries:
 
-### Phase 1: Family data model foundation
-**Rationale:** Everything else — resolvers, permission scoping, the tree view — depends on the `FamilyMember`/`FamilySpouse` schema existing and being *correct* (cycle-safe, cascade-safe, symmetric-spouse-safe) before any mutation logic is built on top of it. These are schema-design decisions that are expensive to change after real data exists.
-**Delivers:** `FamilyMember` model (self-referencing `motherId`/`fatherId` FKs), `FamilySpouse` join model (symmetric double-write on create), explicit `onDelete: 'SET NULL'` on every self-referencing association, a cycle-prevention check on parent/child mutations, and a `sync({ force: true })`-against-fresh-DB smoke test in CI global setup.
-**Addresses:** FEATURES.md's "Relationship modeling" table-stakes item (directed parent/child + undirected spouse, derived siblings).
-**Avoids:** Pitfalls 3 (cycles), 4 (asymmetric spouse), 5 (cascade/orphan), 13 (`sync()` self-referencing rough edges) — all flagged as data-model-phase, not later.
+### Phase 1: Data Model & Migration
+**Rationale:** Nothing above this layer (GraphQL, frontend) can be built or tested without the columns existing; this is also where the trickiest cross-engine (MySQL-8-vs-MariaDB) migration risk lives and should be resolved in isolation.
+**Delivers:** `backend/migrations/manual/018-add-family-members-geez-names.sql` (3 nullable `utf8mb4` columns, no `COLLATE`/`ENCRYPTION`, portable to both engines) applied to local + staging/prod; `FamilyMember.js` model updated with the 3 attrs + a defensively-written `geezFullname` VIRTUAL getter (`filter(Boolean).join(' ') || null`), unit-tested across the full fill-combination matrix.
+**Addresses:** the `geezFullname` derived-field feature (FEATURES.md table stakes); the model-level prerequisite for every render/search feature below.
+**Avoids:** Pitfalls 2 (`sync()` doesn't alter tables), 3 (MySQL-8-only DDL breaks MariaDB), 4 (default collation doesn't help/hurt — document, don't chase), 9 (naive getter join bugs).
 
-### Phase 2: Membership gating and account↔member linking
-**Rationale:** Self-service `/manage` editing requires resolving "which member node is *me*?" — that mapping only exists once the `User.familyMemberId` FK and the account-linking flow exist. This is also the one schema change in this milestone that touches an *existing* table (`users`), which `sequelize.sync()` will silently **not** pick up (see Carry-Forward below) — sequencing it early, as its own phase, keeps that manual step from being missed or entangled with unrelated work.
-**Delivers:** `User.familyMemberId` FK (manual `ALTER TABLE` + boot-verify), `requireFamilyAccess`/`requireLinkedMember` guards in `utils/auth.js` with an explicit ADMIN role-based carve-out, the `pending` account state, `/pending` page, admin-only account-linking mutations, and an integration test proving the first-bootstrapped-admin (zero linked members) can still create/link the first node while the v1.1 first-user-ADMIN regression test still passes.
-**Addresses:** FEATURES.md's "Membership-gated access" table-stakes item.
-**Avoids:** Pitfalls 11 (frontend-only gate) and 12 (admin lockout chicken-and-egg) — both explicitly scoped as the same phase in PITFALLS.md.
+### Phase 2: GraphQL Layer
+**Rationale:** Thin, mechanical, and independently testable via resolver/integration tests without touching React — matches this app's TDD convention of proving data flow before UI.
+**Delivers:** Schema type/input additions (`familyMember.schema.js`) exposing `geezFirstname`/`geezLastname`/`geezMothersname`/`geezFullname`; `OPTIONAL_FAMILY_MEMBER_FIELDS` updated in `user.resolver.js` for blank-to-null sanitization. No `familyMember.resolver.js` changes needed (confirmed passthrough).
+**Uses:** the "optional-field passthrough" architectural pattern already established for `mothersname`/`email`/`phone`/`address`.
+**Implements:** ARCHITECTURE.md's Pattern 1 (no new resolver logic needed given the existing spread-based create/update).
 
-### Phase 3: Relationship resolvers, permission scoping, and query-safety
-**Rationale:** CRUD/relationship mutations and the permission-scope utility are tightly coupled (every mutation needs the scope check before it can safely exist) and both depend on Phase 1's schema and Phase 2's linked-member concept.
-**Delivers:** GraphQL schema + resolvers for `FamilyMember` CRUD and relationship mutations; the flat `familyTree`/`myEditableRelatives` queries (Pattern 3, no nested recursive resolvers); a single, separately-tested `getEditableMemberIds`-style utility in `utils/family.js`; request-scoped DataLoaders (not module-level singletons) if any per-node resolution remains; `graphql-depth-limit` added alongside the now-recursive `FamilyMember` type; and a test that a relationship edge connecting two independently-linked accounts requires consent/admin approval.
-**Uses:** Sequelize self-referential association patterns from STACK.md; the flat-adjacency-list resolver pattern and `computeEditableRelatives` design from ARCHITECTURE.md.
-**Implements:** ARCHITECTURE.md Patterns 3 and 4.
-**Avoids:** Pitfalls 1 (N+1 fan-out), 2 (unbounded query depth), 7 (permission-scope computed wrong), 8 (relationship edits as privilege escalation).
+### Phase 3: Self-Hosted Font & Theme Integration
+**Rationale:** Independent of Phases 1–2 and of the shared display helper — can be built and visually verified (paste Ge'ez text into any existing `Typography`) before any Ge'ez data-plumbing exists at all. Also the phase carrying the highest "looks done but isn't" risk (font subsetting, FOUT/FOIT, CDN-vs-self-host, MUI variant-level `fontFamily` overrides), so it benefits from being isolated and given its own acceptance gate.
+**Delivers:** `@fontsource/noto-sans-ethiopic@5.3.0` installed; one import in `main.jsx`; both `theme.js` font-stack constants (`FONT_SANS` and `FONT_DISPLAY`) updated with `"Noto Sans Ethiopic"` inserted ahead of any OS-fallback font.
+**Addresses:** the "consistent rendering regardless of viewer's OS fonts" milestone goal (FEATURES.md/PROJECT.md).
+**Avoids:** Pitfalls 1 (subsetting drops Tigrinya glyphs — verify against real Tigrinya fixtures), 5 (FOUT/FOIT flicker on the tree specifically), 6 (font path typo silent 404), 7 (accidentally adding a second CDN-loaded font), 8 (font stack applied to only one of `FONT_SANS`/`FONT_DISPLAY`).
 
-### Phase 4: Sibling dedup guard and `/manage` self-service UI
-**Rationale:** The dedup guard is cheap but has real edge cases (normalization, half-sibling false positives, independently-added duplicate parents) that need to be resolved as product decisions before or during implementation — this phase should not start until the open product question above is answered.
-**Delivers:** Normalized (trim/case-fold) sibling-firstname-uniqueness check at member-creation and parent-linking time, with an actionable rejection error; `/manage` self-service CRUD form scoped to immediate relatives via Phase 3's permission utility; visible editable-members list; a "search existing members before creating a new parent" UX step to reduce accidental duplicate-parent forking.
-**Addresses:** FEATURES.md's "Duplicate prevention" and "Self-service `/manage`" table-stakes items.
-**Avoids:** Pitfall 6 (dedup edge cases) — explicitly scoped as its own phase in PITFALLS.md, separate from the data-model and permission phases.
+### Phase 4: Shared Display Helper
+**Rationale:** A small, standalone prerequisite for Phase 5 — building it first prevents the precedence-drift bug (each render surface re-deriving "does this member have a Ge'ez name" slightly differently) that PITFALLS.md and ARCHITECTURE.md both flag as the most likely quiet drift point.
+**Delivers:** `frontend/src/utils/displayName.js` exporting `getGeezName(member)`, unit-tested, with the `lang="ti"` attribute baked in at this shared layer so every consumer gets it for free.
+**Implements:** ARCHITECTURE.md's Pattern 2 (shared display-name helper).
 
-### Phase 5: Photo upload
-**Rationale:** Architecturally independent of the relationship/permission work (can parallelize with Phase 3 once Phase 1's `FamilyMember` model exists) but carries its own concentrated security surface (path traversal, content-sniffing XSS, non-durable Docker volume) that deserves dedicated, adversarial-first TDD.
-**Delivers:** A dedicated `multer`-backed REST route (`POST /uploads/family-photo`) outside `/graphql`, reusing existing JWT-verification logic; server-generated filenames; magic-number content validation with SVG disallowed; `nosniff` on the serving route; a named Docker volume declared in the same commit, verified to survive a container rebuild.
-**Uses:** `multer@^2.2.0` from STACK.md; the REST-route decision explicitly recorded as a Key Decision per PITFALLS.md.
-**Avoids:** Pitfalls 9 (insecure upload handling) and 10 (non-durable volume / GraphQL-multipart CSRF complexity) — adversarial fixtures (path-traversal filename, mislabeled content-type, oversized file) should be the first red tests, before the happy path.
+### Phase 5: Render Surfaces (Display, Read Path)
+**Rationale:** Should land before the forms (Phase 6) so Ge'ez rendering can be verified against manually-seeded/direct-mutation data first, matching this app's existing test-first convention of proving data flow before wiring up end-user input.
+**Delivers:** Stacked Ge'ez name rendering on `MemberNode.jsx` (tree card), `MemberCard.jsx` (manage relationship rows), `AdminMemberTable.jsx` (admin table name cell), plus the query/selection-set updates each depends on (`FamilyTreePage.jsx`'s `FAMILY_TREE_QUERY`, `ManagePage.jsx`'s `EDITABLE_MEMBER_FIELDS`/`FAMILY_MEMBERS_QUERY`/`inScopeMembers` mapping). Admin-table Ge'ez substring search added here too (trivial `.includes()` extension).
+**Addresses:** FEATURES.md's P1 items — tree card display, `/manage` display, graceful empty handling, `lang` attribute, admin table search.
+**Avoids:** Pitfall 10 (fixed-width tree card truncation — mandatory manual visual pass against the longest real Ge'ez name), Pitfall 11 (missing `lang`), the "empty state renders a stray separator" UX pitfall.
 
-### Phase 6: `/family` deep tree visualization
-**Rationale:** Depends on Phases 1 and 3 (the flat `familyTree` query and its data shape) and Phase 2 (gating); sequenced last because it's the most visually complex, most library-dependent piece, and benefits from having real (or realistic fixture) relationship data to render against.
-**Delivers:** `FamilyTreeCanvas.jsx` wrapping the chosen library, consuming the flat adjacency-list payload, with pan/zoom, spouse-adjacent rendering (synthetic union-node or fallback), search-to-locate, and a collapsed-by-default initial render (not fully expanded) to avoid browser jank at depth.
-**Uses:** `@xyflow/react` + `@dagrejs/dagre` per STACK.md's recommendation — **treat the spouse-pairing approach as a spike-first decision**, not a settled implementation detail; budget time to validate the synthetic-union-node pattern against realistic fixture data before committing the full page build.
-**Avoids:** The "rendered fully expanded by default" UX pitfall and the performance trap of every node being a live, unwindowed React component.
+### Phase 6: Autocomplete Search + Forms (Write Path)
+**Rationale:** Placed last — this is how Ge'ez data *enters* the system, and rendering should be provably correct first. The Autocomplete `filterOptions` work is scoped separately from its `getOptionLabel` (which stays Latin-only) since they solve different problems (search vs. display).
+**Delivers:** `AddRelativeDialog.jsx`'s Autocomplete gets a custom `filterOptions` (via `createFilterOptions`) matching Ge'ez text without changing the visible Latin-only option label; `MemberFields.jsx` gets 3 new TextFields (no IME/transliteration wiring); `AddRelativeDialog.jsx`/`EditMemberDialog.jsx` get `EMPTY_FORM`/`formFromMember()` updates.
+**Addresses:** FEATURES.md's Autocomplete search table-stake item; the "enter/edit via existing dialogs, own device IME" milestone goal.
+**Avoids:** the Autocomplete search-gap UX pitfall (searching by a known Ge'ez name finding nothing).
 
 ### Phase Ordering Rationale
 
-- Data model (Phase 1) must come first because cycle/cascade/symmetric-write decisions are schema-level and expensive to retrofit onto real data — this matches both ARCHITECTURE.md's build order and PITFALLS.md's "data-model design phase" grouping for Pitfalls 3, 4, 5, 13.
-- Membership gating (Phase 2) is sequenced early and separately because it touches the one *existing* table in this milestone (`User`) and gates every subsequent capability — building it before the relationship/permission resolvers means "who am I" is answered before "what can I edit" needs to check it.
-- Permission scoping and relationship resolvers (Phase 3) are combined into one phase because they are mutually dependent per PITFALLS.md (Pitfalls 7 and 8 are explicitly "same phase").
-- Dedup (Phase 4) is deliberately sequenced after permission scoping exists, since the `/manage` UI it ships with needs the scoped-edit capability to be usable at all.
-- Photo upload (Phase 5) is architecturally independent and could run in parallel with Phase 3/4 per ARCHITECTURE.md's build order ("Steps 8 and steps 4–7 can run in parallel once (1) lands") — listed after for narrative clarity, not as a hard dependency.
-- Tree visualization (Phase 6) is last because it consumes the data shape and gating established by every prior phase, and because the library-choice risk (union-node spike) benefits from real relationship data to validate against.
+- Data → API → Font → Helper → Render → Forms mirrors dependency direction exactly as mapped in ARCHITECTURE.md's "Build Order" section, and lets Phase 1→2 be verified backend-only (resolver/integration tests, no React) before any frontend work starts.
+- Font (Phase 3) is deliberately decoupled and sequenced early/independent because it has zero data dependency and the highest number of distinct "looks done but isn't" pitfalls (6 of 11 pitfalls in PITFALLS.md are font/theme-integration-phase issues) — isolating it lets its acceptance criteria (manual glyph verification, network-trace CDN check) be gated cleanly rather than diluted across a later, busier phase.
+- Rendering (Phase 5) before forms (Phase 6) matches this repo's established test-first convention (seed/mutate data directly, prove rendering, then wire up user-facing input) and avoids conflating "does the UI render Ge'ez correctly" bugs with "does the form correctly submit Ge'ez text" bugs.
 
 ### Research Flags
 
-Phases likely needing deeper research during planning (`/gsd:plan-phase --research-phase <N>`):
-- **Phase 3 (relationship resolvers/permission scoping):** the `getEditableMemberIds` set-builder and the "consent/admin-approval for cross-subtree relationship edges" rule are genuinely novel logic for this codebase with no existing precedent to imitate beyond `requireAuth`/`requireAdmin`'s guard-clause shape — worth a research pass on exact query construction and test-fixture design.
-- **Phase 4 (dedup guard):** blocked on the open product question above; needs the requirements-definition answer before implementation, and the "search existing members before create" UX pattern has no existing precedent in this codebase.
-- **Phase 6 (tree visualization):** the STACK.md vs. FEATURES.md library disagreement (React Flow vs. family-chart) means this phase should start with a short spike/prototype validating the synthetic-union-node spouse-pairing pattern against realistic fixture data before committing to the full build.
+Needs research/deeper planning-phase attention:
+- **Font & Theme phase:** MEDIUM confidence on file-size/subsetting specifics beyond what STACK.md already verified by downloading tarballs — the FOUT/FOIT `font-display` choice (`swap` vs `optional`) and whether a `<link rel="preload">` is warranted for the `/family` tree specifically is a judgment call best made with a quick visual spike, not settled by research alone.
+- **Autocomplete search phase:** MEDIUM confidence per FEATURES.md — "based on documented MUI `Autocomplete` default-filter behavior, not yet prototyped." Recommend a quick spike/prototype of `createFilterOptions` before committing to a specific implementation shape in the phase plan.
 
-Phases with standard, well-documented patterns (research-phase optional):
-- **Phase 1 (data model):** Sequelize self-referential association patterns are directly documented in official Sequelize docs (HIGH confidence in STACK.md/ARCHITECTURE.md); mostly a careful-implementation-and-testing exercise, not an open research question.
-- **Phase 2 (membership gating):** closely mirrors v1.1's already-solved first-user-ADMIN atomicity pattern; the new `requireLinkedMember`/admin-carve-out guard follows the existing `requireAuth`/`requireAdmin` shape directly.
-- **Phase 5 (photo upload):** the REST-route-plus-`multer` pattern, CVE-safe version pin, and adversarial-fixture list are all fully specified in STACK.md and PITFALLS.md — implementation-ready without further research.
-
-## Carry-Forward: `sync()`-no-migrations trap
-
-This project's existing constraint — `sequelize.sync()` (no migrations) — creates **new tables** (`family_members`, `family_spouses`) without issue, since `sync()` handles table creation fine regardless of `{ alter: true }`. But `User.familyMemberId` is a **column added to the existing `users` table**, and `sync()` without `{ alter: true }` does **not** add columns to tables that already exist (confirmed against Sequelize's own docs/GitHub issue discussion, HIGH confidence). This means the new FK will silently fail to appear on any environment whose DB already has a `users` table — dev, CI, and any pre-existing deployment — until a human runs an explicit `ALTER TABLE users ADD COLUMN familyMemberId ...` and boot-verifies against a real DB. This is the same category of manual step this project already executed for v1.1's `passwordChangedAt`/email-verification columns, and it must be flagged explicitly in Phase 2's plan and success criteria — not treated as "just another new model" alongside `FamilyMember`/`FamilySpouse`, which need no such step.
+Phases with well-documented, standard patterns (skip deep research, proceed directly to planning):
+- **Data Model & Migration:** the manual-migration convention, VIRTUAL-getter pattern, and MySQL-8/MariaDB-portable DDL shape are all fully precedented in this repo (013/014/016/017) and fully specified in STACK.md/ARCHITECTURE.md.
+- **GraphQL Layer:** confirmed zero-resolver-code-change passthrough; purely mechanical schema/array edits.
+- **Shared Helper:** trivial, fully specified function signature and precedence rule already given in ARCHITECTURE.md.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Package versions/publish dates/peer-deps live-verified against the npm registry; Sequelize association patterns verified against official Context7-indexed docs; Apollo's own blog verified directly for upload guidance. Tree-visualization library choice is HIGH-confidence on the comparison data, but MEDIUM on the final recommendation given the unresolved spouse-pairing tradeoff (see below). |
-| Features | MEDIUM | Table-stakes/anti-feature analysis draws on WikiTree/Geni/FamilySearch documentation — directionally correct but those products operate at a much larger scale (millions of contributors, public/crowd-sourced trees) than this milestone's single, small, admin-curated family; patterns are scaled down by reasoning, not directly sourced at this scale. |
-| Architecture | HIGH | Grounded directly in the actual codebase (existing barrel/aggregator conventions, `server.js`, `utils/auth.js` read directly) with MEDIUM/LOW flagged inline only for self-referential Sequelize M:N query rough edges (community GitHub issues, not official docs). |
-| Pitfalls | HIGH for GraphQL N+1/DataLoader, MySQL recursive-CTE, and file-upload-security patterns (official docs + multiple corroborating sources); MEDIUM for family-tree-specific dedup/permission edge cases (reasoned from the stack + domain logic, less directly documented externally). |
+| Stack | HIGH | Font package license, glyph coverage, and file sizes verified by downloading and inspecting actual npm tarballs; MySQL/MariaDB charset coverage verified against official reference manuals. Only the `mysql2` default-charset claim is MEDIUM (WebSearch-only, not doc-line-quoted), and is optionally closeable with a one-line defensive `dialectOptions.charset` pin. |
+| Features | HIGH for display precedence/empty-handling/directionality (Unicode/CLDR + existing codebase idioms); MEDIUM for Autocomplete search implementation cost (documented MUI behavior, not yet prototyped) |
+| Architecture | HIGH — every integration point (model, schema, resolver, each render surface, each query/selection-set constant) verified against the actual files in this repo, not general framework docs |
+| Pitfalls | MEDIUM-HIGH — font/Unicode facts verified against Unicode charts and Noto documentation; DB/migration facts verified against this repo's own prior incidents and official collation docs; jsdom/Vitest testing-limits facts are HIGH (direct tool behavior) |
 
-**Overall confidence:** MEDIUM-HIGH — the technical/architectural foundation (stack choices, data modeling, security mechanics) is HIGH confidence and largely settled; the domain-specific product logic (dedup scope, collaboration trust model, tree library fit) carries real open questions that this research deliberately surfaces rather than resolves.
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **Tree-visualization library:** treat `@xyflow/react` + `@dagrejs/dagre` as the default, but budget an early spike validating the synthetic-union-node spouse-pairing pattern before committing the full `/family` build (Phase 6) — do not treat this as closed.
-- **Sibling-dedup scope ("any one parent" vs. "both parents"):** must be explicitly decided during requirements definition, not left to whichever query gets written first in Phase 4.
-- **Consent/approval mechanism for cross-subtree relationship edges (Pitfall 8):** research flags this as needed but doesn't fully specify the UX (self-approval by the target member? admin-only approval? simplest-safest = admin approval for v2.0) — needs a requirements-level decision before Phase 3 implementation.
-- **`User.familyMemberId` manual ALTER step:** must be explicitly tracked as a discrete Phase 2 task with a boot-verify success criterion, not assumed to "just work" alongside the new `FamilyMember`/`FamilySpouse` tables.
+- **Ethiopic Unicode block for Tigrinya labialized forms:** the milestone brief's original framing (Ethiopic Supplement, U+1380–139F) was incorrect; PITFALLS.md's correction (main Ethiopic block, U+1200–137F) is authoritative and should be the reference used for any font-fixture/acceptance-check language written into phase plans.
+- **Whether Ge'ez search is truly in scope for the Autocomplete picker vs. the admin table only:** FEATURES.md treats both as P1 table stakes per the milestone's own framing ("this feature exists specifically for a Tigrinya/Eritrean family"), but PITFALLS.md flags this as worth an explicit "yes, in scope" confirmation rather than an assumption — resolve during requirements definition, not left implicit.
+- **`lang` tag value (`ti` vs `am` vs generic `gez`):** PROJECT.md frames this as serving "the Tigrinya/Eritrean family," making `lang="ti"` the researched recommendation, but this is a one-line product confirmation worth capturing explicitly in REQUIREMENTS.md rather than assumed silently in code.
+- **Font-display strategy (`swap` vs `optional`) and whether to `preload` the Ethiopic woff2 on `/family`:** left as an implementation-time visual-verification decision in both STACK.md and PITFALLS.md, not resolved by research — flag for a quick visual spike during the Font & Theme phase rather than pre-deciding in the roadmap.
+- **`LinkAccountsPage.jsx`'s Autocomplete (`/link-accounts`):** ARCHITECTURE.md notes this surface has the identical `getOptionLabel={(member) => member.fullname}` shape as `AddRelativeDialog.jsx` but is not named in the milestone's target features (routed separately, not nested under `/manage`) — explicitly out of this milestone's scope per current PROJECT.md wording, flagged as a candidate follow-up rather than silently included or silently dropped.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- npm registry (live `npm view` version/publish-date/peer-dependency checks) — `@xyflow/react`, `@dagrejs/dagre`, `multer`, `sequelize`, `@apollo/server`, and rejected alternatives (`react-d3-tree`, `family-chart`, `react-family-tree`, plain `dagre`)
-- Context7 `/websites/sequelize_v6` — official self-referential `belongsTo`/`hasMany`/`belongsToMany` association patterns
-- Apollo GraphQL Blog — File Upload Best Practices (https://www.apollographql.com/blog/file-upload-best-practices)
-- Sequelize Model Basics — sync/alter (https://sequelize.org/docs/v6/core-concepts/model-basics/) and GitHub issue #9731 — `sync()` does not add columns to existing tables
-- Percona: Introduction to MySQL 8.0 Recursive CTE (https://www.percona.com/blog/introduction-to-mysql-8-0-recursive-common-table-expression-part-2/)
-- Direct repo inspection: `.planning/PROJECT.md`, `.planning/codebase/`, `backend/src/server.js`, `backend/src/utils/auth.js`, `backend/src/models/`, `docker-compose.yml`
+- `google/fonts` GitHub repo, `ofl/notosansethiopic/METADATA.pb` — license, supported languages, source version
+- npm registry package metadata + downloaded tarballs for `@fontsource/noto-sans-ethiopic@5.3.0` and `@fontsource/abyssinica-sil@5.3.0` — exact file sizes, weights, `unicode-range`, `font-display`, license files
+- MySQL 8.4 Reference Manual §12.10.1 "Unicode Character Sets" — `utf8mb4` BMP + supplementary-plane coverage, confirmed no Ethiopic-specific collation
+- Unicode Ethiopic block chart (U1200.pdf), Ethiopic Supplement chart (U1380.pdf), Wikipedia Ethiopic (Unicode block)/Ethiopic Supplement/Ethiopic Extended-A — corrects the labialized-forms block location
+- Direct repo reads (all four research files independently verified against): `backend/src/models/FamilyMember.js`, `backend/src/schemas/familyMember.schema.js`, `backend/src/resolvers/familyMember.resolver.js`, `backend/src/resolvers/user.resolver.js`, `backend/migrations/manual/013/014/016/017-*.sql`, `frontend/src/components/family/MemberNode.jsx`, `frontend/src/components/manage/*.jsx`, `frontend/src/pages/ManagePage.jsx`/`FamilyTreePage.jsx`/`LinkAccountsPage.jsx`, `frontend/src/theme.js`, `frontend/index.html`, `frontend/vite.config.js`, `docker-deploy/Caddyfile`, `.planning/PROJECT.md`
 
 ### Secondary (MEDIUM confidence)
-- WikiTree, Geni, FamilySearch Family Groups documentation — collaboration/membership-gate/dedup patterns, scaled down by reasoning from larger-scale products
-- reactflow.dev examples (Dagre/ELK/Expand-and-Collapse) — official but WebFetch-summarized
-- donatso/family-chart GitHub and docs site — vendor's own marketing/docs, cross-checked against npm metadata
-- Sequelize self-referential M:N GitHub issue threads (#1724, #1937, #1559) — maintainer discussion, not formal docs
+- WebSearch: `mysql2` driver default connection charset defaults to `utf8mb4` — no single authoritative doc line quoted, consistent with existing working data
+- WebSearch: MUI `Autocomplete` default-filter behavior (matches `getOptionLabel` only) — documented behavior, not verified against the installed MUI version's source directly
+- `software.sil.org/abyssinica/charset/` — Abyssinica SIL's own stated Unicode block coverage claims
 
 ### Tertiary (LOW confidence)
-- sixgen.org LGBTQ Genealogy Software critique — advocacy source informing the "generic parent/spouse edges, not gendered role fields" recommendation, directionally consistent but not empirically verified against this app's actual user base
+- None identified — all findings across the four research files were either HIGH (direct source/tarball/repo verification) or explicitly flagged MEDIUM with a stated reason above.
 
 ---
-*Research completed: 2026-07-21*
-*Ready for roadmap: yes — with the tree-library spike, sibling-dedup scope question, and cross-subtree-consent mechanism flagged as open decisions for requirements definition / early implementation, not blockers to roadmap creation*
+*Research completed: 2026-07-30*
+*Ready for roadmap: yes*

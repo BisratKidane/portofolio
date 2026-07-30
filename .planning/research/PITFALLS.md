@@ -1,285 +1,256 @@
 # Pitfalls Research
 
-**Domain:** Collaborative family-tree domain (self-referencing graph data, permission-scoped CRUD, file upload) added to an existing Express + Apollo Server 4 + Sequelize 6/MySQL 8 + React 18 stack
-**Researched:** 2026-07-21
-**Confidence:** HIGH for GraphQL N+1/DataLoader, MySQL recursive-CTE, and file-upload-security patterns (official docs + multiple corroborating sources); MEDIUM for family-tree-specific dedup/permission edge cases (reasoned from the stack + domain logic, less directly documented in external sources); LOW flagged inline where a claim rests on a single source.
+**Domain:** Adding Ge'ez/Ethiopic native-script name fields + a self-hosted Ethiopic webfont to an existing React/MUI + Express/Sequelize/MySQL app (v3.0 milestone)
+**Researched:** 2026-07-30
+**Confidence:** MEDIUM-HIGH (font/Unicode facts verified against Unicode charts and Noto documentation; DB/migration facts verified against this repo's own prior incidents and MySQL/MariaDB collation documentation; testing-limits facts are HIGH confidence — direct jsdom/Vitest behavior)
+
+## Important correction to a stated assumption
+
+The milestone brief frames the font-subsetting risk as "Tigrinya-specific labialized forms living in the Ethiopic Supplement block (U+1380–139F)." **That premise is not quite right, and getting it wrong would make a future QA/acceptance check test the wrong thing.**
+
+- The labialized ("W"-form) consonant series for the main Ethiopic consonants (qwa, kwa, gwa, hwa, etc.) — the ones Tigrinya actually uses — are encoded **in the main Ethiopic block, U+1200–U+137F**, immediately after each base consonant series ([Unicode Ethiopic block chart](https://www.unicode.org/charts/PDF/U1200.pdf), [Wikipedia: Ethiopic (Unicode block)](https://en.wikipedia.org/wiki/Ethiopic_(Unicode_block))).
+- **Ethiopic Supplement (U+1380–139F)** is mostly extra syllables for **Sebat Bet Gurage** and a set of Ethiopic tonal/musical marks (Yizet, Deret, Rikrik, etc.) — not Tigrinya name material ([Wikipedia: Ethiopic Supplement](https://en.wikipedia.org/wiki/Ethiopic_Supplement), [Unicode U1380 chart](https://www.unicode.org/charts/PDF/U1380.pdf)).
+- **Ethiopic Extended-A (U+AB00–AB2F)** covers further Gurage/Silt'e/Kistane letters — also not needed for Tigrinya/Amharic personal names.
+
+**Practical takeaway:** the real risk is not "did the font drop the Supplement block" — it's "did the subsetting process only ship the letters someone tested with (often Amharic-only sample text) and silently drop the handful of Tigrinya-only letters/forms (e.g. ቨ *va*, ቐ *qha* and its labialized derivatives) that don't show up in an Amharic-only test corpus." Treat "Tigrinya" and "Amharic" as different glyph *subsets* of the same Ethiopic block, not interchangeable. Verify with real Tigrinya family names (the ones actually going into this database), not a generic Ethiopic Lorem Ipsum.
 
 ## Critical Pitfalls
 
-### Pitfall 1: Recursive self-referencing resolvers cause exponential N+1 fan-out on a deep tree
+### Pitfall 1: Font subsetting service/tool silently ships "Latin only" or an Amharic-biased subset
 
 **What goes wrong:**
-`FamilyMember` fields (`parents`, `children`, `spouse`, derived `siblings`) are naturally recursive GraphQL types. If each field resolver just calls `member.getParents()` / `member.getChildren()` independently per node (the natural first implementation), a single `/family` query that asks for a few generations up and down fans out to hundreds or thousands of individual `SELECT ... WHERE parentId = ?` queries — one N+1 problem nested inside another. At 10-23 generations this isn't a minor slowdown, it can time out the request or exhaust the default 5-connection Sequelize pool (`backend/src/config/database.js` has no `pool` tuning today).
+Self-hosting via a helper tool (e.g. google-webfonts-helper, `@fontsource/noto-sans-ethiopic`, or hand-rolled `pyftsubset`) requires explicitly selecting/including the Ethiopic script. If a dev copies a "how to self-host Google Fonts" recipe that defaults to ticking only the "latin" subset checkbox (the default in most of these tools), **zero Ethiopic glyphs are ever downloaded — not even lazily** — and every Ge'ez name renders as tofu (☐) or an empty box on every device, regardless of what OS fonts the visitor has.
 
 **Why it happens:**
-GraphQL resolvers are field-scoped and stateless by default — nothing forces batching unless you deliberately add it. Sequelize associations (`getParents()`, `getChildren()`) look like "just call the ORM method" and work fine in a two-level test fixture, hiding the problem until someone tests with a real deep tree.
+Font subsetting tools are Latin-web-centric by default; "download this font" flows assume the Latin subset is what you want and bury the script picker. It's an easy step to miss because the Latin body text (existing Inter/Sora) keeps rendering fine — only the new Ge'ez fields are affected, so a dev who doesn't have Ge'ez test data handy won't notice in a quick smoke test.
 
 **How to avoid:**
-- Add a `DataLoader` per relationship type (`parentsLoader`, `childrenLoader`, `spouseLoader`), each batching by `FamilyMember.id` and instantiated **fresh per request** inside the same `context()` function that already computes `user`/`models` in `backend/src/server.js` — never a module-level singleton loader (that would leak/cache across requests and silently return stale data to different users).
-- For the `/family` deep-tree read path specifically, don't resolve field-by-field at all: fetch the whole subtree in one shot using a MySQL 8 `WITH RECURSIVE` CTE (or, more simply given `sequelize.sync()` and no migrations, fetch **all** `FamilyMember` rows + a flat relationships table in 1-2 queries and assemble the tree in JS) rather than letting GraphQL's naive per-field resolution walk the graph node-by-node.
+- Self-host the *entire* Noto Sans Ethiopic (or Abyssinica SIL) regular+bold static WOFF2 file(s) unsubsetted, rather than running it through a generic subsetting tool. These fonts are Ethiopic-only (no huge Latin/CJK payload riding along), so the "subset for size" motivation that applies to pan-Unicode Noto Sans doesn't apply here — there's little to gain and real risk to lose glyphs.
+- If subsetting for file size is still desired, subset explicitly by the three relevant Unicode block ranges — `U+1200-137F,U+1380-139F,U+2D80-2DDF,AB00-AB2F` — not by an opaque "Ethiopic" checkbox whose exact boundaries you haven't inspected.
+- Add a fixture list of real Tigrinya names (with the labialized/rare letters actually used by this family, e.g. ቐ, ቨ, ኹ) as the verification corpus — not generic Amharic sample text.
 
 **Warning signs:**
-- A fixture with 4+ generations and >2 children per generation makes the `/family` query visibly slow in local dev.
-- Enabling Sequelize's dev query logger (`backend/src/config/database.js:8`, already conditional on `NODE_ENV`) and eyeballing the log shows dozens/hundreds of near-identical `SELECT` statements for one GraphQL request.
+- Ge'ez text renders fine in a manual test with common names (Amharic-style) but shows a tofu box for a specific family member's name.
+- The self-hosted `@font-face` CSS has more than one `unicode-range`-scoped `src` block generated by a "helper" tool (a sign it split the font per-script/subset rather than shipping it whole).
 
 **Phase to address:**
-Data-model & resolver phase (when `FamilyMember` relationships and resolvers are first built) — DataLoader wiring should ship with the relationship resolvers, not be retrofitted after `/family` is slow.
+Font & theme integration phase (the phase that adds the webfont files + `@font-face`), with its acceptance check written against real Tigrinya name fixtures, not generic Ethiopic sample text.
 
 ---
 
-### Pitfall 2: Unbounded recursive GraphQL query depth becomes a new DoS surface
+### Pitfall 2: `sequelize.sync()` won't add the new columns — un-migrated prod/staging DBs throw `Unknown column`
 
 **What goes wrong:**
-The existing app has **no query depth/complexity limiting** (documented as an architectural constraint in the codebase map — "Single GraphQL endpoint, no query complexity/depth limiting"). Today that's low-risk because the schema is flat (`User`, `Dashboard`). Once `FamilyMember { parents { parents { parents { ... spouse { children { ... } } } } } }` exists as a real recursive type, a single crafted query can request unbounded depth/breadth, turning an oversight that was harmless into an actual DoS vector against the same server that also handles login/auth traffic.
+This app never uses migrations for schema changes (confirmed convention: `backend/migrations/manual/*.sql`, applied by hand, documented in README "Manual Database Migrations"). If the new `geezFirstname`/`geezLastname`/`geezMothersname`/`geezFullname` columns are only added to the Sequelize model (`FamilyMember.js`) without a matching hand-written `ALTER TABLE`, `sync()` does nothing on an already-provisioned database, and the very first resolver/query touching those columns throws `Unknown column 'geezFirstname' in 'field list'` in production — exactly the failure mode the existing migrations (009, 011, 014, 015) already document happening.
 
 **Why it happens:**
-Recursive types are added for a legitimate feature (the tree), but nobody revisits the "no depth limiting" gap until it's exploited or a test with a large fixture times out the whole server (not just one request), because the connection pool gets starved.
+`sync()` (without `{ alter: true }`, which this project deliberately doesn't use) only creates missing *tables*, never diffs/adds columns on existing tables. It's easy to add a field to the model, see it work locally against a fresh dev DB (created via `sync()` on an empty schema), and forget that every other environment already has the table.
 
 **How to avoid:**
-Add `graphql-depth-limit` (or Apollo's complexity plugin) as a validation rule the same milestone the recursive `FamilyMember` type ships — cap depth to something a bit deeper than the deepest legitimate `/manage` query needs (immediate relatives ≈ depth 2-3), and let `/family`'s deep-tree read use a dedicated non-recursive query (`familyTree(rootId, maxDepth)`) instead of relying on arbitrarily deep field nesting.
+- Follow the exact numbering/naming convention already established: next file `backend/migrations/manual/018-add-family-members-geez-names.sql`, with the same header-comment format used in 014/015/016 (what it adds, why NOT applied by sync, backfill behavior, ordering).
+- Ship the migration doc in the same README "Manual Database Migrations" section, following the 014/015/016 pattern (apply command, boot-and-verify checklist), since that's the project's established recovery/runbook mechanism.
+- Add the VIRTUAL `geezFullname` getter to the Sequelize model only (VIRTUAL columns don't need `ALTER TABLE` — but see Pitfall 9 for the getter-logic trap).
 
 **Warning signs:**
-- No `validationRules`/depth-limit plugin present in `backend/src/server.js` after the recursive type ships.
-- A manually-crafted 15-level-deep GraphQL query string is accepted without error in dev.
+`Unknown column 'geez...' in 'field list'` in backend logs on the first deploy against staging/prod; local dev "works" only because the dev DB was just `sync()`-created fresh.
 
 **Phase to address:**
-Same phase as Pitfall 1 (relationship resolvers) — add the depth-limit plugin alongside DataLoader, before `/family` is exposed publicly-reachable-by-JWT.
+Data model / migration phase (first phase — the DB change must land and be documented before any resolver/UI references the columns, exactly as 014/015 did for prior features).
 
 ---
 
-### Pitfall 3: Parent/child edges allow cycles — a person becomes their own ancestor
+### Pitfall 3: MySQL-8-only migration syntax breaks the MariaDB import path
 
 **What goes wrong:**
-Sequelize (and MySQL FK constraints) will happily let you set `memberA.parentId = memberB.id` and, separately, `memberB.parentId = memberA.id` (or a longer chain back to itself) — nothing in the ORM or a plain FK enforces "this graph must stay a DAG." Once a cycle exists, any recursive read (tree render, ancestor lookup, the cycle-check itself) either infinite-loops or blows past MySQL's recursion cap (`WITH RECURSIVE` fails past 1000 levels by default via `cte_max_recursion_depth`), and a naive JS-side recursive walk will stack-overflow or hang.
+This project has already been bitten by this (per CLAUDE.md constraints): local dev commonly runs MariaDB while prod runs MySQL 8.4 (`docker-compose.yml` pins `image: mysql:8.4`, but a local non-Docker or older Docker setup could easily be MariaDB). MySQL-8-only DDL — most commonly `ENGINE=InnoDB ... utf8mb4_0900_ai_ci` collation (introduced in MySQL 8.0.1, unknown to MariaDB) or `ENCRYPTION='Y'` table options — causes `ERROR 1273 (HY000): Unknown collation: 'utf8mb4_0900_ai_ci'` or `ERROR 1911: Unknown option 'ENCRYPTION'` when the same `.sql` file is run against a MariaDB instance.
+This repo's own migrations (016, 017) already use `DEFAULT CHARSET=utf8mb4` **without** an explicit collation clause — meaning they rely on the *server's* default collation, which differs between MySQL 8 (`utf8mb4_0900_ai_ci`) and MariaDB (`utf8mb4_general_ci` or `utf8mb4_unicode_ci` depending on version). A hand-written new migration that hardcodes `COLLATE utf8mb4_0900_ai_ci` (e.g. because a dev copy-pasted from a MySQL 8 `SHOW CREATE TABLE` dump) will fail outright on MariaDB.
 
 **Why it happens:**
-Member-scoped editing (any linked member can add/edit their *immediate* relatives) plus a permissive schema means the mutation `setParent(childId, parentId)` has no reason, on its own, to know that `parentId` is already a descendant of `childId` several generations down — that check requires walking the graph, which is easy to forget when the happy-path (adding a real, non-cyclic relative) never triggers it.
+`ALTER TABLE ... ADD COLUMN` statements often get authored by first running the change on one environment then reverse-engineering the DDL from `SHOW CREATE TABLE`/an ORM tool, which bakes in that server's collation default — invisible until the same script is replayed against the other engine.
 
 **How to avoid:**
-Before committing any parent/child edge (create or update), run an ancestor-check: does `parentId` already appear in `childId`'s descendant set (or vice versa for the mirrored check)? Implement as a bounded recursive query (either `WITH RECURSIVE` with a depth cap, or an app-level BFS/DFS capped at, e.g., 30 levels — deeper than the deepest legitimate tree) and reject the mutation with a clear error if a cycle would result. This check belongs in the resolver/service layer, not just "trust the client" — write it test-first: a test that attempts `setParent(grandparentId, grandchildId)` where grandchild is already a descendant of grandparent must fail.
+- Don't specify `COLLATE` explicitly in the new migration at all — let the new columns inherit the table's/database's existing default (as 009/011/014 already do), so the same script is engine-agnostic.
+- If a collation-sensitive design decision *is* needed for the Ge'ez columns (see Pitfall 4), pick a collation available on **both** MySQL 8.4 and the MariaDB version actually used locally (e.g. `utf8mb4_unicode_ci`, available on both), and state it explicitly in the migration comment rather than relying on server default divergence.
+- Test-run the exact migration SQL file against a MariaDB container in CI/local as a smoke check before it's considered done — not just against the prod-shaped MySQL 8.4 container.
 
 **Warning signs:**
-- No explicit "would this create a cycle?" check anywhere near the parent/child mutation resolvers.
-- A test suite that only covers adding relatives in the "obvious" direction (parent before child exists) and never attempts the reverse/cyclic case.
+Migration applies cleanly in the Docker Compose (MySQL 8.4) environment but a teammate/CI running plain `mysql`/MariaDB locally gets an `Unknown collation` or `Unknown option` error on the identical file.
 
 **Phase to address:**
-Data-model & relationship-mutation phase — this is a correctness invariant of the graph itself, not an edge case to defer; it must ship with the first parent/child mutation, TDD'd red-green per the milestone's hard constraint.
+Data model / migration phase — same phase as Pitfall 2, verified against both engines before being marked done.
 
 ---
 
-### Pitfall 4: Spouse relationship modeled as an asymmetric FK goes out of sync
+### Pitfall 4: Default collation makes Ge'ez search/sort silently wrong (or just alphabetically meaningless)
 
 **What goes wrong:**
-If `spouse` is implemented as a single nullable `spouseId` column on `FamilyMember` (the "obvious" self-FK design), it's easy to write `memberA.spouseId = memberB.id` without also setting `memberB.spouseId = memberA.id`. The relationship then reads correctly from one side and not the other — A shows B as a spouse, but B's tree shows no spouse (or worse, a stale different spouse from a previous edit). This corrupts the derived-siblings logic too, since spouse pairing can matter for scoping "immediate relatives."
+`utf8mb4_0900_ai_ci` (MySQL 8 default) and `utf8mb4_unicode_ci`/`utf8mb4_general_ci` (MariaDB/older MySQL defaults) are all **generic Unicode collations with no Ethiopic-specific collation weights** — MySQL/MariaDB do not ship an Ethiopic-aware collation. In practice this means: `ORDER BY geezFirstname` sorts by raw Unicode code-point-derived weights, which *happens* to roughly track traditional Ge'ez fidel order (Unicode assigned Ethiopic code points in traditional syllabary order), so sorting won't be visibly broken — but `LIKE`/equality comparisons and case/accent folding rules that the collation *does* apply (accent-insensitive, case-insensitive) are meaningless for a script with no case and no accents, so they buy nothing and cost nothing either way.
+The real risk is elsewhere: if a future search/filter feature does `LOWER(geezFirstname)` or relies on accent-insensitive matching logic ported from the Latin-name search path, it's dead code for Ge'ez text — harmless but misleading, and a sign the same search helper wasn't written with mixed-script fields in mind.
 
 **Why it happens:**
-A single-column self-FK is the fastest thing to model in Sequelize and passes every test that only checks "from the side I just edited." The asymmetry only surfaces when someone reads from the *other* member's perspective, which single-direction tests won't naturally cover.
+Developers default to assuming "the DB collation handles sorting/searching correctly for whatever text is in the column," which is true for Latin, and silently just-doesn't-apply for Ethiopic without erroring.
 
 **How to avoid:**
-Model spouse (and arguably parent/child too) as rows in a dedicated `FamilyRelationship` join table (`memberAId`, `memberBId`, `type: 'SPOUSE'|'PARENT_CHILD'`) rather than a same-table self-FK column, and always write/read symmetric relationships as a single row queried from either direction (`WHERE memberAId = ? OR memberBId = ?`) instead of two mirrored writes that can drift. If a same-table FK is kept for parent/child (directional, so asymmetry is inherent and fine), spouse specifically should not be — enforce the symmetric-write (or join-table) design and add a test that asserts querying from *either* member of a spouse pair returns the same relationship.
+- Don't invest in collation tuning for this milestone — `utf8mb4_unicode_ci`/table default is fine for storage and won't crash. Explicitly note in the migration comment that no Ethiopic-specific collation exists, so future devs don't go looking for one.
+- Keep any search/filter code path script-agnostic: plain substring match (`LIKE '%...%'` or JS `.includes()` on the raw string) rather than `.toLowerCase()`-based folding tricks that only make sense for cased scripts (this repo's `AdminMemberTable.jsx` already does `member.fullname.toLowerCase().includes(...)` for the Latin name search box — if that same helper gets reused for `geezFullname`, the `.toLowerCase()` call is a harmless no-op for Ethiopic text, not a bug, but don't assume it's doing anything useful either).
 
 **Warning signs:**
-- `spouseId` exists as a plain column with no transactional "set both sides" logic around every write path (create, update, unlink).
-- No test reads the relationship from the "other" member's side after an edit.
+None that manifest as errors — this is a "looks fine, does nothing" trap. Catch it in code review: does the search helper's `.toLowerCase()`/normalization step make sense for a mixed Latin+Ethiopic field, or is it cargo-culted from the Latin-only path?
 
 **Phase to address:**
-Data-model design phase (before the first migration/`sync()` of the relationship schema ships) — this is a schema-design decision, expensive to change after real data exists.
+Data model / migration phase (collation decision documented) + Display/rendering phase (if search/filter over Ge'ez names is in scope this milestone — re-check PROJECT.md scope; current milestone brief doesn't call out search over Ge'ez fields explicitly).
 
 ---
 
-### Pitfall 5: Removing a member cascades further than intended (or not far enough)
+### Pitfall 5: FOUT/FOIT causes visible layout shift on the fixed-size tree cards
 
 **What goes wrong:**
-`sequelize.sync()` (no migrations, per this project's existing constraint) will create FK constraints based on whatever `onDelete` behavior the association definitions specify — and Sequelize's per-association defaults are easy to get wrong for a self-referencing model. Two failure modes are both plausible and both bad: (a) deleting one ancestor member accidentally `CASCADE`s and wipes out an entire descendant subtree because a `belongsTo`/`hasMany` pair was left at a default that cascades; or (b) deleting a member leaves dangling `parentId`/`spouseId`/`childId` references pointing at a now-nonexistent row (if no `onDelete` is specified and the FK constraint doesn't enforce integrity the way you assumed), silently corrupting tree renders later.
+`MemberNode.jsx` renders cards at a **hard-coded `width: 252, height: 120`** (`frontend/src/components/family/MemberNode.jsx:79-80`) with `noWrap` `Typography` for the name row. If the Ge'ez webfont loads late (FOUT — flash of unstyled text using the fallback font, then a reflow to the real font) or is invisible until loaded (FOIT — `font-display: block`), the fullname/geez-name row can re-measure at a different width once the real font paints, because Ethiopic glyphs in a fallback sans-serif (if one even has Ethiopic glyphs) have different average advance widths than in Noto Sans Ethiopic. Because the parent is a `Paper` with **fixed pixel dimensions**, not the text row itself, actual layout *shift of the tree/card grid* is unlikely — but the **truncation point of `noWrap` text can visibly jump** as the font swaps, which reads as content "flickering" inside the card, especially across a whole tree of many cards re-flowing at slightly different times as fonts progressively load.
 
 **Why it happens:**
-Nobody explicitly decided "what should happen to X's children/spouse when X is deleted" as a product requirement before writing the model — it's easy to let the ORM/DB default decide, and self-referencing FK cascade semantics are genuinely confusing (MySQL and Sequelize disagree in places, and behavior can differ between `sync()`-created schema and what a hand-written migration would specify).
+`font-display: swap` (the common "good practice" default) explicitly trades in FOUT — text paints immediately in the fallback font, then re-paints in the real font once loaded — which is usually the right call for text-heavy pages, but on a tree view with dozens of small fixed-width cards rendering simultaneously, the visible "pop" is more noticeable than on a single paragraph.
 
 **How to avoid:**
-Decide explicitly, as a requirement, before modeling: member deletion should almost certainly `SET NULL` on dependent parent/spouse/child references (orphaning the edge, not cascading the delete) — a family tree should not vanish downstream because one ancestor node was removed. Set `onDelete: 'SET NULL'` explicitly on every self-referencing association (don't rely on the Sequelize default), and write an integration test that creates a 3-generation branch, deletes the middle-generation member, and asserts the grandchildren still exist with their `parentId` nulled (or reassigned per whatever the actual product rule is) rather than being cascade-deleted.
+- Use `font-display: optional` for the Ethiopic face if the visual glitch is a bigger UX cost than "a returning visitor with the font already cached briefly sees a fallback glyph": `optional` gives the browser one paint window to fetch the font, and if it's not ready in time it does **not** swap in later on that page load, avoiding mid-session shift on the tree entirely (the font will be ready and used on the *next* navigation once cached).
+- Alternatively use `swap` but pair it with a `<link rel="preload" as="font" type="font/woff2" crossorigin>` for the Ethiopic woff2 in `index.html`, so the font is fetched in parallel with first paint rather than discovered only once the browser lays out the first Ge'ez-containing element — this shrinks the FOUT window on `/family` (a large, glyph-dense page) specifically.
+- Because `noWrap` truncates with an ellipsis rather than wrapping, any width jump is self-limiting (text still fits in 252px, it just truncates a character earlier/later) — verify this is true for the actual longest realistic Ge'ez fullname, not assumed.
 
 **Warning signs:**
-- Association definitions with no explicit `onDelete` option.
-- No test exercises "delete a member who has children/spouse/parents and assert what survives."
+Visually: cards on `/family` briefly showing tofu/fallback-font text then "popping" to the real glyphs on a cold cache load; ellipsis position visibly jumping.
 
 **Phase to address:**
-Data-model design phase, same as Pitfall 4 — cascade behavior is schema-level and must be decided and tested before `/manage` delete/remove functionality ships to any non-admin user.
+Font & theme integration phase (font-display + preload decision) — verified visually on the `/family` tree specifically (not just an isolated font-loading demo page), since that's the highest glyph-density surface.
 
 ---
 
-### Pitfall 6: Sibling-firstname dedup rule breaks down for half-siblings, remarriage, and independently-added shared parents
+### Pitfall 6: Font file lands in the wrong Vite location (`public/` vs. `src` import) and typos fail silently
 
 **What goes wrong:**
-The dedup guard ("block a new child if their firstname matches an existing sibling") is ambiguous the moment "sibling" isn't simply "full sibling with two shared parents," which is exactly the situation this milestone's own scope creates: half-siblings, blended/remarried families, and partial parentage are explicitly named as real scenarios (full multi-marriage genealogy is deferred, but the dedup rule as specified operates on *any* shared parent, so half-siblings will hit it whether or not "half-sibling" is a modeled concept). Concretely:
-- Two children who share only one parent (father remarries, has a child with the same firstname as a child from his first marriage) get incorrectly blocked as "duplicates" even though they're different people through different mothers.
-- A member with only one parent recorded (or none) can't have siblings derived at all — the check silently doesn't fire, which is *correct* until that member is later linked to a parent, at which point a firstname collision that should have been caught at creation time is only discoverable retroactively.
-- Case/whitespace aren't automatically normalized — `"John"`, `"john"`, and `" John "` are three different strings to a naive `WHERE firstname = ?` comparison, so the "uniqueness" guard silently fails to catch real duplicates typed inconsistently by different family members.
-- Most importantly: two different (unlinked) relatives adding "the same" parent independently — e.g., two siblings, each editing their own immediate relatives on `/manage`, both add a new "Dad" record with his real name because neither knew the other had already added him — produces **two separate `FamilyMember` rows for the same real person**. The sibling-firstname check operates per shared-parent-*row*, so it never catches this: the children now "share a parent" only in the real world, not in the DB, so no duplicate-firstname block fires, and the tree silently forks into two disconnected trees rooted at two different "Dad" nodes.
+Vite has two valid-but-different ways to ship a static asset:
+1. Drop it in `frontend/public/fonts/NotoSansEthiopic-Regular.woff2` and reference it with an absolute path (`url('/fonts/NotoSansEthiopic-Regular.woff2')`) in a plain global CSS file.
+2. `import` the font file from a CSS/JS module under `src/`, letting Vite content-hash it and rewrite the reference automatically.
+
+Both work, but they have different failure modes. If a dev picks (1) — the most common self-hosted-font tutorial pattern — a **typo'd filename or path is not caught at build time**: `vite build` succeeds, the CSS ships with a dead URL, and the browser 404s on the font at runtime and silently falls back to the next font in the stack (which likely lacks Ethiopic glyphs → tofu). Because this only affects the new Ethiopic glyphs and not the (already Google-CDN-loaded) Latin body font, a build/deploy can look completely successful while Ge'ez rendering is broken in production.
 
 **Why it happens:**
-The rule as specified is a proxy for a much harder problem (canonical person identity / record linkage) using the cheapest signal available (firstname + literal shared-parent-row). It works for the common case (one nuclear family, one person per parent, everyone spelled consistently) and breaks exactly at the boundaries this milestone's feature list calls out as real (remarriage, partial parentage) but explicitly defers full support for (multiple marriages/half-siblings as *modeled concepts*).
+`public/` assets are copied verbatim with no path validation; there's no compile-time link between the CSS `url()` string and the actual file on disk. This is invisible in local dev too if the dev never actually loads a page with a Ge'ez name in it.
 
 **How to avoid:**
-- Normalize firstname comparison (trim + case-fold, e.g., lowercase + Unicode normalize) before any uniqueness check, at the resolver layer, and cover it with an explicit mixed-case/whitespace test.
-- Scope the dedup check precisely and document the scope as a product decision, not an implementation accident: decide (and write down) whether the rule applies to "shares any one parent" or "shares both parents," and accept — explicitly, as a known limitation, consistent with "full genealogy deferred" — that legitimate half-siblings sharing a firstname will be blocked; give the blocking error message enough detail (e.g., "a child named X already exists under this parent") that a human can recognize the false-positive and route around it (rename, or flag for admin override) rather than silently failing.
-- For independently-added duplicate parents: this is the highest-value prevention target. Before letting a member create a brand-new parent record, require a "search existing members first" step in the `/manage` UI (search by name/birthdate) and make creating a *new* parent record a deliberate, distinct action from *linking* to an existing one. This doesn't eliminate the possibility (names still won't always match), but it removes the accidental case. Additionally, give admins a manual "merge two member records" tool (even a minimal one) as a recovery path, since some duplication will still slip through.
-- Re-run the dedup check at parent-*linking* time (not only at member-creation time), so a member discovered to share a parent after the fact still gets validated.
+- Prefer importing the font file from a `.css` module under `src/` (e.g. `src/assets/fonts/noto-sans-ethiopic.css` imported by `main.jsx` or `theme.js`, with `url()` references to co-located files that Vite resolves and hashes) — a broken reference then shows up as a Vite build warning/error rather than a silent runtime 404.
+- If `public/` is used anyway (simpler for a not-often-changing static font, and consistent with this repo's existing `frontend/public/favicon.svg` pattern), add an explicit manual verification step to the phase's acceptance check: load `/family` or `/manage` with a seeded Ge'ez-named member and visually confirm glyphs render — not just "the build succeeded."
 
 **Warning signs:**
-- Dedup check does a raw string `=` comparison with no `TRIM`/`LOWER` normalization.
-- No UI affordance to search/select an existing member before creating a new parent node.
-- No admin merge/dedup tool exists at all once real (non-test) family data starts accumulating.
+`vite build` and Docker image build both succeed with zero warnings, yet Ge'ez names show tofu in the deployed app — check the Network tab for a 404 on the font file.
 
 **Phase to address:**
-Dedup-rule + `/manage` UI phase — the normalization fix is cheap and should ship with the first version of the rule; the "search before create" UX and admin merge tool should be scoped explicitly as separate roadmap items (the merge tool can be minimal/manual for v2.0, but its absence should be a documented, deliberate scope decision, not an oversight).
+Font & theme integration phase, with a mandatory manual/visual verification step (not just a green build) as its "done" criterion.
 
 ---
 
-### Pitfall 7: "Immediate relatives" permission scope computed once/statically instead of freshly per mutation
+### Pitfall 7: Adding a Ge'ez font locally while Latin fonts still load from Google's CDN — the "self-contained deploy" constraint gets violated by omission
 
 **What goes wrong:**
-A member is permitted to edit parents, spouse, children, and siblings — a set that changes as the graph changes (unlink a parent, gain a new sibling, etc.). If the permission check computes this set once (e.g., cached on login, or read from a client-supplied claim) rather than recomputing it fresh from the current DB state at the time of each mutation, a member can retain edit rights over relatives they're no longer connected to, or — more dangerously — a stale/incorrect computation can under- or over-scope the set silently. The over-scope direction is the security bug: any bug that accidentally includes siblings-of-siblings, grandparents, or arbitrary other members in the "editable" set grants privilege beyond "immediate."
+Current `frontend/index.html` loads Inter/Sora via `<link href="https://fonts.googleapis.com/css2?...">` — an **external CDN dependency that already exists today**, predating this milestone. The stated constraint for this milestone is "self-contained deploy... font must be bundled and served locally; Caddy/CSP must not block it," referring to the *new* Ge'ez font — but a dev following the path of least resistance might reach for the same pattern (`<link>` to Google Fonts, this time requesting `family=Noto+Sans+Ethiopic`) since that's the app's existing precedent, directly contradicting the no-external-CDN requirement for the new font, and leaving the deploy only *partially* self-contained (new font local, old fonts still remote) — an inconsistency a reviewer is likely to flag.
 
 **Why it happens:**
-"Immediate relatives" for a self-referencing graph with 4 relationship directions (I am parent of X / X is parent of me / I am spouse of X / X and I share a parent) is genuinely easy to compute incorrectly — union queries in the wrong direction, or reusing a "siblings" computation that was written for the *tree display* (which may deliberately show more than the *editable* scope) for permission checks instead.
+Copy-paste-driven development: the existing `index.html` is the most visible precedent for "how this app loads fonts," and it points at a CDN.
 
 **How to avoid:**
-Write one single, well-tested utility function (e.g., `getEditableMemberIds(actingMemberId)`) that is the *only* source of truth for permission scope, used by every family-domain mutation resolver — never inline a scope check per-resolver. Test it explicitly with fixtures that include grandparents, cousins, and siblings-of-siblings, asserting they are *excluded*, alongside fixtures for parents/spouse/children/derived-siblings asserting they *are* included. Recompute this set fresh inside the resolver on every mutation call (never trust a cached/client-supplied scope), and treat every mutation that touches a `targetMemberId` as needing `targetMemberId ∈ getEditableMemberIds(callingMemberId)` before doing anything else — mirroring the existing `requireAuth`/`requireAdmin` guard-clause pattern already used in `backend/src/utils/auth.js`.
+- Treat this milestone's font work as an opportunity to note (even if not fix) the pre-existing Google Fonts CDN dependency for Inter/Sora as a documented, separate concern — don't silently compound it by adding a second CDN-loaded font.
+- Self-host the Ethiopic font unconditionally (this is explicit in-scope per PROJECT.md) via the app's existing static-asset pipeline, not a `<link>` tag pointing off-box.
+- If the reviewer/roadmap wants full self-containment, flag "also self-host Inter/Sora" as a candidate follow-up item — but don't silently expand this milestone's scope to include it unless asked.
 
 **Warning signs:**
-- More than one place in the resolver code independently computes "who can this member edit."
-- No test fixture includes a grandparent or a sibling's spouse and asserts they're rejected.
+A new `<link rel="stylesheet" href="https://fonts.googleapis.com/...Ethiopic...">` line appears in `index.html`; Caddy/network trace shows a request to `fonts.gstatic.com` for the new font in production.
 
 **Phase to address:**
-Permission-scoping phase (before any member-facing `/manage` mutation ships) — this utility function is a hard dependency for every subsequent mutation resolver and should be built and fully tested first.
+Font & theme integration phase — explicit acceptance check: "no `fonts.googleapis.com`/`fonts.gstatic.com` request for the new Ethiopic font in a network trace of the deployed app."
 
 ---
 
-### Pitfall 8: Relationship edits become a privilege-escalation vector
+### Pitfall 8: MUI component/variant-level `fontFamily` overrides silently exclude the new font from headings/specific components
 
 **What goes wrong:**
-Because editing relationships *is itself* how "immediate relatives" gets computed, a member creating a relationship edge is also — indirectly — expanding their own future editable scope. Concretely: if Member A can set `spouseId = adminMemberId` (or any other real member's id) on their own record without the other party's consent, and the permission-scope check (Pitfall 7) recomputes "immediate relatives" from current graph state, Member A has just fabricated a claim of being married to the admin's member record and, on the next request, may be treated as having edit rights over the admin's other immediate relatives too. The same logic applies to parent/child edges — falsely claiming to be someone's child/parent extends editable reach into a whole new subtree.
+`frontend/src/theme.js` defines two font stacks: `FONT_SANS` (`"Inter", system-ui, ... sans-serif` — used as `typography.fontFamily`, the default body font) and `FONT_DISPLAY` (`"Sora", "Inter", system-ui, sans-serif` — explicitly overridden on `h1`–`h6`). If the new Ethiopic font is appended only to `FONT_SANS` (the sensible first move, since that's the default for `Typography` without an explicit `variant`), any place a Ge'ez name gets rendered inside an `h1`–`h6` variant, an MUI component with its own `sx={{ fontFamily: ... }}`, or any future component-level style override, will use `FONT_DISPLAY`/its own stack instead — which won't include the Ethiopic font, and text there falls through to `system-ui`/OS default, which may or may not have Ethiopic coverage depending on the visitor's OS/device (reintroducing the exact tofu risk self-hosting was meant to prevent, but only in specific spots, making it a "works on the table but not the header" bug that's easy to miss in review).
 
 **Why it happens:**
-Relationship-creation mutations are naturally one-sided (the acting member submits the edit), but the *effect* of that edit (expanding their own permission scope) is a second-order consequence nobody reviews for abuse the way they'd review, say, a `promoteToAdmin` mutation.
+Font stacks in this codebase are already split by intent (`FONT_SANS` for body, `FONT_DISPLAY` for headings) — adding a new font to just one of the two active stacks (or to neither) is an easy oversight since nothing currently forces someone to touch both.
 
 **How to avoid:**
-Any relationship edge that links two **different, already-linked-to-an-account** members (spouse, or a parent/child edge where both ends already have their own user account) should require the target member's own account to have created the record, or the acting member's account to be the one who originally created *that specific member node* (i.e., they're linking a node they own/created, not grafting onto someone else's pre-existing subtree), or (simplest, safest for v2.0) require admin approval for any edge that connects two independently-linked accounts. Unlinked `FamilyMember` nodes (no account attached yet) are safe to edit freely within scope since there's no second account to protect. Write a test: Member A (linked, with their own subtree) attempts to set themselves as spouse/parent/child of Member B (linked, unrelated subtree) without B's consent or admin approval — must be rejected.
+- Append the Ethiopic font as a fallback to **every** font stack constant in `theme.js` (both `FONT_SANS` and `FONT_DISPLAY`), not just the default one, so Ethiopic glyphs are covered regardless of which `Typography` variant a Ge'ez name happens to render in.
+- Audit every component that currently renders `member.fullname`/will render `member.geezFullname` (`MemberNode.jsx`, `AdminMemberTable.jsx`, `AddRelativeDialog.jsx`'s Autocomplete `getOptionLabel`/`renderOption`, any relationship-panel components on `/manage`) for a local `sx={{ fontFamily: ... }}` override that would shadow the theme.
+- None of the currently-read name-rendering `Typography` elements (`MemberNode.jsx:189`, `AdminMemberTable.jsx:112`) set a component-level `fontFamily` override today — good baseline; the risk is a *future* addition, so this is worth a lint/review-checklist item rather than a current bug.
 
 **Warning signs:**
-- Relationship-creation mutations only check "is the acting member within scope of the edge they're creating *today*" without considering that the edge itself changes tomorrow's scope.
-- No distinction in the permission model between editing a node you already have standing over vs. creating a *new* edge to a node you don't yet have standing over.
+Ge'ez names render correctly in the member table but as tofu in a page/section that uses an `h1`–`h6` `Typography` variant (or vice versa).
 
 **Phase to address:**
-Permission-scoping phase, immediately following Pitfall 7 — this is the adversarial-thinking pass on the same permission model, and should be reviewed/tested before `/manage` is exposed to non-admin users in any environment beyond local dev.
+Font & theme integration phase (defining the stacks) + Display/rendering phase (auditing every actual render site against the final stacks) as a cross-check.
 
 ---
 
-### Pitfall 9: File upload trusts client-supplied filename/content-type, enabling path traversal and content-sniffing XSS
+### Pitfall 9: Derived `geezFullname` VIRTUAL breaks (stray space / wrong join) when only one Ge'ez part is filled
 
 **What goes wrong:**
-A naive photo-upload implementation stores the file using the client-supplied filename (or trusts the `Content-Type` header/extension to decide it's really an image), which opens two separate holes: (1) a filename like `../../../etc/somewhere/evil` used to construct a filesystem path causes path traversal outside the intended upload directory; (2) a file whose *extension* says `.jpg` but whose *content* is actually HTML/SVG-with-`<script>` can, depending on how the file is served, be sniffed and executed by a browser as HTML/SVG (stored XSS via "image" upload) if served without a strict `Content-Type`/`X-Content-Type-Options: nosniff` header.
+The existing Latin `fullname` VIRTUAL getter is a naive template-literal join: `` `${this.firstname} ${this.lastname}` `` (`backend/src/models/FamilyMember.js`), which is safe today only because `firstname`/`lastname` are `allowNull: false` — they're always present. The new Ge'ez fields (`geezFirstname`, `geezLastname`, `geezMothersname`) are **all optional**, and a naive port of the same join pattern (`` `${this.geezFirstname} ${this.geezLastname}` ``) will produce:
+- `"ብስራት "` (trailing space, `geezLastname` empty/null but `geezFirstname` filled) — renders as a name with a dangling space, which is subtly visible in a `noWrap`-truncated card as an odd trailing gap before the ellipsis.
+- `"null null"` or `"undefined undefined"` string literals if either part is JS `null`/`undefined` rather than empty string — template literals coerce `null`/`undefined` to the literal text `"null"`/`"undefined"`, a classic and easy-to-miss bug.
+- An empty string `""` (not `null`) when *no* Ge'ez parts are filled, which — if the UI's "show Latin name when there's no Ge'ez name" fallback checks for `!geezFullname` (falsy) it works, but if it checks `geezFullname === null` (strict), an empty-string virtual will slip past the null-check and render as a blank name row or an empty box with a lone separator.
 
 **Why it happens:**
-"Accept a file and save it" is treated as a solved problem borrowed from generic tutorials that skip the security review, and it's easy to test the happy path (upload a real `.jpg`) without ever testing the adversarial path (upload something that lies about what it is).
+Copy-pasting the existing `fullname` getter pattern without accounting for the fact that Latin identity fields are required and Ge'ez fields are optional — the getter needs conditional joining, not a straight template literal.
 
 **How to avoid:**
-- Never use the client-supplied filename to build a filesystem path. Generate a server-side unique name (UUID or member-id + timestamp) for the stored file; keep the original filename only as display metadata in the DB, never interpolated into a path.
-- Validate the actual file content (magic-number/content sniffing, e.g. via the `file-type` package), not just the extension or `Content-Type` header, and reject anything that isn't a real, allow-listed image format. Explicitly disallow SVG (SVG can contain executable script) unless it's run through a sanitizer.
-- Enforce a max file size at the multipart-parsing layer (multer/busboy `limits.fileSize`), not only in frontend JS, since a request can always bypass the browser.
-- Serve uploaded photos from a dedicated route with `X-Content-Type-Options: nosniff` and an explicit, allow-listed `Content-Type` derived from the validated file type — never "whatever the browser guesses."
+- Write the `geezFullname` getter to filter falsy/empty parts before joining, e.g. build from `[this.geezFirstname, this.geezLastname].filter(Boolean).join(' ')`, and decide explicitly whether `geezMothersname` participates (mirroring however `mothersname` does *not* currently participate in the Latin `fullname` — check current behavior and keep parity unless the requirement says otherwise).
+- Return `null` (not `''`) when no parts are present, and pick **one** falsiness check (`!value` is fine since both `null` and `''` are falsy) — but state it explicitly in the getter's code comment so callers on the frontend don't need to guess.
+- Unit-test the getter directly (see Testing pitfall below) with the matrix: all three filled / only first / only last / only mothers / none — this is exactly the kind of pure-logic edge case a jsdom-free, DB-free unit test is well suited for and cheap to write.
 
 **Warning signs:**
-- Any code path that does `path.join(uploadDir, req.file.originalname)` or similar without sanitization/replacement.
-- No content-sniffing library in `backend/package.json` after the upload feature ships — only extension/mimetype string checks.
+A card/table row showing a lone space or a literal `"null"` substring where a Ge'ez name should be; the Latin-name fallback not kicking in for a member with zero Ge'ez data.
 
 **Phase to address:**
-File-upload phase — this is the core security surface of that phase and should be TDD'd with adversarial fixtures (a `.jpg`-named HTML file, a path-traversal filename, an oversized file) as the first red tests, before the happy-path test.
+Data model / migration phase (getter lands with the model change) — with the phase's acceptance criteria requiring the getter's edge-case matrix to be unit-tested before "done" (aligns with this project's existing TDD convention per PROJECT.md/CLAUDE.md).
 
 ---
 
-### Pitfall 10: Upload volume not durably mounted, or GraphQL-multipart approach introduces avoidable CSRF complexity
+### Pitfall 10: Fixed-width tree card (252×120px) truncates or crowds a genuinely longer Ge'ez name
 
 **What goes wrong:**
-Two related but distinct traps: (a) if the Docker volume for uploaded photos isn't declared as a **named** volume in `docker-compose.yml` from the very first version that ships file upload, files written during development/staging live inside the container's writable layer and are silently lost on the next `docker compose up --build` (or any container recreate) — this is easy to miss because it "works" until the first rebuild; (b) implementing uploads via GraphQL multipart (`graphql-upload`) — the seemingly natural choice given the existing single-`/graphql`-endpoint architecture — inherits a documented CSRF weakness (multipart/form-data requests are "simple" requests under CORS and don't trigger a preflight, so if auth ever relied on cookies this would be exploitable; even with this app's existing Bearer-token-in-header auth pattern, `graphql-upload` still requires deliberately enabling Apollo's `csrfPrevention` and carries real complexity — ESM/version-compatibility friction has also historically been an issue with `graphql-upload`).
+`MemberNode.jsx` reserves a fixed `width: 252` card with a `flex: '0 0 33%'` avatar column, leaving roughly ~150–160px of usable text width for the name/birthday/mother/address rows, all rendered with `noWrap` (CSS ellipsis truncation, confirmed at `MemberNode.jsx:189-209`). Ge'ez fidel glyphs in Noto Sans Ethiopic tend to be **visually wider per character** than Latin letters at the same font-size (syllabic block-style glyphs vs. Latin's narrower ascender/descender letterforms), so a Ge'ez full name of the same *character count* as a Latin one will truncate earlier/more aggressively. Combined with `geezFullname` potentially being a 3-part join (first + last, or first + last + mothers if that's included), this card is the most width-constrained surface in the whole app for this feature.
 
 **Why it happens:**
-(a) Volume mounting is invisible until a rebuild happens, and dev environments that never rebuild the container hide the bug for weeks. (b) "We already have one GraphQL endpoint, uploads should go through it too" feels architecturally consistent even though the existing app's Bearer-token pattern (not cookies) already sidesteps the main reason people reach for GraphQL multipart, and a plain REST route is simpler and better-trodden.
+The 252px card width was tuned against Latin `fullname` strings only (pre-dates this milestone); nobody has visually verified it against a Ge'ez string of realistic length.
 
 **How to avoid:**
-- Add the upload directory as a named volume (e.g., `family_photos:/app/uploads`) in `docker-compose.yml` the same commit the upload feature ships, and add a manual/CI check step: "stop and restart the backend container, confirm a previously-uploaded test photo is still servable" before considering the phase done.
-- Prefer a **dedicated REST endpoint** (`POST /uploads/photo`, protected by the same JWT-bearer `requireAuth`/permission-scope check used elsewhere) over GraphQL multipart — it avoids the CSRF-preflight gap entirely, keeps the existing Axios-based `graphqlClient.js` pattern simple (one extra Axios call, not a new GraphQL upload scalar), and sidesteps `graphql-upload`'s dependency/version friction. This is a deliberate deviation from "everything goes through `/graphql`" and should be recorded as a Key Decision, not left implicit.
+- This is explicitly a rendering concern that `Vitest`+`jsdom` **cannot catch** (see Testing pitfall) — it needs a manual/visual verification pass with real, sufficiently-long Ge'ez names once the font is wired in, not just a snapshot test.
+- Rely on the existing `noWrap` ellipsis behavior (graceful truncation, not overflow/clipping) rather than trying to widen the card — widening 252px would ripple into dagre layout spacing/edge routing on the whole `/family` tree, a much bigger change than this milestone's scope. Truncation is the acceptable failure mode; overflow/wrapping-that-breaks-card-height is not.
+- If a `title`/tooltip-on-hover isn't already present for the truncated name, consider adding one so a truncated Ge'ez name is still fully readable on demand (check whether `MemberNode.jsx`'s `title={genderLabel}` attribute on the `Paper` — currently used for gender, not name — creates a conflict; the name `Typography` itself has no `title` attribute today).
 
 **Warning signs:**
-- `docker-compose.yml`'s backend service has no `volumes:` entry for the upload path, or uses an anonymous/bind-to-container-layer path.
-- `graphql-upload` (or equivalent) appears in `backend/package.json` without `csrfPrevention: true` also being set on the Apollo Server config.
+A Ge'ez name that visually should fit in 150px based on character count instead truncates 2-3 glyphs earlier than an equivalent-length Latin name would.
 
 **Phase to address:**
-File-upload phase — both the volume declaration and the REST-vs-GraphQL-multipart decision must be made at the start of that phase, not discovered after the feature seems "done" in local dev (where rebuild-persistence never gets exercised).
+Display/rendering phase, verified with a manual visual pass against the tree specifically (not the table, which has more horizontal room) using the longest real Ge'ez name in the actual family dataset.
 
 ---
 
-### Pitfall 11: Membership gate checked only at the frontend route level, leaving the GraphQL API itself open to unlinked-but-verified users
+### Pitfall 11: Missing `lang="am"`/`lang="ti"` attribute hurts both accessibility and (in some engines) font shaping/fallback selection
 
 **What goes wrong:**
-The intended flow is register → verify email (v1.1, already shipped) → admin links the account to a `FamilyMember` node → only then can the user reach `/family`/`/manage`. If the "pending" gate is implemented only as a React Router guard (analogous to today's `ProtectedRoute.jsx`, which checks auth but has no concept of "linked"), a verified-but-unlinked user still holds a perfectly valid JWT and can call any family-domain GraphQL query/mutation directly (bypassing the SPA entirely) unless the *resolver* layer independently enforces "does this JWT's user have a linked member." This is the same class of gap the codebase's own architecture doc already flags generally ("no query complexity/depth limiting... every resolver executes directly against the DB") — frontend gating has never been a substitute for resolver-level guards in this codebase, and the new membership dimension must follow that same discipline.
+Neither `MemberNode.jsx` nor (per the read files) any other name-rendering component sets a `lang` attribute scoped to the Ge'ez text specifically — the whole app's `lang="en"` is set once at `<html lang="en">` in `index.html`. Two concrete costs: (1) screen readers announce Ge'ez text using **English phoneme rules**, producing nonsensical or mispronounced output for sighted-but-screen-reader-dependent or low-vision users relying on assistive tech to hear a member's name; (2) some browser font-fallback/shaping engines use the `lang` attribute as a hint when a font-family stack doesn't unambiguously resolve which font to use for a given code point (most relevant when relying on OS fallback fonts rather than an explicit self-hosted font — which is exactly the fallback path Pitfall 5/6 describes when the self-hosted font fails to load).
 
 **Why it happens:**
-It's natural to build the "pending" UI screen first (it's the visible, demo-able part) and treat the backend check as an afterthought, especially since `requireAuth`/`requireAdmin` already exist as a pattern to imitate but a third guard (`requireLinkedMember`) doesn't yet exist and is easy to forget to add to *every* family-domain resolver individually.
+`lang` is easy to forget because it has no visible effect in the common case (self-hosted font loads fine, sighted user, no screen reader) — it's a silent a11y/robustness gap, not a visible bug.
 
 **How to avoid:**
-Add a `requireLinkedMember(user)` guard function alongside the existing `requireAuth`/`requireAdmin` in `backend/src/utils/auth.js` (or an equivalent new module), and apply it at the top of every family-domain resolver (mirroring the existing convention of guard clauses called first, before any other logic). Write an integration test with a verified, non-admin, **unlinked** JWT attempting to call a family query/mutation directly (bypassing the SPA) and assert it's rejected — this test is the actual verification that the gate isn't merely cosmetic.
+- Wrap Ge'ez name text in its own element with an explicit `lang` attribute at render time — e.g. `<span lang="ti">{member.geezFullname}</span>` (Tigrinya) or `lang="am"` if the field is meant to be script-agnostic Ge'ez rather than Tigrinya-specific (confirm which is more accurate for this family's usage — PROJECT.md explicitly frames this as serving "the Tigrinya/Eritrean family," so `lang="ti"` is likely correct, but this is a product decision worth a one-line confirmation, not an assumption).
+- Do this at the shared display-name helper/component level (see Testing pitfall — there should be one shared helper), so every render site gets it for free rather than needing five separate manual annotations.
 
 **Warning signs:**
-- The "pending" gate exists only as a frontend route condition (`AuthContext`/`ProtectedRoute`-style check), with no equivalent guard inside any family resolver.
-- No integration test exercises "verified user, no linked member, calls family GraphQL operation directly."
+Accessibility audit (axe/manual screen-reader pass) flags un-language-tagged foreign-script text; code review of the new Typography/span wrapping a Ge'ez value shows no `lang` prop.
 
 **Phase to address:**
-Membership-gating phase — should ship in the same phase as (or immediately before) the first family-domain resolver, so no resolver is ever merged without the guard already in place.
-
----
-
-### Pitfall 12: Membership gate locks out the very first admin who has no linked member yet (chicken-and-egg with v1.1's admin bootstrap)
-
-**What goes wrong:**
-v1.1 already solved "who becomes admin first" via an atomic, race-safe verify+promote mechanism. But that mechanism produces a `User` with `role = ADMIN` and **no** `FamilyMember` link — nothing in v1.1 created or linked a member node, because the family-tree domain didn't exist yet. If the new membership gate (Pitfall 11) is applied uniformly to all family-domain operations including the ones needed to *create the first member node and link it*, the first admin is locked out of the very tools needed to bootstrap the tree: they can't reach `/manage` to create/link a member because they're not yet linked, and they can't get linked without reaching `/manage`.
-
-**Why it happens:**
-"Gate everything family-related behind membership" is the correct rule for ordinary members, but applying it without an admin carve-out recreates exactly the kind of chicken-and-egg problem v1.1 already had to solve once (first-user-ADMIN) in a new form (first-member-link), and it's easy to reuse the mental model "membership gate = simple boolean check" without special-casing the role that must be exempt from it.
-
-**How to avoid:**
-`requireLinkedMember` (Pitfall 11) should not apply to ADMIN-role users for the specific operations that create/link member nodes and manage the whole tree (member CRUD, account-linking mutations) — admins operate on the whole tree by role, independent of being linked themselves; only the "view my tree" (`/family`, `/manage`-immediate-relatives) experience should require *that specific user* to be linked, and even then, an admin who chooses to also be a member should link themselves through the same admin tooling. Write an integration test: a freshly-promoted ADMIN with **no** linked `FamilyMember` can still call member-creation and account-linking mutations (proving the carve-out works), while a non-admin, unlinked, verified user cannot (proving Pitfall 11's gate still holds for everyone else). Also add a regression test confirming the v1.1 first-user-ADMIN promotion flow itself is unaffected by the new gate (it must still work with zero `FamilyMember` rows in the database).
-
-**Warning signs:**
-- `requireLinkedMember` is applied as a blanket guard with no role-based exemption.
-- No test covers "brand-new ADMIN, zero FamilyMember rows exist yet, can they still create the first node."
-
-**Phase to address:**
-Membership-gating phase, same as Pitfall 11 — the admin carve-out must be designed at the same time as the gate itself, not patched in after a demo reveals the lockout.
-
----
-
-### Pitfall 13: `sequelize.sync()` (no migrations) mishandles self-referencing associations, and DataLoader/permission logic silently diverges between test harness and production
-
-**What goes wrong:**
-Two testability-specific traps compound here. First, self-referencing associations (`FamilyMember belongsTo FamilyMember as 'father'`, etc.) are a known rough edge for `sequelize.sync()` — depending on how associations are declared, `sync()` can attempt to create FK constraints in an order that fails on a genuinely empty database (chicken-and-egg at the schema level, distinct from the app-level chicken-and-egg in Pitfall 12), especially under `{ force: true }` (which this project's CI/test-DB setup already uses per `backend/test/globalSetup.js`). This might work in an incrementally-evolved dev DB (where the table already exists with data) while failing on a truly fresh CI database — exactly the scenario CI forces every run. Second, if the DataLoader instance or the permission-scope computation used in tests differs even slightly from what production's `context()` function builds (e.g., a test helper that skips DataLoader entirely and calls models directly "for simplicity"), the test suite can be green while the exact bugs this research flags (N+1 fan-out, stale permission scope) go completely undetected — the tests would be testing a different code path than production runs.
-
-**Why it happens:**
-Self-referencing FK/`sync()` interaction is a genuine MySQL/Sequelize edge case that most tutorials don't cover (most examples are one-directional, unrelated-table associations). And test helpers naturally drift toward "simplest thing that makes the assertion pass," which quietly diverges from the request-scoped `context()` wiring that production actually uses.
-
-**How to avoid:**
-- Add an explicit "does `sync({ force: true })` boot cleanly against a genuinely empty database with the new self-referencing model" smoke test very early — this should run as part of the existing CI global-setup path (`backend/test/globalSetup.js`), not be assumed to work by analogy with the existing `User` model.
-- Extend the existing `backend/test/helpers.js` request-builder to construct the same `context()` (including a fresh DataLoader instance) that `backend/src/server.js` builds in production, rather than a simplified test-only stand-in — the whole point of the executeOperation/supertest harness this project already has is that it exercises real request wiring; DataLoader and permission-scope guards must be part of that same wiring in tests, or regressions in exactly the areas this document flags will pass CI silently.
-- Build a reusable fixture-generation helper (e.g., `test/familyTreeFactory.js`) that programmatically creates N-generation trees, since hand-authoring 10-23 generations of fixtures per test is impractical; use it to write a query-count assertion (hook into Sequelize's logger, count queries per request) proving the DataLoader batching actually caps query count as tree depth grows, rather than only asserting the returned data shape is correct.
-- For file-upload tests, use a temp/mocked upload directory scoped per test run (cleaned up in the same teardown pattern as the DB), independent of the real Docker-mounted volume path, so upload tests neither depend on nor pollute the real storage location.
-
-**Warning signs:**
-- No test exists that runs `sync({ force: true })` against a fresh DB specifically covering the new self-referencing model in isolation.
-- Test helpers build GraphQL context by calling models directly instead of reusing production's `context()`/DataLoader construction.
-- No query-count assertion anywhere in the test suite for deep-tree reads.
-
-**Phase to address:**
-Should be addressed continuously starting with the data-model phase (the `sync()` smoke test) and reinforced in the resolver/DataLoader phase (harness parity) and the deep-tree-read phase (query-count assertions) — this isn't a single phase's concern but a standing practice that should be called out explicitly in each phase's success criteria.
+Display/rendering phase — bake the `lang` attribute into whatever shared component/helper renders a Ge'ez name, and add it to that phase's acceptance checklist explicitly (easy to omit silently otherwise).
 
 ---
 
@@ -287,109 +258,107 @@ Should be addressed continuously starting with the data-model phase (the `sync()
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|--------------------|-----------------|------------------|
-| Single self-FK `spouseId` column instead of a relationship join table | Faster to model, fewer joins for simple reads | Asymmetric-write drift (Pitfall 4), harder to extend to future multi-marriage support | Never for spouse; acceptable only for strictly-directional parent/child edges |
-| No admin merge/dedup tool for accidentally-duplicated parent nodes | Saves a phase of UI/backend work | Real family data silently forks into disconnected sub-trees (Pitfall 6) with no recovery path | Acceptable only if explicitly scoped out with a documented manual-SQL-fix fallback for v2.0 |
-| GraphQL multipart upload (`graphql-upload`) instead of a REST upload route | Keeps "everything through `/graphql`" architectural purity | Inherited CSRF-preflight gap, dependency/version friction (Pitfall 10) | Never — the REST-route deviation is cheap and strictly safer here |
-| Skipping the cycle-prevention check "because nobody would do that in the demo data" | One less check to write and test | A single bad edit corrupts every recursive read forever, discoverable only when the tree render hangs (Pitfall 3) | Never — this is a correctness invariant, not a UX nicety |
-| Reusing "sibling" logic built for tree *display* as the permission-scope computation for edits | Avoids writing a second function | Silent permission over-scope if display logic is ever more permissive than intended edit scope (Pitfall 7) | Never — keep display and permission-scope logic as separate, separately-tested functions even if they overlap today |
+| Ship the Ethiopic font as one big unsubsetted WOFF2 rather than building a subsetting pipeline | Zero risk of dropped glyphs (Pitfall 1); much less tooling/config | Slightly larger download than a hand-tuned subset (Noto Sans Ethiopic regular is small — low single-digit hundreds of KB — since it's script-scoped already) | Always acceptable for this milestone; only revisit if the font turns out to be surprisingly large (verify actual file size before assuming) |
+| Reuse the existing `.toLowerCase()`-based Latin search/filter helper for Ge'ez fields instead of writing a script-aware one | No new code | Dead-but-harmless normalization step; slight code-review confusion later ("why is this here") | Acceptable if search/filtering over Ge'ez fields isn't even in this milestone's scope (currently unclear — confirm against REQUIREMENTS.md) |
+| Put the new font file in `public/fonts/` with a hand-written `@font-face` instead of importing it through Vite's asset pipeline | Simple, matches existing `public/favicon.svg` precedent | No build-time verification of the file path (Pitfall 6); relies entirely on manual visual QA to catch a typo | Acceptable only if the phase's "done" checklist mandates an actual visual load-and-check step, not just a green build |
+| Skip a dedicated Ge'ez-aware collation decision and just inherit the table/database default | No extra migration complexity | None really — no Ethiopic-specific collation exists in MySQL/MariaDB anyway (Pitfall 4) | Always acceptable |
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
-|--------------|------------------|--------------------|
-| MySQL 8 `WITH RECURSIVE` for tree reads | Assuming unlimited recursion depth; hitting the default `cte_max_recursion_depth` (1000) unexpectedly on a pathological/cyclic graph | Set an explicit, generous-but-bounded `MAXRECURSION`/`cte_max_recursion_depth` and pair it with the app-level cycle-prevention check (Pitfall 3) so the CTE never needs to protect against a cycle that shouldn't exist in the first place |
-| Sequelize self-referencing associations + `sync()` | Assuming `sync()` handles self-referential FK creation exactly like unrelated-table associations | Prove it with a dedicated fresh-DB smoke test (Pitfall 13); consider `constraints: false` on one side of the association if `sync()` errors on FK-creation ordering |
-| DataLoader + Apollo Server 4 `context()` | Creating one DataLoader instance at server startup (module scope) and reusing it across requests | Instantiate DataLoaders inside the `context()` async function on every request, exactly where `models`/`user` are already computed in `backend/src/server.js` |
-| Docker Compose volume for uploads | Adding the upload feature without a named volume, testing only in a container that's never rebuilt | Declare the named volume in the same commit as the feature; verify with an explicit rebuild-and-check step |
-| `graphql-upload` + Apollo Server CSRF prevention | Enabling multipart uploads without also setting `csrfPrevention: true` | Prefer a separate REST upload route (Pitfall 10); if GraphQL multipart is used anyway, `csrfPrevention: true` is mandatory, not optional |
+|-------------|------------------|-------------------|
+| Caddy reverse proxy (`docker-deploy/Caddyfile`) | Assuming Caddy needs a special MIME-type or CORS rule for `.woff2` — it doesn't by default, but if a CSP `font-src` header is *later* added to Caddy for hardening, forgetting to include `'self'` for fonts would break the self-hosted font in exactly the way an external-CDN font would've needed `font-src https://fonts.gstatic.com` | No CSP is configured today (verified: the Caddyfile has no `header` block) — self-hosting from the same origin needs no Caddy change at all. If a future milestone adds CSP, explicitly include `font-src 'self'` |
+| Vite dev proxy (`frontend/vite.config.js`) | None specific to fonts — `vite.config.js` only proxies `/graphql` and `/api`; static font assets under `public/`/`src` are served directly by Vite's dev server, no proxy interaction | No change needed to `vite.config.js` for this feature |
+| Docker build (`frontend/Dockerfile`) | Forgetting the font file is inside the build context / not `.dockerignore`'d out, so the production image is missing the font even though it works in local `npm run dev` | Confirm the font file(s) live under `frontend/src/` or `frontend/public/` (both already inside the existing Docker build context) and are not accidentally excluded by an existing `.dockerignore` pattern |
+| Existing Google Fonts `<link>` in `index.html` | Adding the new Ethiopic font the same way (a second `<link>` to Google Fonts) instead of self-hosting, matching the wrong existing precedent | Self-host per PROJECT.md's explicit constraint; treat the existing CDN `<link>` as a separate, pre-existing concern, not a template to copy (Pitfall 7) |
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
-|------|-----------|------------|-----------------|
-| Per-field N+1 resolution of parent/child/spouse | Query log shows dozens-hundreds of near-identical SELECTs per `/family` request | DataLoader batching per relationship type, request-scoped | Becomes visible at ~3-4 generations, severe by 10+ |
-| No query depth/complexity limit on a now-recursive schema | A hand-crafted deep query hangs or slows the whole server, not just itself | `graphql-depth-limit`/complexity plugin added alongside the recursive type | Immediately exploitable once the recursive type ships, regardless of real data size |
-| Rendering the full tree as one deeply-nested React component tree | Browser tab freezes/jank scrolling or zooming a 10-23 generation tree | Fetch flat node+edge list, use a virtualizing tree-render library (e.g., a D3-based org-chart/family-chart library with pan/zoom + virtualization, or ReactFlow-style windowed rendering), collapse distant branches by default | Noticeable well before 23 generations if every node is a live React component with no windowing |
-| Default (untuned) Sequelize connection pool (max 5) under deep-tree read load | Requests queue/block waiting for a DB connection during a heavy tree fetch | Explicit `pool: { max, min, acquire, idle }` tuning once family-tree read volume is added (this was already flagged as a scaling limit before this milestone) | Breaks under concurrent `/family` loads even at modest user counts if tree reads are chatty (reinforces need for Pitfall 1's fix) |
+|------|----------|------------|-----------------|
+| Loading the Ethiopic font eagerly on every route (including ones with zero Ge'ez text, e.g. `/login`) | Slightly slower first paint on pages that never render Ge'ez text | `@font-face` declarations are lazy by nature — the browser only fetches a font file when it actually needs to paint a glyph that requires it, so this is self-correcting as long as the font isn't `<link rel="preload">`ed globally; only preload it on `/family`/`/manage` if preloading at all (Pitfall 5) | Only a real problem if a global unconditional `<link rel="preload">` is added in `index.html` for every route |
+| Font-face for every card in a large `/family` tree with many members simultaneously mounted | Slightly slower time-to-first-Ge'ez-glyph the first time a large tree renders on a cold cache | Font is fetched once per browser session regardless of how many nodes reference it (single shared `@font-face`, browser font cache) — this scales fine at this app's expected member counts (dozens, not thousands) | Not expected to break at this project's scale; would only matter at thousands of simultaneously-rendered nodes, well beyond this app's real data size |
 
 ## Security Mistakes
 
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Trusting client-supplied file extension/`Content-Type` for uploads | Stored XSS via a mislabeled HTML/SVG file served as an "image" | Magic-number content validation, disallow SVG, `nosniff` header on the serving route (Pitfall 9) |
-| Using client-supplied filename in a filesystem path | Path traversal, overwrite of arbitrary files | Server-generated filename only; original name stored as metadata, never interpolated into a path (Pitfall 9) |
-| Membership gate enforced only at the frontend route level | A valid-but-unlinked JWT reaches family data directly via GraphQL, bypassing the SPA gate entirely | Resolver-level `requireLinkedMember` guard on every family-domain operation (Pitfall 11) |
-| Permission scope computed loosely / reused from display logic | Privilege escalation — a member edits relatives outside their intended set | Single, separately-tested `getEditableMemberIds()` utility, recomputed fresh per mutation (Pitfall 7) |
-| Relationship edits accepted from one side without the other party's consent | A member fabricates a spouse/parent/child claim on an unrelated, already-linked member to expand their own edit scope | Require admin approval (or mutual confirmation) for edges connecting two independently-linked accounts (Pitfall 8) |
-| Blanket membership gate with no admin exemption | Locks the first admin out of the tools needed to bootstrap the tree | Role-based carve-out for admin-only tree-management operations (Pitfall 12) |
+| Trusting client-supplied Ge'ez text without length/type validation before it hits the VIRTUAL getter or the DB column | Extremely long IME-composed input (unlikely but possible) inflating row size or breaking UI layout in unexpected ways; not a classic injection risk since Sequelize parameterizes queries, but still worth a sane max length matching the existing Latin `firstname`/`lastname` `STRING` (VARCHAR(255) default) column limits | Use the same `DataTypes.STRING` type (implicit VARCHAR(255)) for the new Ge'ez columns as the existing Latin ones — don't need a bespoke validator, just don't accidentally make them `TEXT`/unbounded |
+| Server-side trimming/normalization applied inconsistently between Latin and Ge'ez fields | A Ge'ez field containing only an invisible character (e.g. a U+200B zero-width space) could pass an `allowNull`-style check meant to treat "empty" as "not provided," silently creating a member that *looks* like it has no Ge'ez name in the DB (non-null, non-empty-looking) but renders as a blank/invisible name segment | Apply the same trim-then-null-if-empty normalization to Ge'ez fields as whatever the existing optional Latin fields (`mothersname`, `phone`, `address`) already do server-side — check the resolver/model hook for the existing pattern and mirror it exactly, including a Unicode-aware trim (Ge'ez has no `\s`-matching ambiguity for this since Ethiopic word space "፡" is a distinct visible character, not whitespace — don't accidentally trim it if a user genuinely typed it as a separator) |
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
-|---------|--------------|-------------------|
-| Sibling-firstname dedup rejects a legitimate half-sibling with a generic error | User can't figure out why a real family member can't be added, may work around it by lying about the name | Surface a specific, actionable error ("a child named X already exists under this parent — is this the same person?") rather than a bare validation failure |
-| No "search existing members" step before adding a new parent | Two relatives independently create duplicate parent nodes, silently forking the tree (Pitfall 6) | Require a search/select-existing step in `/manage` before allowing "create new parent," making linking the default and creation the deliberate exception |
-| Deep tree rendered fully expanded by default | Browser jank, users lost in 10-23 generations of nodes on first load | Default to a collapsed view centered on the viewing member, with explicit expand-per-branch and pan/zoom, not a fully-expanded initial render |
-| "Pending" gate with no explanation of *why* or *what's next* | Verified users stuck at a gate with no indication an admin needs to link them | Pending-state screen should explain the admin-linking step is required and roughly what to expect, so users don't assume the app is broken |
+|---------|-------------|-------------------|
+| Empty Ge'ez name renders a stray "empty state" separator (e.g. an extra blank row, a lone " · " between Latin and Ge'ez name if both are shown together somewhere) | Looks like a rendering bug/missing data to anyone viewing a member with no Ge'ez name — which per PROJECT.md is the *common* case ("all optional; a member with no Ge'ez name shows the Latin name as today") | Render nothing at all (no row, no separator, no placeholder text) when `geezFullname` is null/empty — verified by Pitfall 9's getter returning `null` (not `''`) and every render site doing a truthy check before rendering a Ge'ez row, exactly mirroring how `MemberNode.jsx` already omits the birthday/mother/address rows entirely when those fields are absent (`{birthday && (...)}` pattern at line 193) |
+| A member typed a Ge'ez name using an IME/virtual keyboard and it displays fine on their phone but as tofu on an admin's desktop reviewing the table | Confusing "it looked right when I entered it" support complaint, hard to self-diagnose without knowing about font fallback | This is exactly what self-hosting the font consistently across every surface (table, cards, dialogs) prevents — the pitfall is really Pitfalls 1/6/8 manifesting as a support complaint; call out in QA that verification must happen on a device/browser that does **not** have an OS-level Ethiopic font pre-installed (e.g. a stock Windows box), not just the developer's own Mac (macOS ships broad Unicode font coverage by default, masking font-loading bugs during dev) |
+| Autocomplete option list (`AddRelativeDialog.jsx`) shows only the Latin `fullname` via `getOptionLabel`, so a user searching by the Ge'ez name they know a relative by can't find them | Minor discoverability gap — out of scope per the milestone's explicit non-goals (no transliteration input, no toggle), but worth a conscious "yes, defer this" note rather than an oversight | If in scope, extend the Autocomplete's underlying filter (not just `getOptionLabel`, which is display-only) to also match against `geezFullname`; if explicitly deferred, note it as a known gap rather than silently leaving it |
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Parent/child mutations:** Often missing a cycle-prevention check — verify a test attempts to create a cycle and asserts rejection, not just that normal additions succeed.
-- [ ] **Spouse relationship:** Often implemented as a plain one-directional FK column — verify querying from *either* member of a pair returns the same, symmetric result.
-- [ ] **Member deletion:** Often leaves cascade/orphan behavior undecided by default — verify a test deletes a member with children/spouse and asserts exactly what survives (not merely that the delete "succeeds").
-- [ ] **Sibling dedup check:** Often does a raw string comparison — verify a mixed-case/whitespace duplicate ("john" vs " John ") is actually caught.
-- [ ] **Deep-tree resolvers:** Often tested only against a 2-3 node fixture — verify a query-count assertion against a programmatically-generated 10+ generation fixture, not just correctness of a shallow tree.
-- [ ] **Membership gate:** Often implemented as a frontend route guard only — verify an integration test calls a family GraphQL operation directly with a verified-but-unlinked JWT and gets rejected.
-- [ ] **First-admin bootstrap:** Often untested post-family-tree-gate — verify a fresh ADMIN with zero linked `FamilyMember` rows can still create/link the first node.
-- [ ] **File upload:** Often tested only with a real, correctly-named image — verify adversarial fixtures (path-traversal filename, mislabeled content-type, oversized file) are explicitly rejected.
-- [ ] **Upload volume:** Often verified only in a container that's never been rebuilt — verify a photo survives an actual `docker compose` restart/rebuild.
-- [ ] **Permission scope function:** Often duplicated inline per-resolver — verify there is exactly one `getEditableMemberIds`-style utility used everywhere, tested against grandparents/cousins/siblings-of-siblings as explicit exclusions.
+- [ ] **Font renders on `/family` and `/manage`:** Often verified only on the developer's own machine (which likely already has broad Unicode font coverage at the OS level) — verify on a device/VM/browser profile with no Ethiopic font pre-installed, and with the self-hosted font as the *only* possible source of Ethiopic glyphs (e.g. temporarily block the font network request and confirm tofu appears, then unblock and confirm it doesn't — proves the self-hosted font is actually load-bearing, not incidentally masked by an OS font).
+- [ ] **Migration applies on both engines:** Often verified only against the Docker Compose `mysql:8.4` service — verify the exact same `.sql` file against whatever MariaDB version is used for "plain local" (non-Docker) development, per this project's own documented prior incident.
+- [ ] **`geezFullname` getter edge cases:** Often only manually tested with "all fields filled" — verify the none/one-part/two-part combinatorial matrix with an actual unit test, not just a manual click-through.
+- [ ] **Ge'ez text has a `lang` attribute:** Often invisible in a purely visual QA pass (looks the same with or without it) — verify explicitly in code review or an accessibility audit, since nothing renders differently without it.
+- [ ] **No external font CDN request for the new font:** Often invisible unless someone opens the Network tab — verify with an actual network trace of the deployed (not dev-proxy) app.
+- [ ] **Truncation on the fixed-width tree card:** Often only checked with placeholder/short test names — verify against the single longest real Ge'ez name in the actual family dataset.
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|----------------|------------------|
-| A cycle already exists in production data | HIGH | Requires a manual data-repair script (find and break the cycle via direct SQL/admin tooling) before any recursive read will work again; add the cycle-prevention check immediately to stop recurrence, then backfill-audit existing data |
-| Duplicate parent nodes already forked part of the tree | MEDIUM | Build (even a minimal) admin merge tool: reassign all child/spouse edges from the duplicate node to the canonical one, then delete the duplicate; requires careful transaction handling to avoid partial merges |
-| Uploaded photos lost due to non-persistent volume | LOW–MEDIUM | If caught early (no real user data yet), simply add the named volume and re-upload test data; if real user photos were lost, there is no recovery — communicate loss and re-request uploads from users |
-| Permission-scope bug allowed out-of-scope edits before being caught | MEDIUM–HIGH | Audit recent mutation history (if any audit log/timestamps exist) for edits made outside the intended scope; may require manually reviewing and reverting affected `FamilyMember` records; add the missing test before re-enabling the affected mutation |
-| Membership gate bypass allowed an unlinked user to read/write family data | MEDIUM | Patch the missing resolver-level guard immediately; review what that user could have accessed (family data is likely low-sensitivity relative to auth credentials, but personal data like birthdate/address/photo is still exposed) and consider notifying affected members per the app's data-sensitivity posture |
+| Font subset missing glyphs discovered post-deploy | LOW | Swap in the full unsubsetted font file (no schema/API change involved); redeploy frontend only |
+| Migration run against MariaDB fails partway through a multi-statement `ALTER TABLE` | MEDIUM | `ALTER TABLE` statements in this project's migrations are typically single multi-column statements (see 014) — a partial-apply mid-statement is unlikely with MySQL's DDL atomicity per-statement, but if it happens, manually inspect `SHOW CREATE TABLE family_members` on the affected DB, hand-patch to match the intended end state, then re-run only the `UPDATE`/backfill portion |
+| `geezFullname` getter bug shipped (stray "null" strings visible in production) | LOW | VIRTUAL column — fixing the getter and redeploying the backend is enough, no data migration needed since nothing was persisted incorrectly (the getter computes at read time) |
+| Discovered post-launch that headings/some component render Ge'ez text with a font stack that excludes the Ethiopic font (Pitfall 8) | LOW | Add the font to the missing stack constant in `theme.js`; no data or API change, frontend-only redeploy |
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
 |---------|-------------------|----------------|
-| 1. N+1 fan-out on deep tree | Relationship resolvers / data-model phase | Query-count assertion stays flat (not O(generations)) against a programmatic deep-tree fixture |
-| 2. Unbounded recursive query depth | Relationship resolvers phase (same as #1) | A hand-crafted over-depth query is rejected by the depth-limit plugin in a test |
-| 3. Cycles in parent/child graph | Data-model / relationship-mutation phase | Test asserts `setParent` rejects an edge that would make an ancestor a descendant |
-| 4. Asymmetric spouse relationship | Data-model design phase | Test reads the relationship from both members of a pair and asserts equality |
-| 5. Wrong cascade/orphan behavior on delete | Data-model design phase | Test deletes a member with children/spouse and asserts the exact, decided survival behavior |
-| 6. Sibling dedup edge cases (half-siblings, duplicate parents) | Dedup-rule + `/manage` UI phase | Tests cover case/whitespace normalization, half-sibling false-positive is documented, and search-before-create UX is present |
-| 7. Immediate-relatives scope computed wrong | Permission-scoping phase | Single `getEditableMemberIds` utility tested against explicit exclusion fixtures (grandparent, cousin, sibling-of-sibling) |
-| 8. Relationship edits as privilege escalation | Permission-scoping phase (same as #7) | Test: linked Member A cannot unilaterally attach themselves to linked Member B's subtree without consent/admin approval |
-| 9. Insecure file upload handling | File-upload phase | Adversarial fixtures (path traversal, mislabeled content, oversized file) are the first red tests, before the happy path |
-| 10. Volume persistence / upload transport choice | File-upload phase (same as #9) | Manual/CI check: photo survives a container rebuild; REST-vs-GraphQL-multipart decision recorded as a Key Decision |
-| 11. Membership gate is frontend-only | Membership-gating phase | Integration test: verified-but-unlinked JWT calling a family resolver directly is rejected |
-| 12. First-admin bootstrap chicken-and-egg | Membership-gating phase (same as #11) | Integration test: fresh ADMIN with zero linked members can still create/link the first node; v1.1 admin-promotion regression test still passes |
-| 13. `sync()`/DataLoader/permission logic diverges test-vs-prod | Continuous, starting at data-model phase | Fresh-DB `sync({ force: true })` smoke test; test harness reuses production's exact `context()`/DataLoader/guard wiring |
+| 1. Font subset drops Tigrinya-specific glyphs | Font & theme integration | Manual render check against real Tigrinya name fixtures (not generic Ethiopic sample text) |
+| 2. `sync()` doesn't add columns | Data model / migration | Boot-and-verify checklist in README, same format as migrations 009/011/014/015 |
+| 3. MySQL-8-only migration syntax breaks MariaDB | Data model / migration | Run the exact `.sql` file against both a MySQL 8.4 and a MariaDB instance before marking done |
+| 4. Collation doesn't help/hurt Ge'ez search | Data model / migration | Code-review note in the migration file; no Ethiopic-specific collation exists, documented explicitly |
+| 5. FOUT/FOIT layout flicker on tree cards | Font & theme integration | Visual check on `/family` specifically, cold cache, `font-display` choice justified in review |
+| 6. Font path typo silently 404s | Font & theme integration | Manual visual load check as a mandatory "done" gate, not just a green build |
+| 7. New font loaded from Google CDN instead of self-hosted | Font & theme integration | Network trace of deployed app shows zero `fonts.googleapis.com`/`fonts.gstatic.com` requests for the Ethiopic font |
+| 8. MUI variant-level fontFamily override excludes the new font | Font & theme integration + Display/rendering | Audit every actual Ge'ez-name render site against final `theme.js` font stacks |
+| 9. `geezFullname` getter mishandles partial fill | Data model / migration | Unit test matrix: none / first-only / last-only / mothers-only / all combinations |
+| 10. Fixed-width tree card truncates Ge'ez names harder than Latin | Display/rendering | Visual check against the longest real Ge'ez name in the actual dataset |
+| 11. Missing `lang` attribute | Display/rendering | Code review checklist item on the shared name-rendering helper/component |
+| Testing: jsdom can't verify glyph rendering | Testing / cross-cutting | See dedicated section below |
+
+## Testing: what jsdom/Vitest genuinely can and cannot verify
+
+**Cannot verify (jsdom has no real layout/rendering engine — no font parsing, no glyph shaping, no visual box model beyond a JSDOM approximation):**
+- Whether a given Unicode code point actually has a glyph in the loaded font (tofu detection).
+- Whether `font-display`/FOUT/FOIT produces a visible flicker.
+- Actual pixel truncation/overflow behavior of `noWrap` ellipsis text in the fixed-width card.
+- Whether the self-hosted `@font-face` file is reachable (jsdom doesn't fetch external resources like fonts by default).
+
+**Can verify (and should be covered in this milestone's test suite):**
+- **Presence of the expected Ge'ez text as a string** in the rendered DOM — `screen.getByText(member.geezFullname)` or an RTL query matching the raw Unicode string proves the *data* flows through the component correctly, independent of whether it visually renders as intended glyphs or tofu.
+- **`font-family` value present in computed/inline styles** — e.g. asserting the rendered element's `style.fontFamily` (or the MUI `sx`-generated class) includes the expected font-family token string (`"Noto Sans Ethiopic"` or whatever the chosen family name is) — this proves the *CSS wiring* is correct (the right stack is applied to the right element) even though jsdom can't prove the glyph itself paints correctly.
+- **`@font-face` rule registration** — if the font is loaded via a CSS module under test, asserting that a stylesheet/CSSOM rule for `@font-face` with the expected `font-family` name exists is a reasonable smoke test that the wiring exists (this is a weaker signal than visual proof, but catches "the CSS file was never imported" class of regressions).
+- **`lang` attribute presence** on whatever element wraps the Ge'ez text (Pitfall 11) — straightforward DOM assertion.
+- **The `geezFullname` derivation logic** (Pitfall 9) — this is the highest-value, cheapest test in the whole feature: a pure Sequelize-model-getter unit test (or, if extracted into a standalone helper function per "keep the shared display-name helper unit-tested" in the question) covering the none/first-only/last-only/mothers-only/all matrix, with zero dependency on jsdom, fonts, or a database. **Extract this into a shared, framework-agnostic helper function** (not just a Sequelize `VIRTUAL` getter) if the same "join non-empty parts" logic is needed on the frontend too (e.g. a display component that needs to decide whether to show a Ge'ez row at all) — a single tested helper avoids the getter logic being duplicated (and drifting) between backend and frontend.
+- **Fallback-to-Latin-name behavior** — a component test asserting that a member with `geezFullname: null` renders the Latin `fullname` and nothing else (no stray separator/empty row) is a pure DOM/logic assertion, well within jsdom's capabilities.
+
+**Recommendation for this milestone's test plan:** budget test-writing effort toward the DOM-assertable items above (text presence, font-family wiring, lang attribute, the shared helper's edge-case matrix, fallback behavior) as the automated safety net, and treat glyph-rendering/visual-truncation/FOUT concerns as **manual verification checklist items** in the phase's human sign-off step — consistent with how this project already handles browser-dependent concerns it can't automate (see PROJECT.md's `16-HUMAN-UAT.md` precedent for the photo-crop feature, which used the same "can't automate in jsdom, defer to manual sign-off" pattern for a different browser-only concern).
+
+**Phase to address:** Testing is cross-cutting — the shared helper's unit tests belong in the Data model / migration phase (where the getter/helper is authored), DOM-assertable component tests belong in the Display/rendering phase, and the manual glyph/visual verification checklist should be an explicit sign-off gate before the milestone is considered shippable (mirroring the existing `HUMAN-UAT.md` pattern).
 
 ## Sources
 
-- [Apollo GraphQL Docs — Fetching Data (DataLoader patterns)](https://www.apollographql.com/docs/apollo-server/data/fetching-data)
-- [Apollo GraphQL Docs — Handling the N+1 Problem](https://www.apollographql.com/docs/graphos/schema-design/guides/handling-n-plus-one)
-- [Using Apollo Server 4 to Solve the N+1 Problem with DataLoaders — CodeSignal](https://codesignal.com/learn/courses/advanced-graphql-data-patterns-and-fetching-1/lessons/using-apollo-server-4-to-solve-the-n1-problem-with-data-loaders)
-- [MySQL 8.0 Labs — Recursive Common Table Expressions (CTEs), Part Three: Hierarchies](https://dev.mysql.com/blog-archive/mysql-8-0-labs-recursive-common-table-expressions-in-mysql-ctes-part-three-hierarchies/)
-- [Cycle Detection for Recursive Search in Hierarchical Trees — sqlfordevs.com](https://sqlfordevs.com/cycle-detection-recursive-query)
-- [Recursive CTE vs Closure Tables in MySQL — Medium](https://medium.com/@ramu.ramaiah/recursive-cte-vs-closure-tables-in-mysql-choosing-the-right-strategy-for-hierarchical-data-c1c89ebd264f)
-- [Apollo Server File Upload Best Practices — Apollo GraphQL Blog](https://www.apollographql.com/blog/file-upload-best-practices)
-- [GraphQL.org — Handling File Uploads in GraphQL](https://graphql.org/learn/file-uploads/)
-- [Doyensec — "That single GraphQL issue that you keep missing" (GraphQL CSRF via multipart)](https://blog.doyensec.com/2021/05/20/graphql-csrf.html)
-- [Apollo GraphQL Docs — CSRF Prevention](https://www.apollographql.com/docs/graphos/routing/security/csrf)
-- [ReactFlow for Family Tree Visualization — tva.sg](https://www.tva.sg/insights/reactflow-family-tree-visualization)
-- [family-chart — D3-based family tree visualization (GitHub)](https://github.com/donatso/family-chart)
-- Internal: `.planning/codebase/CONCERNS.md` (existing scaling/pool/pagination concerns, no query depth limiting, `sync()` vs migrations debt)
-- Internal: `.planning/PROJECT.md` (v1.1 first-admin race-safe promotion mechanism, v2.0 feature scope and deferred-scope boundaries)
+- [Ethiopic (Unicode block) — Wikipedia](https://en.wikipedia.org/wiki/Ethiopic_(Unicode_block)) — confirms labialized consonant series live in the main block, U+1200–137F
+- [Ethiopic Supplement — Wikipedia](https://en.wikipedia.org/wiki/Ethiopic_Supplement) — confirms U+1380–139F is primarily Sebat Bet Gurage + tonal marks, not core Tigrinya letters
+- [Unicode Ethiopic block chart (U1200.pdf)](https://www.unicode.org/charts/PDF/U1200.pdf) and [Ethiopic Supplement chart (U1380.pdf)](https://www.unicode.org/charts/PDF/U1380.pdf) — primary Unicode source for both corrections above
+- [Ethiopic Extended-A — Wikipedia](https://en.wikipedia.org/wiki/Ethiopic_Extended-A) — confirms Extended-A is further Gurage/Silt'e/Kistane letters, not Tigrinya/Amharic
+- MySQL/MariaDB collation incompatibility: multiple corroborating sources on `ERROR 1273 Unknown collation: 'utf8mb4_0900_ai_ci'` when a MySQL-8-authored dump/DDL is replayed against MariaDB (`utf8mb4_0900_ai_ci` introduced MySQL 8.0.1, not implemented by MariaDB) — [XenForo community thread](https://xenforo.com/community/threads/migrating-to-mariadb-error-1273-hy000-unknown-collation-utf8mb4_0900_ai_ci.198854/), [TecAdmin writeup](https://tecadmin.net/resolved-unknown-collation-utf8mb4_0900_ai_ci/)
+- Repo-internal evidence (HIGH confidence, direct read): `backend/migrations/manual/009/011/014/015/016/017-*.sql`, `README.md` "Manual Database Migrations" section, `backend/src/config/database.js`, `docker-compose.yml`, `backend/src/models/FamilyMember.js`, `frontend/src/components/family/MemberNode.jsx`, `frontend/src/components/manage/AdminMemberTable.jsx`, `frontend/src/components/manage/AddRelativeDialog.jsx`, `frontend/src/theme.js`, `frontend/index.html`, `frontend/vite.config.js`, `frontend/vitest.config.js`, `frontend/test/setup.js`, `docker-deploy/Caddyfile` — this project's own conventions and prior-incident history (the MySQL8/MariaDB divergence is called out as "already bitten this before" in the milestone constraints)
+- Self-hosting Google Fonts pattern (public/`google-webfonts-helper`, subsetting-tool defaults defaulting to Latin) — [dominikschilling.de self-hosting notes](https://dominikschilling.de/notes/self-hosting-google-web-fonts-helper/), [Noto Sans Ethiopic on Fontsource](https://fontsource.org/fonts/noto-sans-ethiopic), [Noto Sans Ethiopic — Google Fonts](https://fonts.google.com/noto/specimen/Noto%2BSans%2BEthiopic)
 
 ---
-*Pitfalls research for: Collaborative family-tree domain (v2.0 milestone) on Express/Apollo/Sequelize/MySQL/React stack*
-*Researched: 2026-07-21*
+*Pitfalls research for: Ge'ez native-script names + self-hosted webfont on a React/MUI + Express/Sequelize/MySQL app (v3.0 milestone)*
+*Researched: 2026-07-30*
