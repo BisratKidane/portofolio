@@ -17,6 +17,10 @@ export const familyMemberTypeDefs = `#graphql
     fullname: String!
     gender: Gender!
     mothersname: String
+    geezFirstname: String
+    geezLastname: String
+    geezMothersname: String
+    geezFullname: String
     email: String
     birthdate: String
     isAlive: Boolean!
@@ -41,6 +45,9 @@ export const familyMemberTypeDefs = `#graphql
     lastname: String!
     gender: Gender!
     mothersname: String
+    geezFirstname: String
+    geezLastname: String
+    geezMothersname: String
     email: String
     birthdate: String
     isAlive: Boolean
@@ -56,6 +63,9 @@ export const familyMemberTypeDefs = `#graphql
     lastname: String
     gender: Gender
     mothersname: String
+    geezFirstname: String
+    geezLastname: String
+    geezMothersname: String
     email: String
     birthdate: String
     isAlive: Boolean

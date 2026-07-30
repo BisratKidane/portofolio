@@ -38,7 +38,17 @@ async function notifyAdminsOfPendingRegistration(models, { invitation, user }) {
   );
 }
 
-export const OPTIONAL_FAMILY_MEMBER_FIELDS = ['mothersname', 'email', 'birthdate', 'deathdate', 'phone', 'address'];
+export const OPTIONAL_FAMILY_MEMBER_FIELDS = [
+  'mothersname',
+  'geezFirstname',
+  'geezLastname',
+  'geezMothersname',
+  'email',
+  'birthdate',
+  'deathdate',
+  'phone',
+  'address'
+];
 
 // Admin-submitted `newMember` payloads send blank optional fields as empty
 // strings, not null/undefined. Sequelize only skips validators for
