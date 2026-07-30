@@ -29,8 +29,8 @@ export const colors = {
   gradientSoft: 'linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%)',
 };
 
-const FONT_SANS = '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-const FONT_DISPLAY = '"Sora", "Inter", system-ui, sans-serif';
+const FONT_SANS = '"Inter", "Noto Sans Ethiopic", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+const FONT_DISPLAY = '"Sora", "Noto Sans Ethiopic", "Inter", system-ui, sans-serif';
 
 const theme = createTheme({
   palette: {
