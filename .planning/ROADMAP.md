@@ -93,7 +93,10 @@ Plans:
   2. `NewFamilyMemberInput`/`EditFamilyMemberInput` accept the three Ge'ez fields, persisted via the existing create/update resolvers with no new resolver code.
   3. The three Ge'ez fields are added to `OPTIONAL_FAMILY_MEMBER_FIELDS`, so clearing a Ge'ez field via the API persists `null`, not an empty string — proven by an integration test.
   4. A GraphQL integration test creates and edits a member with Ge'ez fields and asserts a correct round-trip read-back.
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 19-01-PLAN.md — Expose Ge'ez fields on the GraphQL type + inputs, extend OPTIONAL_FAMILY_MEMBER_FIELDS, harden geezFullname VIRTUAL, add integration test (DATA-03)
 
 ### Phase 20: Self-Hosted Font & Theme
 **Goal**: Ge'ez script renders correctly and consistently on every device via a self-hosted webfont, with zero CDN dependency and no regression to existing Latin rendering.
@@ -166,7 +169,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22 → 23. (Phase 2
 | 16. Photo Upload | v2.0 | 7/7 | Complete | 2026-07-24 |
 | 17. /family Deep Tree Visualization | v2.0 | 4/4 | Complete | 2026-07-25 |
 | 18. Data Model & Migration | v3.0 | 2/2 | Complete    | 2026-07-30 |
-| 19. GraphQL Layer | v3.0 | 0/TBD | Not started | - |
+| 19. GraphQL Layer | v3.0 | 0/1 | Not started | - |
 | 20. Self-Hosted Font & Theme | v3.0 | 0/TBD | Not started | - |
 | 21. Shared Display Helper | v3.0 | 0/TBD | Not started | - |
 | 22. Render Surfaces (Read Path) | v3.0 | 0/TBD | Not started | - |
