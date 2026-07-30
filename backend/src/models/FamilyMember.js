@@ -73,7 +73,7 @@ export function initFamilyMember(sequelize) {
         allowNull: true
       },
       geezFullname: {
-        type: DataTypes.VIRTUAL,
+        type: new DataTypes.VIRTUAL(DataTypes.STRING, ['geezFirstname', 'geezLastname']),
         get() {
           return [this.geezFirstname, this.geezLastname].filter(Boolean).join(' ') || null;
         }
