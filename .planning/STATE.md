@@ -94,6 +94,7 @@ None yet.
 - New for v3.0: font subsetting/tooling risk — a generic "self-host Google Fonts" recipe can silently drop Tigrinya-specific labialized consonant glyphs (ቨ, ቐ — main Ethiopic block U+1200–137F, not the Supplement U+1380–139F as the milestone brief originally assumed). Phase 20 must verify against real Tigrinya name fixtures, not generic Ethiopic sample text.
 - New for v3.0: the fixed 252×120px `/family` tree card is already tight for Latin `noWrap` text; Ge'ez glyphs are visually wider at the same character count. Phase 22 needs a mandatory manual visual pass against the longest real Ge'ez name in the actual dataset.
 - New for v3.0: MUI Autocomplete's default filter only matches `getOptionLabel` (kept Latin-only per the no-toggle decision) — Phase 23 needs a custom `filterOptions` via `createFilterOptions`, decoupled from the visible option label.
+- Phase 20 scope note (2026-07-30): ROADMAP SC4's "manual pass on `/family` tree cards shows no FOUT-driven layout shift" is intentionally split — Phase 20 proves font *resolution* (paste arbitrary Ge'ez sample text into a `Typography`) since no `/family` surface renders real Ge'ez data yet; the tree-card truncation/layout-shift check against real Ge'ez names is Phase 22's job (RESEARCH.md Pitfall 4). Do not flag the deferred `/family`-specific check as an unmet Phase 20 criterion at `/gsd:verify-work 20`.
 
 ## Deferred Items
 

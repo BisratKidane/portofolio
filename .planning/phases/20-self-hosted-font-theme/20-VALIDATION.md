@@ -1,8 +1,8 @@
 ---
 phase: 20
 slug: self-hosted-font-theme
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-07-30
 ---
@@ -68,11 +68,11 @@ created: 2026-07-30
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (the new `theme` test)
-- [ ] No watch-mode flags (use `npm test` = `vitest run`, non-watch)
-- [ ] Feedback latency < 20s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (the new `theme` test is created by the single tdd task itself)
+- [x] No watch-mode flags (use `npm test` = `vitest run`, non-watch)
+- [x] Feedback latency < 20s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-07-30 (plan-checker PASS)
