@@ -25,12 +25,17 @@ See: .planning/PROJECT.md (updated 2026-07-30)
 
 ## Current Position
 
-Phase: 20 (self-hosted-font-theme) — EXECUTING
-Plan: 1 of 1
-Status: Executing Phase 20
-Last activity: 2026-07-30 -- Phase 20 execution started
+Phase: 20 (self-hosted-font-theme) — EXECUTED, awaiting manual sign-off
+Plan: 1 of 1 complete
+Status: Code complete + verified (automated). Verifier status human_needed — 3 manual visual/network sign-off items remain before FONT-01/FONT-02 close.
+Last activity: 2026-07-30 -- Phase 20 executed; verification GOAL ACHIEVED (pending human sign-off)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100% (automated) · manual sign-off pending
+
+### Phase 20 — outstanding manual sign-off (close via `/gsd:verify-work 20`)
+1. DevTools Network trace: confirm Noto Sans Ethiopic woff/woff2 is served same-origin from the local build (zero external request for THIS font; Inter/Sora on their CDN are expected/out-of-scope).
+2. Real Tigrinya glyph fixture (ቨ U+1268, ቐ U+1250) renders with correct shapes across ≥2 browser/OS combos (jsdom cannot assert this).
+3. No FOUT-driven layout shift on hard-reload under throttled network (font-resolution scope; the `/family` tree-card-specific check is Phase 22's job per STATE scope note).
 
 ## Deferred Items
 
