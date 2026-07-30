@@ -60,6 +60,24 @@ export function initFamilyMember(sequelize) {
         type: DataTypes.STRING,
         allowNull: true
       },
+      geezFirstname: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
+      geezLastname: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
+      geezMothersname: {
+        type: DataTypes.STRING,
+        allowNull: true
+      },
+      geezFullname: {
+        type: DataTypes.VIRTUAL,
+        get() {
+          return [this.geezFirstname, this.geezLastname].filter(Boolean).join(' ') || null;
+        }
+      },
       fullname: {
         type: DataTypes.VIRTUAL,
         get() {
