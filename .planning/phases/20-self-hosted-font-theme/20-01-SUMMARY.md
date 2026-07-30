@@ -109,3 +109,7 @@ These are explicitly out of scope for this plan's own automated completion (per 
 ---
 *Phase: 20-self-hosted-font-theme*
 *Completed: 2026-07-30*
+
+## Self-Check: PASSED
+
+All created/modified files verified present: `frontend/package.json`, `package-lock.json`, `frontend/src/main.jsx`, `frontend/src/theme.js`, `frontend/src/theme.test.js`, `.planning/phases/20-self-hosted-font-theme/20-01-SUMMARY.md`. All 5 task/summary commits verified present in `git log`: `b9e765f`, `0231ed4`, `72a734a`, `e902941`, `c3243e3`.
