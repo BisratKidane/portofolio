@@ -1,8 +1,9 @@
 ---
 phase: 20-self-hosted-font-theme
 verified: 2026-07-30T21:55:00Z
-status: human_needed
-score: 4/4 automated must-haves verified (2 additional criteria are correctly manual-only)
+status: passed
+signed_off: 2026-07-30T20:01:30Z
+score: 4/4 automated must-haves verified + 3 manual sign-off items confirmed via UAT (see 20-UAT.md)
 overrides_applied: 0
 ---
 
@@ -108,7 +109,9 @@ No code-level gaps found. All automatable success criteria (SC1's install/bundle
 - The two genuinely manual-only success criteria (SC2 glyph rendering, and the network-trace half of SC1) are honestly recorded as pending in SUMMARY.md — not misrepresented as done.
 - SC4's `/family`-tree-card-specific FOUT check is correctly deferred to Phase 22 per STATE.md's documented scope note and is NOT flagged here as an unmet Phase 20 criterion.
 
-The only reason status is `human_needed` rather than `passed` is the presence of genuine, correctly-identified manual sign-off items (network trace + cross-browser glyph visual pass) — these were never claimed as automated and require a human with a real browser to close out. No plan or code change is needed to reach `passed`; only human sign-off on the three items above.
+The only reason status was initially `human_needed` rather than `passed` was the presence of genuine, correctly-identified manual sign-off items (network trace + cross-browser glyph visual pass + FOUT) — these were never claimed as automated and required a human with a real browser to close out.
+
+**UPDATE 2026-07-30 (post-UAT):** Status promoted to `passed`. All three manual sign-off items were confirmed via `/gsd:verify-work 20` against the production build served locally (`20-UAT.md`, 4/4 tests passed, 0 issues): (1) Ge'ez glyphs incl. ቨ/ቐ render correctly across browsers, (2) Noto Sans Ethiopic served same-origin with no external request for the Ge'ez font, (3) no FOUT-driven layout shift on throttled hard reload, plus a cold-start smoke confirming Latin UI is unregressed. No plan or code change was needed.
 
 ---
 
