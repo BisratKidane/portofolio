@@ -24,7 +24,7 @@
 
 - [x] **DATA-01**: A family member can store an optional Ge'ez first name, last name, and mother's name (three nullable `utf8mb4` columns on `family_members`), added via a portable manual migration (`018-*.sql`) that applies cleanly on both production MySQL 8.4 and local MariaDB (bare `CHARACTER SET utf8mb4`, no `utf8mb4_0900_ai_ci` collation, no `ENCRYPTION` clause).
 - [x] **DATA-02**: A derived `geezFullname` is exposed on `FamilyMember`, correct when only one Ge'ez part is present (no stray leading/trailing space) and empty when no Ge'ez parts are set.
-- [ ] **DATA-03**: The Ge'ez name fields are readable and writable over the GraphQL API — added to the relevant query selections and to the create/edit input types — and clearing a Ge'ez field persists `null` (added to `OPTIONAL_FAMILY_MEMBER_FIELDS`), not an empty string.
+- [x] **DATA-03**: The Ge'ez name fields are readable and writable over the GraphQL API — added to the relevant query selections and to the create/edit input types — and clearing a Ge'ez field persists `null` (added to `OPTIONAL_FAMILY_MEMBER_FIELDS`), not an empty string.
 
 ### VIEW — Display
 
@@ -75,7 +75,7 @@
 | FONT-02 | Phase 20 | Pending |
 | DATA-01 | Phase 18 | Complete |
 | DATA-02 | Phase 18 | Complete |
-| DATA-03 | Phase 19 | Pending |
+| DATA-03 | Phase 19 | Complete |
 | VIEW-01 | Phase 22 | Pending |
 | VIEW-02 | Phase 22 | Pending |
 | VIEW-03 | Phase 21 | Pending |
