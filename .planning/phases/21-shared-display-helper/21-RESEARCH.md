@@ -244,17 +244,15 @@ Not applicable — this is a new, first-of-its-kind file in this codebase (no pr
 | A2 | `ti` (not `am` or `und-Ethi`) is the correct BCP-47 subtag, based on WebSearch cross-referenced with Wikipedia's Tigrinya language article, not an authoritative IETF registry lookup in this session. | Common Pitfalls (Pitfall on `am` mixup), Code Examples | Low-Medium — if wrong, it's a one-line constant change (`GEEZ_LANG`) with no structural rework; screen-reader/font-matching behavior would be marginally less correct until fixed. |
 | A3 | The helper should read `member.geezFullname` rather than raw `geezFirstname`/`geezLastname`/`geezMothersname` parts — this is a design recommendation, not something ROADMAP.md states explicitly (its SC1 wording is ambiguous, see Pitfall 1). | Summary, Architecture Patterns, Pitfall 1 | Medium — if the planner instead wants the raw-parts approach (e.g., to avoid any dependency on Phase 18/19's exact getter behavior), the test fixtures and function signature would need to change, but the return-shape contract (null-or-`{text,lang}`) is unaffected either way. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should `getGeezDisplay` (or whatever it's named) validate/guard against a member object with a `geezFullname` that is not a string (e.g., accidentally a number or object)?**
+1. **Should `getGeezDisplay` validate/guard against a `geezFullname` that is not a string?**
    - What we know: GraphQL's schema types `geezFullname` as nullable `String`, so a well-formed API response can only ever produce `string | null`.
-   - What's unclear: whether any test fixture or future caller might pass a malformed object (e.g., from a stale cache or a mocking mistake in a test).
-   - Recommendation: skip explicit type-guarding — `?.trim()` on a non-string would throw, which is an acceptable fail-fast signal for a contract violation; adding runtime type-checking for an internal-only utility is not warranted at this scope.
+   - **RESOLVED: no type-guard.** The plan adopts this — `?.trim()` on a non-string throws (acceptable fail-fast for a contract violation); runtime type-checking for an internal-only utility is not warranted at this scope.
 
-2. **Does this phase's plan need any file beyond `displayName.js` + `displayName.test.js`?**
+2. **Does this phase need any file beyond `displayName.js` + `displayName.test.js`?**
    - What we know: ROADMAP SC1 only names `frontend/src/utils/displayName.js`; no other file is mentioned across Phase 21's three success criteria.
-   - What's unclear: whether the planner wants an `index.js` barrel in the new `utils/` directory (matching the backend's aggregator pattern) even though there's only one file in it.
-   - Recommendation: no barrel — the backend aggregator pattern (`schemas/index.js`, `resolvers/index.js`, `models/index.js`) exists because Apollo/Sequelize need arrays/merged objects; there's no analogous mechanical need on the frontend, and `frontend/src` doesn't use barrels anywhere today (per CLAUDE.md Module Design: "Not used on the frontend").
+   - **RESOLVED: no barrel.** The plan creates only the two files. The backend aggregator pattern exists because Apollo/Sequelize need merged objects; there's no analogous need on the frontend, and `frontend/src` uses no barrels today (CLAUDE.md Module Design: "Not used on the frontend").
 
 ## Environment Availability
 
