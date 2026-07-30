@@ -20,7 +20,7 @@ import MemberDetailPanel from '../components/family/MemberDetailPanel.jsx';
 const FAMILY_TREE_QUERY = `
   query FamilyTree {
     familyMembers {
-      id firstname lastname fullname gender birthdate isAlive photoUrl mothersname address
+      id firstname lastname fullname geezFullname gender birthdate isAlive photoUrl mothersname address
       mother { id fullname } father { id } spouses { id } children { id }
     }
   }
