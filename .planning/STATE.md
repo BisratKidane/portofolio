@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Ge'ez Native-Script Names
-status: ready_to_plan
-stopped_at: Phase 20 complete (1/1) — ready to discuss Phase 21
-last_updated: 2026-07-30T20:20:41.815Z
-last_activity: 2026-07-30 -- Phase 20 execution started
+status: executing
+stopped_at: Phase 20 complete (executed + UAT + secure), ready to plan Phase 21
+last_updated: "2026-07-30T20:43:31.868Z"
+last_activity: 2026-07-30 -- Phase 21 execution started
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 4
+  total_plans: 5
   completed_plans: 4
   percent: 50
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-30)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 21 — shared display helper
+**Current focus:** Phase 21 — shared-display-helper
 
 ## Current Position
 
-Phase: 21 (shared-display-helper)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-07-30 -- Phase 20 complete (executed + UAT-passed + threat-secure); ready to plan Phase 21
+Phase: 21 (shared-display-helper) — EXECUTING
+Plan: 1 of 1
+Status: Executing Phase 21
+Last activity: 2026-07-30 -- Phase 21 execution started
 
 Milestone progress: [█████░░░░░] 3/6 phases (18, 19, 20 complete) · 50%
 
