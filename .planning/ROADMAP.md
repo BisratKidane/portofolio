@@ -121,7 +121,10 @@ Plans:
   1. `frontend/src/utils/displayName.js` exports a helper that derives the Ge'ez name (or an explicit "no Ge'ez name" signal) from a member object, unit-tested across none/partial/all-filled cases.
   2. The helper attaches a `lang="ti"` marker to every Ge'ez text run it produces, with no `dir`/bidi change (Ge'ez is LTR).
   3. The helper's "no Ge'ez name" signal is distinct from an empty string, so every consumer can conditionally render nothing (no empty row, dash, or separator) rather than re-deriving the check itself.
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 21-01-PLAN.md — getGeezDisplay pure helper (TDD): null | { text, lang: 'ti' } from member.geezFullname (VIEW-03)
 
 ### Phase 22: Render Surfaces (Read Path)
 **Goal**: A member's Ge'ez name is visible everywhere the Latin name already appears — tree cards and `/manage` — without breaking existing layouts, and is searchable in the admin table.
