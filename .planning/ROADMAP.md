@@ -160,7 +160,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 22-01-PLAN.md — Add geezFullname to FAMILY_TREE_QUERY, EDITABLE_MEMBER_FIELDS, FAMILY_MEMBERS_QUERY (data prerequisite)
+- [x] 22-01-PLAN.md — Add geezFullname to FAMILY_TREE_QUERY, EDITABLE_MEMBER_FIELDS, FAMILY_MEMBERS_QUERY (data prerequisite)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -213,5 +213,5 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22 → 23. (Phase 2
 | 19. GraphQL Layer | v3.0 | 1/1 | Complete   | 2026-07-30 |
 | 20. Self-Hosted Font & Theme | v3.0 | 1/1 | Complete    | 2026-07-30 |
 | 21. Shared Display Helper | v3.0 | 1/1 | Complete    | 2026-07-30 |
-| 22. Render Surfaces (Read Path) | v3.0 | 0/3 | Not started | - |
+| 22. Render Surfaces (Read Path) | v3.0 | 1/3 | In Progress|  |
 | 23. Write Path & Quality Gate | v3.0 | 0/TBD | Not started | - |

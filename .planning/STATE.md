@@ -4,8 +4,8 @@ milestone: v3.0
 milestone_name: Ge'ez Native-Script Names
 status: executing
 stopped_at: Phase 22 UI-SPEC approved
-last_updated: "2026-07-30T21:37:37.580Z"
-last_activity: 2026-07-30 -- Phase 22 planning complete
+last_updated: "2026-07-30T21:41:30.906Z"
+last_activity: 2026-07-30 -- Phase 22 execution started
 progress:
   total_phases: 6
   completed_phases: 4
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-30)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 22 — render surfaces (read path)
+**Current focus:** Phase 22 — render-surfaces-read-path
 
 ## Current Position
 
-Phase: 22 (render-surfaces-read-path)
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-07-30 -- Phase 22 planning complete
+Phase: 22 (render-surfaces-read-path) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 22
+Last activity: 2026-07-30 -- Phase 22 execution started
 
 Milestone progress: [███████░░░] 4/6 phases (18, 19, 20, 21 complete) · 67%
 
