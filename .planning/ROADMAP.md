@@ -78,7 +78,11 @@ _Post-milestone note: the `/family` tree edge model was later changed from the u
   2. `FamilyMember.js` exposes the three new attributes plus a `geezFullname` VIRTUAL getter that joins only the present parts.
   3. `geezFullname` is unit-tested across none/first-only/last-only/mothersname-only/all-filled combinations: no stray leading/trailing space, no literal `"null"`/`"undefined"` strings, and `null` (not `""`) when no Ge'ez parts are set.
   4. Existing members with no Ge'ez data continue to boot, query, and serialize without error (backward-compatible column addition).
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 18-01-PLAN.md — FamilyMember model: Ge'ez STRING attrs + defensive geezFullname VIRTUAL getter, TDD red-green (DATA-01, DATA-02)
+- [ ] 18-02-PLAN.md — Portable 018 manual migration SQL + local MariaDB portability proof + README doc entry (DATA-01)
 
 ### Phase 19: GraphQL Layer
 **Goal**: Ge'ez name fields are readable and writable through the GraphQL API using the existing spread-passthrough resolvers, with zero new resolver logic.
