@@ -95,6 +95,13 @@ None - no external service configuration required. The documented prod apply aga
 - The migration file exists and is proven portable; Phase 19 (GraphQL layer) can expose the Ge'ez fields knowing the column DDL is ready for any environment that runs the documented apply command.
 - No blockers. Prod DB remains un-migrated by design until the coordinated Ge'ez API/UI deploy.
 
+## Self-Check: PASSED
+
+- FOUND: `backend/migrations/manual/018-add-family-members-geez-names.sql`
+- FOUND: `.planning/phases/18-data-model-migration/18-02-SUMMARY.md`
+- FOUND commit: `79388dc` (Task 1)
+- FOUND commit: `b962f06` (Task 2)
+
 ---
 *Phase: 18-data-model-migration*
 *Completed: 2026-07-30*
