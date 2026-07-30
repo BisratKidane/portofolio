@@ -4,6 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import '@fontsource/noto-sans-ethiopic/ethiopic-400.css';
+import '@fontsource/noto-sans-ethiopic/ethiopic-700.css';
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import theme from './theme.js';
