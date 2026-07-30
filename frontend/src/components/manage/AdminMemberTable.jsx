@@ -16,6 +16,7 @@ import {
 import LinkRoundedIcon from '@mui/icons-material/LinkRounded';
 import MemberAvatarImage from './MemberAvatarImage.jsx';
 import { colors } from '../../theme.js';
+import { getGeezDisplay } from '../../utils/displayName.js';
 
 function formatWhen(value) {
   if (!value) return null;
@@ -53,8 +54,11 @@ export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const filtered = members.filter((member) =>
-    member.fullname.toLowerCase().includes(search.trim().toLowerCase())
+  const term = search.trim().toLowerCase();
+  const filtered = members.filter(
+    (member) =>
+      member.fullname.toLowerCase().includes(term) ||
+      member.geezFullname?.toLowerCase().includes(term)
   );
 
   const paginated = filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
@@ -98,7 +102,9 @@ export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginated.map((member) => (
+              {paginated.map((member) => {
+                const geez = getGeezDisplay(member);
+                return (
                 <TableRow
                   key={member.id}
                   hover
@@ -112,6 +118,11 @@ export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
                     <Typography sx={{ fontWeight: 600, color: nameColor(member.gender) }} noWrap>
                       {member.fullname}
                     </Typography>
+                    {geez && (
+                      <Typography sx={{ fontSize: 12, fontWeight: 400, color: colors.slate }} lang={geez.lang} noWrap>
+                        {geez.text}
+                      </Typography>
+                    )}
                   </TableCell>
                   <TableCell sx={{ textAlign: 'center' }}>
                     {member.linkedUser && (
@@ -136,7 +147,8 @@ export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
                   </TableCell>
                   <TableCell><Provenance who={member.updatedBy} when={member.updatedAt} /></TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
           <TablePagination
