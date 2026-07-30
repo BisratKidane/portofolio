@@ -62,7 +62,7 @@ _Post-milestone note: the `/family` tree edge model was later changed from the u
 
 - [x] **Phase 18: Data Model & Migration** - Ge'ez name columns exist on `family_members`, with a correctly-derived `geezFullname`, before anything above depends on them. (completed 2026-07-30)
 - [x] **Phase 19: GraphQL Layer** - Ge'ez name fields are readable and writable over the GraphQL API. (completed 2026-07-30)
-- [ ] **Phase 20: Self-Hosted Font & Theme** - Ge'ez script renders correctly and consistently via a self-hosted webfont, with zero CDN dependency and no Latin regression.
+- [x] **Phase 20: Self-Hosted Font & Theme** - Ge'ez script renders correctly and consistently via a self-hosted webfont, with zero CDN dependency and no Latin regression. (completed 2026-07-30)
 - [ ] **Phase 21: Shared Display Helper** - One helper drives Latin/Ge'ez precedence and empty-handling identically everywhere.
 - [ ] **Phase 22: Render Surfaces (Read Path)** - A member's Ge'ez name is visible on `/family` tree cards and across `/manage`, and searchable in the admin table.
 - [ ] **Phase 23: Write Path & Quality Gate** - Ge'ez names can be entered/edited via existing dialogs and found via the add-relative picker, with the full suite green and a manual glyph sign-off closing the milestone.
@@ -111,7 +111,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 20-01-PLAN.md — Install @fontsource/noto-sans-ethiopic, wire main.jsx CSS imports, TDD theme.js font-stack ordering (FONT-01, FONT-02)
+- [x] 20-01-PLAN.md — Install @fontsource/noto-sans-ethiopic, wire main.jsx CSS imports, TDD theme.js font-stack ordering (FONT-01, FONT-02)
 
 ### Phase 21: Shared Display Helper
 **Goal**: One shared helper drives the Latin/Ge'ez display precedence and empty-handling rule identically across every render surface, preventing per-component drift.
@@ -173,7 +173,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22 → 23. (Phase 2
 | 17. /family Deep Tree Visualization | v2.0 | 4/4 | Complete | 2026-07-25 |
 | 18. Data Model & Migration | v3.0 | 2/2 | Complete    | 2026-07-30 |
 | 19. GraphQL Layer | v3.0 | 1/1 | Complete   | 2026-07-30 |
-| 20. Self-Hosted Font & Theme | v3.0 | 0/TBD | Not started | - |
+| 20. Self-Hosted Font & Theme | v3.0 | 1/1 | Complete   | 2026-07-30 |
 | 21. Shared Display Helper | v3.0 | 0/TBD | Not started | - |
 | 22. Render Surfaces (Read Path) | v3.0 | 0/TBD | Not started | - |
 | 23. Write Path & Quality Gate | v3.0 | 0/TBD | Not started | - |

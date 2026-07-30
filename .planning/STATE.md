@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Ge'ez Native-Script Names
-status: completed
+status: executing
 stopped_at: Phase 19 context gathered
-last_updated: "2026-07-30T19:04:38.995Z"
-last_activity: 2026-07-30 -- Phase 19 marked complete
+last_updated: "2026-07-30T19:45:33.508Z"
+last_activity: 2026-07-30 -- Phase 20 execution started
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 3
+  total_plans: 4
   completed_plans: 3
   percent: 33
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-30)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 19 — graphql-layer
+**Current focus:** Phase 20 — self-hosted-font-theme
 
 ## Current Position
 
-Phase: 19 — COMPLETE
+Phase: 20 (self-hosted-font-theme) — EXECUTING
 Plan: 1 of 1
-Status: Phase 19 complete
-Last activity: 2026-07-30 -- Phase 19 marked complete
+Status: Executing Phase 20
+Last activity: 2026-07-30 -- Phase 20 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
