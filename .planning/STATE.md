@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Ge'ez Native-Script Names
-status: executing
-stopped_at: Phase 19 context gathered
-last_updated: "2026-07-30T19:45:33.508Z"
+status: ready_to_plan
+stopped_at: Phase 20 complete (1/1) — ready to discuss Phase 21
+last_updated: 2026-07-30T20:20:41.815Z
 last_activity: 2026-07-30 -- Phase 20 execution started
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 4
-  completed_plans: 3
-  percent: 33
+  completed_plans: 4
+  percent: 50
 ---
 
 # Project State
@@ -21,21 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-30)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 20 — self-hosted-font-theme
+**Current focus:** Phase 21 — shared display helper
 
 ## Current Position
 
-Phase: 20 (self-hosted-font-theme) — EXECUTED, awaiting manual sign-off
-Plan: 1 of 1 complete
-Status: Code complete + verified (automated). Verifier status human_needed — 3 manual visual/network sign-off items remain before FONT-01/FONT-02 close.
-Last activity: 2026-07-30 -- Phase 20 executed; verification GOAL ACHIEVED (pending human sign-off)
+Phase: 21 (shared-display-helper)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-30 -- Phase 20 complete (executed + UAT-passed + threat-secure); ready to plan Phase 21
 
-Progress: [██████████] 100% (automated) · manual sign-off pending
+Milestone progress: [█████░░░░░] 3/6 phases (18, 19, 20 complete) · 50%
 
-### Phase 20 — outstanding manual sign-off (close via `/gsd:verify-work 20`)
-1. DevTools Network trace: confirm Noto Sans Ethiopic woff/woff2 is served same-origin from the local build (zero external request for THIS font; Inter/Sora on their CDN are expected/out-of-scope).
-2. Real Tigrinya glyph fixture (ቨ U+1268, ቐ U+1250) renders with correct shapes across ≥2 browser/OS combos (jsdom cannot assert this).
-3. No FOUT-driven layout shift on hard-reload under throttled network (font-resolution scope; the `/family` tree-card-specific check is Phase 22's job per STATE scope note).
+Phase 20 is fully closed: all 4 UAT tests passed, T-20-SC threat CLOSED, FONT-01/FONT-02 marked complete.
 
 ## Deferred Items
 
@@ -52,7 +49,7 @@ Both are browser-only manual checks from Phase 16 (Photo Upload); the underlying
 
 **Velocity:**
 
-- Total plans completed: 53 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0
+- Total plans completed: 54 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0
 - Average duration: - min
 - Total execution time: 0 hours (v3.0)
 
@@ -65,6 +62,7 @@ Both are browser-only manual checks from Phase 16 (Photo Upload); the underlying
 | 12–17 (v2.0) | 31 | - | - |
 | 18–23 (v3.0) | TBD | - | - |
 | 18 | 2 | - | - |
+| 20 | 1 | - | - |
 
 **Recent Trend:**
 
@@ -96,7 +94,7 @@ None yet.
 ### Blockers/Concerns
 
 - Carry-forward from v1.1: `sequelize.sync()` does not alter existing tables — v3.0's Ge'ez columns need a manual `.sql` migration (`018-*.sql`), same as every prior schema change to an existing table (009/011/013/014/016/017).
-- New for v3.0: font subsetting/tooling risk — a generic "self-host Google Fonts" recipe can silently drop Tigrinya-specific labialized consonant glyphs (ቨ, ቐ — main Ethiopic block U+1200–137F, not the Supplement U+1380–139F as the milestone brief originally assumed). Phase 20 must verify against real Tigrinya name fixtures, not generic Ethiopic sample text.
+- ✅ RESOLVED (Phase 20): font subsetting/glyph-coverage risk — the Ethiopic-subset `@fontsource/noto-sans-ethiopic` import (`ethiopic-400/700.css`) covers Tigrinya labialized forms (ቨ, ቐ); confirmed via UAT against real Tigrinya fixtures across ≥2 browsers.
 - New for v3.0: the fixed 252×120px `/family` tree card is already tight for Latin `noWrap` text; Ge'ez glyphs are visually wider at the same character count. Phase 22 needs a mandatory manual visual pass against the longest real Ge'ez name in the actual dataset.
 - New for v3.0: MUI Autocomplete's default filter only matches `getOptionLabel` (kept Latin-only per the no-toggle decision) — Phase 23 needs a custom `filterOptions` via `createFilterOptions`, decoupled from the visible option label.
 - Phase 20 scope note (2026-07-30): ROADMAP SC4's "manual pass on `/family` tree cards shows no FOUT-driven layout shift" is intentionally split — Phase 20 proves font *resolution* (paste arbitrary Ge'ez sample text into a `Typography`) since no `/family` surface renders real Ge'ez data yet; the tree-card truncation/layout-shift check against real Ge'ez names is Phase 22's job (RESEARCH.md Pitfall 4). Do not flag the deferred `/family`-specific check as an unmet Phase 20 criterion at `/gsd:verify-work 20`.
@@ -133,10 +131,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-30T18:11:11.560Z
-Stopped at: Phase 19 context gathered
-Resume file: .planning/phases/19-graphql-layer/19-CONTEXT.md
+Last session: 2026-07-30T20:20:41.815Z
+Stopped at: Phase 20 complete (executed + UAT + secure), ready to plan Phase 21
+Resume file: None
 
 ## Operator Next Steps
 
-- Run `/gsd:plan-phase 18` to plan the Data Model & Migration phase.
+- Run `/gsd:plan-phase 21` to plan the Shared Display Helper phase (VIEW-03). Phase 21 has no CONTEXT.md yet — plan-phase will offer to discuss first or plan directly.

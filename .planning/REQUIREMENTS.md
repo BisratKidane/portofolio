@@ -17,8 +17,8 @@
 
 ### FONT — Webfont & rendering
 
-- [ ] **FONT-01**: A Ge'ez-capable webfont (`@fontsource/noto-sans-ethiopic`, OFL-1.1) is self-hosted/bundled with the frontend — no external CDN — and wired into the MUI theme font stacks so Ge'ez script renders consistently regardless of the viewer's OS fonts.
-- [ ] **FONT-02**: Latin text continues to render in the existing Inter/Sora fonts via per-character fallback, with `font-display: swap` and no FOUT/layout-shift regression on the `/family` tree cards.
+- [x] **FONT-01**: A Ge'ez-capable webfont (`@fontsource/noto-sans-ethiopic`, OFL-1.1) is self-hosted/bundled with the frontend — no external CDN — and wired into the MUI theme font stacks so Ge'ez script renders consistently regardless of the viewer's OS fonts.
+- [x] **FONT-02**: Latin text continues to render in the existing Inter/Sora fonts via per-character fallback, with `font-display: swap` and no FOUT/layout-shift regression on the `/family` tree cards.
 
 ### DATA — Model, migration & API
 
@@ -71,8 +71,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FONT-01 | Phase 20 | Pending |
-| FONT-02 | Phase 20 | Pending |
+| FONT-01 | Phase 20 | Complete |
+| FONT-02 | Phase 20 | Complete |
 | DATA-01 | Phase 18 | Complete |
 | DATA-02 | Phase 18 | Complete |
 | DATA-03 | Phase 19 | Complete |
