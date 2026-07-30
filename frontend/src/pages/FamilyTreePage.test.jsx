@@ -129,13 +129,17 @@ describe('FamilyTreePage', () => {
     expect(link).toHaveAttribute('href', '/manage');
   });
 
-  it('renders a populated tree and opens the detail panel on node click', async () => {
+  it('renders a populated tree and opens the detail panel on node double-click', async () => {
     graphqlRequest.mockResolvedValueOnce({ familyMembers: [ADA] });
     renderPage();
 
     await waitFor(() => expect(screen.getAllByText('Ada Lovelace').length).toBeGreaterThan(0));
 
-    fireEvent.click(screen.getAllByText('Ada Lovelace')[0]);
+    // Single click re-roots; the detail panel now opens on double-click
+    // (two click events on the node).
+    const node = screen.getAllByText('Ada Lovelace')[0];
+    fireEvent.click(node);
+    fireEvent.click(node);
 
     await waitFor(() => expect(screen.getByText('Dates unknown')).toBeInTheDocument());
   });

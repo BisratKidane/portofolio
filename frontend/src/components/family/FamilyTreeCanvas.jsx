@@ -20,10 +20,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controls, MiniMap, Panel, ReactFlow, useReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Box, Button, FormControlLabel, Switch, TextField } from '@mui/material';
+import { Box, Button, FormControlLabel, Switch, TextField, Typography } from '@mui/material';
 import MemberNode from './MemberNode.jsx';
 import { layoutWithDagre } from './familyTree.layout.js';
-import { deriveSiblings } from './familyTree.assembly.js';
+import { collectDescendantIds, deriveSiblings } from './familyTree.assembly.js';
 import { colors } from '../../theme.js';
 
 const NODE_TYPES = { member: MemberNode };
@@ -154,8 +154,14 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
   const [expandedIds, setExpandedIds] = useState(() => new Set(initialExpandedIds));
   const [searchTerm, setSearchTerm] = useState('');
   const [collapsed, setCollapsed] = useState(false);
+  // The member the tree is currently re-rooted ("headed") on. null = the full
+  // forest from the top ancestor. Set by a single click on a member card.
+  const [focusRootId, setFocusRootId] = useState(null);
   const { fitView, getNode } = useReactFlow();
   const didInitialFit = useRef(false);
+  // Distinguishes a single click (re-root) from a double click (open panel):
+  // a click schedules the re-root, a double click cancels it and opens the panel.
+  const clickTimerRef = useRef(null);
 
   const membersById = useMemo(() => buildMembersById(nodes), [nodes]);
   const viewerNodeId = viewerId != null ? String(viewerId) : null;
@@ -165,20 +171,63 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
   // immediate family plus the lineage line through them (up to the head, down to
   // a leaf); the +N badges then reveal more. Expand restores the full tree. The
   // focal member is the viewer, falling back to the root ancestor.
+  // The full visible set when NOT collapsed: the focused member's descendant
+  // branch if re-rooted, else the whole forest.
+  const baseExpandedSet = useCallback(
+    () =>
+      focusRootId
+        ? collectDescendantIds(focusRootId, membersById, { includeSpouses: true })
+        : new Set(initialExpandedIds),
+    [focusRootId, membersById, initialExpandedIds]
+  );
+
   const handleToggleCollapse = useCallback(
     (event) => {
       const next = event.target.checked;
       setCollapsed(next);
       if (next) {
-        const collapsedSet = computeCollapsedSet(viewerNodeId ?? rootNodeId, membersById);
+        // Collapse around the current head if focused, else the viewer/root.
+        const focal = focusRootId ?? viewerNodeId ?? rootNodeId;
+        const collapsedSet = computeCollapsedSet(focal, membersById);
         setExpandedIds(collapsedSet.size ? collapsedSet : new Set(rootNodeId ? [rootNodeId] : []));
       } else {
-        setExpandedIds(new Set(initialExpandedIds));
+        setExpandedIds(baseExpandedSet());
       }
       requestAnimationFrame(() => fitView({ padding: 0.1, duration: 400 }));
     },
-    [viewerNodeId, rootNodeId, membersById, initialExpandedIds, fitView]
+    [focusRootId, viewerNodeId, rootNodeId, membersById, baseExpandedSet, fitView]
   );
+
+  // Re-root ("head") the tree on a member: show them at the top with only their
+  // descendants (their spouses included as in-laws). Clicking the current head
+  // again pops back to the full tree. D-08 read-only: this only re-frames the
+  // existing nodes, it never mutates data.
+  const focusOnMember = useCallback(
+    (rawId) => {
+      const id = String(rawId);
+      setCollapsed(false);
+      if (focusRootId === id) {
+        setFocusRootId(null);
+        setExpandedIds(new Set(initialExpandedIds));
+      } else {
+        const branch = collectDescendantIds(id, membersById, { includeSpouses: true });
+        setFocusRootId(id);
+        setExpandedIds(branch.size ? branch : new Set([id]));
+      }
+      requestAnimationFrame(() => fitView({ padding: 0.1, duration: 400 }));
+    },
+    [focusRootId, membersById, initialExpandedIds, fitView]
+  );
+
+  const resetToFullTree = useCallback(() => {
+    setFocusRootId(null);
+    setCollapsed(false);
+    setExpandedIds(new Set(initialExpandedIds));
+    requestAnimationFrame(() => fitView({ padding: 0.1, duration: 400 }));
+  }, [initialExpandedIds, fitView]);
+
+  // Cancel a pending single-click re-root if the component unmounts.
+  useEffect(() => () => clickTimerRef.current && clearTimeout(clickTimerRef.current.timer), []);
 
   // Memo key = the visible id set only, NOT the full node/edge arrays --
   // dagre re-runs on expand/collapse toggles, not on every render. Nodes
@@ -227,6 +276,7 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
           data: {
             member,
             isViewer: idOrNull(member) === viewerNodeId,
+            isFocusRoot: idOrNull(member) === focusRootId,
             hiddenCount,
             onToggleExpand: handleToggleExpand,
             ancestorHiddenCount,
@@ -234,7 +284,7 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
           }
         };
       }),
-    [positionedNodes, expandedIds, viewerNodeId, handleToggleExpand, handleToggleAncestorExpand]
+    [positionedNodes, expandedIds, viewerNodeId, focusRootId, handleToggleExpand, handleToggleAncestorExpand]
   );
 
   // Render each domain edge as a built-in React Flow edge type, styled by
@@ -322,11 +372,33 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
     [searchTerm, nodes, membersById, fitView]
   );
 
+  // Single click re-roots the tree on the member; double click opens the
+  // read-only detail panel. We detect the double click ourselves inside
+  // onNodeClick (a native double click fires two click events on the node):
+  // the first click schedules the re-root, a second click on the SAME node
+  // within the window cancels it and opens the panel instead. Available to
+  // every viewer — no role gating.
+  const CLICK_DELAY_MS = 220;
   const handleNodeClick = useCallback(
     (_event, node) => {
-      if (node.type === 'member' && onMemberClick) onMemberClick(node.id);
+      if (node.type !== 'member') return;
+      const id = node.id;
+      const pending = clickTimerRef.current;
+      if (pending && pending.id === id) {
+        // Second click on the same node → treat as double click → open panel.
+        clearTimeout(pending.timer);
+        clickTimerRef.current = null;
+        if (onMemberClick) onMemberClick(id);
+        return;
+      }
+      if (pending) clearTimeout(pending.timer);
+      const timer = setTimeout(() => {
+        clickTimerRef.current = null;
+        focusOnMember(id);
+      }, CLICK_DELAY_MS);
+      clickTimerRef.current = { id, timer };
     },
-    [onMemberClick]
+    [focusOnMember, onMemberClick]
   );
 
   return (
@@ -354,6 +426,11 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
             boxShadow: 1
           }}
         >
+          {focusRootId && (
+            <Button variant="outlined" onClick={resetToFullTree} sx={{ minHeight: 44 }}>
+              Show full tree
+            </Button>
+          )}
           <Button variant="contained" onClick={findMe} sx={{ minHeight: 44 }}>
             Find me
           </Button>
@@ -372,6 +449,9 @@ export default function FamilyTreeCanvas({ nodes, edges, initialExpandedIds, vie
               sx={{ minWidth: 160 }}
             />
           </Box>
+          <Typography variant="caption" sx={{ color: colors.slate, maxWidth: 200 }}>
+            Click a card to make that person the head of the tree · double-click for details.
+          </Typography>
         </Box>
       </Panel>
     </ReactFlow>

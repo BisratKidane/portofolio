@@ -173,13 +173,65 @@ describe('FamilyTreeCanvas', () => {
     await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument());
   });
 
-  it('calls onMemberClick with the clicked member id', async () => {
+  it('opens the detail panel on DOUBLE click (two clicks call onMemberClick)', async () => {
     const { onMemberClick } = renderCanvas();
     await waitFor(() => expect(screen.getByText('John Doe')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByText('John Doe'));
+    // A real double click fires two click events on the node.
+    const target = screen.getByText('John Doe');
+    fireEvent.click(target);
+    fireEvent.click(target);
 
     expect(onMemberClick).toHaveBeenCalledWith('4');
+  });
+
+  it('single-clicking a member re-roots the tree to that person + descendants, and does NOT open the panel', async () => {
+    // Ada (id '1') has child Byron (id '3'); John (id '4') is unrelated.
+    const { onMemberClick } = renderCanvas();
+    await waitFor(() => {
+      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Ada Lovelace'));
+
+    // After the click-vs-doubleclick delay, the tree is headed on Ada: her
+    // descendant Byron appears and the unrelated John is gone.
+    await waitFor(() => {
+      expect(screen.getByText('Byron Lovelace')).toBeInTheDocument();
+      expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+    });
+    // A single click must not open the read-only detail panel.
+    expect(onMemberClick).not.toHaveBeenCalled();
+    // Ada is flagged as the head.
+    expect(screen.getByTestId('member-node-1')).toHaveAttribute('data-focus-root', 'true');
+  });
+
+  it('shows a "Show full tree" button while focused that restores the full forest', async () => {
+    renderCanvas();
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Show full tree' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Ada Lovelace'));
+    await waitFor(() => expect(screen.queryByText('John Doe')).not.toBeInTheDocument());
+
+    const reset = await screen.findByRole('button', { name: 'Show full tree' });
+    fireEvent.click(reset);
+
+    await waitFor(() => expect(screen.getByText('John Doe')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Show full tree' })).not.toBeInTheDocument();
+  });
+
+  it('clicking the current head again pops back to the full tree', async () => {
+    renderCanvas();
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Ada Lovelace'));
+    await waitFor(() => expect(screen.queryByText('John Doe')).not.toBeInTheDocument());
+
+    // Click the head (Ada) again -> full tree restored (John visible again).
+    fireEvent.click(screen.getByText('Ada Lovelace'));
+    await waitFor(() => expect(screen.getByText('John Doe')).toBeInTheDocument());
   });
 
   // The tree now opens framed on the whole forest from the top ancestor (no

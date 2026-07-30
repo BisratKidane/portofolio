@@ -147,6 +147,19 @@ describe('MemberNode', () => {
     expect(screen.queryByText('You')).not.toBeInTheDocument();
   });
 
+  it('marks the re-rooted head with data-focus-root and a "Head" tag', () => {
+    renderNode({ isFocusRoot: true });
+    const card = screen.getByTestId(`member-node-${BASE_MEMBER.id}`);
+    expect(card).toHaveAttribute('data-focus-root', 'true');
+    expect(screen.getByText('Head')).toBeInTheDocument();
+  });
+
+  it('has data-focus-root false and no "Head" tag by default', () => {
+    renderNode();
+    expect(screen.getByTestId(`member-node-${BASE_MEMBER.id}`)).toHaveAttribute('data-focus-root', 'false');
+    expect(screen.queryByText('Head')).not.toBeInTheDocument();
+  });
+
   it('depicts a Male member by card colour (data-gender + accessible label), not a gender icon', () => {
     const { container } = renderNode({ member: { ...BASE_MEMBER, gender: 'Male' } });
     const card = screen.getByTestId(`member-node-${BASE_MEMBER.id}`);

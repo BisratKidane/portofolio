@@ -54,6 +54,7 @@ export default function MemberNode({ data }) {
   const {
     member,
     isViewer = false,
+    isFocusRoot = false,
     hiddenCount = 0,
     onToggleExpand,
     ancestorHiddenCount = 0,
@@ -70,6 +71,7 @@ export default function MemberNode({ data }) {
       elevation={0}
       data-testid={`member-node-${member.id}`}
       data-viewer-ring={isViewer ? 'true' : 'false'}
+      data-focus-root={isFocusRoot ? 'true' : 'false'}
       data-gender={genderLabel}
       aria-label={`${member.fullname}, ${genderLabel}`}
       title={genderLabel}
@@ -88,6 +90,9 @@ export default function MemberNode({ data }) {
         boxSizing: 'border-box',
         outline: isViewer ? `2px solid ${colors.primary}` : 'none',
         outlineOffset: 2,
+        // The current tree "head" (re-rooted focus) gets a distinct glow so it's
+        // obvious which person the branch is rooted at.
+        boxShadow: isFocusRoot ? `0 0 0 3px ${colors.primary}66` : 'none',
         '&:focus-visible': { outline: `2px solid ${colors.primary}`, outlineOffset: '2px' }
       }}
     >
@@ -131,7 +136,10 @@ export default function MemberNode({ data }) {
         <IconButton
           size="small"
           aria-label={`Show ${ancestorHiddenCount} hidden ancestors of ${member.fullname}`}
-          onClick={() => onToggleAncestorExpand && onToggleAncestorExpand(member.id)}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (onToggleAncestorExpand) onToggleAncestorExpand(member.id);
+          }}
           sx={{ ...BADGE_SX, top: -18 }}
         >
           +{ancestorHiddenCount}
@@ -154,8 +162,27 @@ export default function MemberNode({ data }) {
 
       {/* Right column: reserved row + fullname + birthday + mother + address. */}
       <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-        {/* Reserved row — kept empty for a future edit action (deferred). */}
-        <Box sx={{ height: 18, flexShrink: 0 }} />
+        {/* Top row: shows a "Head" tag when this card is the re-rooted tree
+            head; otherwise reserved (kept for a future edit action). */}
+        <Box sx={{ height: 18, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+          {isFocusRoot && (
+            <Typography
+              component="span"
+              sx={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: 0.4,
+                color: colors.primaryDark,
+                bgcolor: colors.gradientSoft,
+                px: 0.75,
+                borderRadius: 0.5,
+                lineHeight: 1.5
+              }}
+            >
+              Head
+            </Typography>
+          )}
+        </Box>
 
         {/* The viewer is identified by the card's double border (gender border +
             viewer outline ring), so no separate "You" chip is needed. */}
@@ -186,7 +213,10 @@ export default function MemberNode({ data }) {
         <IconButton
           size="small"
           aria-label={`Show ${hiddenCount} hidden descendants of ${member.fullname}`}
-          onClick={() => onToggleExpand && onToggleExpand(member.id)}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (onToggleExpand) onToggleExpand(member.id);
+          }}
           sx={{ ...BADGE_SX, bottom: -18 }}
         >
           +{hiddenCount}
