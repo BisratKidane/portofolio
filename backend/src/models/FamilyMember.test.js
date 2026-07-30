@@ -169,3 +169,75 @@ describe('date validation (D-10)', () => {
     await expect(instance.validate()).resolves.not.toThrow();
   });
 });
+
+describe("Ge'ez name fields nullable (DATA-01)", () => {
+  it('resolves when geezFirstname/geezLastname/geezMothersname are all omitted', async () => {
+    const instance = FamilyMember.build({ firstname: 'Jane', lastname: 'Doe', gender: 'Other' });
+
+    await expect(instance.validate()).resolves.not.toThrow();
+  });
+
+  it('declares geezFirstname, geezLastname, geezMothersname as nullable', () => {
+    expect(FamilyMember.rawAttributes.geezFirstname.allowNull).toBe(true);
+    expect(FamilyMember.rawAttributes.geezLastname.allowNull).toBe(true);
+    expect(FamilyMember.rawAttributes.geezMothersname.allowNull).toBe(true);
+  });
+});
+
+describe("geezFullname VIRTUAL getter (DATA-02, D-01, D-02)", () => {
+  it('declares geezFullname as a Sequelize VIRTUAL field', () => {
+    expect(FamilyMember.rawAttributes.geezFullname.type).toBeInstanceOf(DataTypes.VIRTUAL);
+  });
+
+  it('returns null when no Ge\'ez name parts are set (none)', () => {
+    const instance = FamilyMember.build({ firstname: 'Jane', lastname: 'Doe', gender: 'Female' });
+
+    expect(instance.geezFullname).toBeNull();
+  });
+
+  it('returns just geezFirstname when only it is set (first-only)', () => {
+    const instance = FamilyMember.build({
+      firstname: 'Jane',
+      lastname: 'Doe',
+      gender: 'Female',
+      geezFirstname: 'ጃነ'
+    });
+
+    expect(instance.geezFullname).toBe('ጃነ');
+  });
+
+  it('returns just geezLastname when only it is set (last-only)', () => {
+    const instance = FamilyMember.build({
+      firstname: 'Jane',
+      lastname: 'Doe',
+      gender: 'Female',
+      geezLastname: 'ዶ'
+    });
+
+    expect(instance.geezFullname).toBe('ዶ');
+  });
+
+  it('returns null when only geezMothersname is set (mothersname excluded per D-01)', () => {
+    const instance = FamilyMember.build({
+      firstname: 'Jane',
+      lastname: 'Doe',
+      gender: 'Female',
+      geezMothersname: 'ኣለም'
+    });
+
+    expect(instance.geezFullname).toBeNull();
+  });
+
+  it('joins geezFirstname and geezLastname with a single space, excluding geezMothersname, when all three are set (all-filled)', () => {
+    const instance = FamilyMember.build({
+      firstname: 'Jane',
+      lastname: 'Doe',
+      gender: 'Female',
+      geezFirstname: 'ጃነ',
+      geezLastname: 'ዶ',
+      geezMothersname: 'ኣለም'
+    });
+
+    expect(instance.geezFullname).toBe('ጃነ ዶ');
+  });
+});
