@@ -107,8 +107,11 @@ Plans:
   2. Ge'ez text — including real Tigrinya name fixtures covering labialized consonant forms (e.g. ቨ, ቐ) from the main Ethiopic Unicode block — renders with correct glyphs across at least two browser/OS combinations (manual visual sign-off; jsdom cannot assert glyph rendering).
   3. Both `theme.js` font-stack constants (`FONT_SANS` and `FONT_DISPLAY`) include the Ge'ez font ahead of any OS-fallback font.
   4. Latin text continues rendering in the existing Inter/Sora fonts via per-character fallback with `font-display: swap`, and a manual pass on the `/family` tree cards shows no FOUT-driven layout shift.
-**Plans**: TBD
+**Plans**: 1 plan
 **UI hint**: yes
+
+Plans:
+- [ ] 20-01-PLAN.md — Install @fontsource/noto-sans-ethiopic, wire main.jsx CSS imports, TDD theme.js font-stack ordering (FONT-01, FONT-02)
 
 ### Phase 21: Shared Display Helper
 **Goal**: One shared helper drives the Latin/Ge'ez display precedence and empty-handling rule identically across every render surface, preventing per-component drift.
