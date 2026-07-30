@@ -138,4 +138,8 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Run `/gsd:plan-phase 22` to plan Render Surfaces (Read Path) — VIEW-01, VIEW-02, FIND-01. Phase 22 retrofits `/family` tree cards + `/manage` surfaces to consume the `getGeezDisplay` helper (Phase 21) and adds Ge'ez-aware admin-table search. This is a frontend/visual phase — plan-phase's UI-SPEC gate will fire (unlike 20/21, this one has real render surfaces, so a UI-SPEC is likely warranted). Also note the STATE blocker: the 252×120px tree card needs a manual visual pass against the longest real Ge'ez name.
+- Phase 22 setup path chosen (2026-07-30): **discuss → UI-SPEC → plan** (user-selected — it's a real visual/layout phase). Recommended sequence, each after `/clear` for fresh context:
+  1. `/gsd:discuss-phase 22` — lock layout decisions: tree-card stacking/truncation on the fixed 252×120px card (STATE blocker: already tight for Latin `noWrap`, Ge'ez glyphs are wider — needs a plan against the LONGEST real Ge'ez name in the dataset), which `/manage` surfaces (relationship panels + admin table), and admin-table Ge'ez search UX (substring).
+  2. `/gsd:ui-phase 22` — produce the UI-SPEC design contract.
+  3. `/gsd:plan-phase 22` — plan. VIEW-01, VIEW-02, FIND-01. Every surface must call the `getGeezDisplay` helper (Phase 21) — no re-derivation. SC4: add Ge'ez fields to `FAMILY_TREE_QUERY`, `EDITABLE_MEMBER_FIELDS`, `FAMILY_MEMBERS_QUERY` selection sets.
+- Consumers to retrofit (from Phase 21 verification): `MemberNode.jsx` (tree card, ~line 190), `RelationshipGroupedPanel`, `AdminMemberTable`, and the `/manage` search + `FamilyTreeCanvas.jsx:385` search filter. NOTE: `MemberDetailPanel` is OUT of v3.0 scope (do not retrofit it).
