@@ -60,7 +60,7 @@ _Post-milestone note: the `/family` tree edge model was later changed from the u
 
 **Milestone Goal:** Family members can carry their name in Ge'ez script (ግዕዝ) alongside the existing Latin name, rendered with a self-hosted Ge'ez-capable webfont so it displays correctly on every device — deepening the app's fit for the Tigrinya/Eritrean family it serves.
 
-- [ ] **Phase 18: Data Model & Migration** - Ge'ez name columns exist on `family_members`, with a correctly-derived `geezFullname`, before anything above depends on them.
+- [x] **Phase 18: Data Model & Migration** - Ge'ez name columns exist on `family_members`, with a correctly-derived `geezFullname`, before anything above depends on them. (completed 2026-07-30)
 - [ ] **Phase 19: GraphQL Layer** - Ge'ez name fields are readable and writable over the GraphQL API.
 - [ ] **Phase 20: Self-Hosted Font & Theme** - Ge'ez script renders correctly and consistently via a self-hosted webfont, with zero CDN dependency and no Latin regression.
 - [ ] **Phase 21: Shared Display Helper** - One helper drives Latin/Ge'ez precedence and empty-handling identically everywhere.
@@ -81,8 +81,8 @@ _Post-milestone note: the `/family` tree edge model was later changed from the u
 **Plans**: 2 plans
 
 Plans:
-- [ ] 18-01-PLAN.md — FamilyMember model: Ge'ez STRING attrs + defensive geezFullname VIRTUAL getter, TDD red-green (DATA-01, DATA-02)
-- [ ] 18-02-PLAN.md — Portable 018 manual migration SQL + local MariaDB portability proof + README doc entry (DATA-01)
+- [x] 18-01-PLAN.md — FamilyMember model: Ge'ez STRING attrs + defensive geezFullname VIRTUAL getter, TDD red-green (DATA-01, DATA-02)
+- [x] 18-02-PLAN.md — Portable 018 manual migration SQL + local MariaDB portability proof + README doc entry (DATA-01)
 
 ### Phase 19: GraphQL Layer
 **Goal**: Ge'ez name fields are readable and writable through the GraphQL API using the existing spread-passthrough resolvers, with zero new resolver logic.
@@ -165,7 +165,7 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22 → 23. (Phase 2
 | 15. Sibling Dedup Guard & /manage Self-Service UI | v2.0 | 6/6 | Complete | 2026-07-23 |
 | 16. Photo Upload | v2.0 | 7/7 | Complete | 2026-07-24 |
 | 17. /family Deep Tree Visualization | v2.0 | 4/4 | Complete | 2026-07-25 |
-| 18. Data Model & Migration | v3.0 | 0/TBD | Not started | - |
+| 18. Data Model & Migration | v3.0 | 2/2 | Complete   | 2026-07-30 |
 | 19. GraphQL Layer | v3.0 | 0/TBD | Not started | - |
 | 20. Self-Hosted Font & Theme | v3.0 | 0/TBD | Not started | - |
 | 21. Shared Display Helper | v3.0 | 0/TBD | Not started | - |
