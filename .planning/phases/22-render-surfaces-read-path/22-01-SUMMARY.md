@@ -60,3 +60,8 @@ None. This plan widens three already-authorized read queries by one plain-name s
 ## Known Stubs
 
 None. This is a data-prerequisite plan; the render/search consumption of the fetched field is Plan 22-02's scope.
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/22-render-surfaces-read-path/22-01-SUMMARY.md`
+- FOUND commit 493bdcd (Task 1), e362ac5 (Task 2)
