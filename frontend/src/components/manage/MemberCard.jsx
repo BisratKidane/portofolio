@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { Box, Button, ButtonBase, Chip, Stack, Typography } from '@mui/material';
 import PhotoCameraRoundedIcon from '@mui/icons-material/PhotoCameraRounded';
 import { colors } from '../../theme.js';
+import { getGeezDisplay } from '../../utils/displayName.js';
 import MemberAvatarImage from './MemberAvatarImage.jsx';
 
 // T-15-04 (mitigate): this lock condition is copied verbatim from
@@ -23,6 +24,7 @@ export default function MemberCard({
   onRemovePhoto
 }) {
   const locked = !isAdmin && !isSelf && member.linkedUser && member.linkedUser.id !== actingUserId;
+  const geez = getGeezDisplay(member);
   const fileInputRef = useRef(null);
 
   const handlePickPhoto = () => {
@@ -112,6 +114,11 @@ export default function MemberCard({
             <Chip label="Derived" size="small" sx={{ bgcolor: colors.gradientSoft, color: colors.primaryDark }} />
           )}
         </Stack>
+        {geez && (
+          <Typography sx={{ fontSize: 12, fontWeight: 400, color: colors.slate }} lang={geez.lang} noWrap>
+            {geez.text}
+          </Typography>
+        )}
         {locked && (
           <Typography variant="body2" color="text.secondary">
             Manages their own profile.
