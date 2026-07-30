@@ -135,8 +135,13 @@ Plans:
   2. Across `/manage` — relationship panels and the admin member table — a member's Ge'ez name appears alongside the Latin name when present, with every surface calling the shared `displayName` helper rather than re-deriving the precedence rule.
   3. The `/manage` admin member-table search box matches typed Ge'ez text in addition to Latin (substring match).
   4. The render-path query/selection-set constants (`FAMILY_TREE_QUERY`, `EDITABLE_MEMBER_FIELDS`, `FAMILY_MEMBERS_QUERY`) all include the Ge'ez fields needed to render them.
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 22-01-PLAN.md — Add geezFullname to FAMILY_TREE_QUERY, EDITABLE_MEMBER_FIELDS, FAMILY_MEMBERS_QUERY (data prerequisite)
+- [ ] 22-02-PLAN.md — Wire getGeezDisplay into MemberNode/AdminMemberTable/MemberCard + Ge'ez admin-table search (VIEW-01, VIEW-02, FIND-01)
+- [ ] 22-03-PLAN.md — Manual visual sign-off: longest real Ge'ez name on constrained /family card
 
 ### Phase 23: Write Path & Quality Gate
 **Goal**: Family members can enter/edit Ge'ez names via the existing Manage dialogs and be found by Ge'ez name in the add-relative picker, and the milestone closes with the full test suite green and a manual glyph sign-off.
@@ -178,5 +183,5 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22 → 23. (Phase 2
 | 19. GraphQL Layer | v3.0 | 1/1 | Complete   | 2026-07-30 |
 | 20. Self-Hosted Font & Theme | v3.0 | 1/1 | Complete    | 2026-07-30 |
 | 21. Shared Display Helper | v3.0 | 1/1 | Complete    | 2026-07-30 |
-| 22. Render Surfaces (Read Path) | v3.0 | 0/TBD | Not started | - |
+| 22. Render Surfaces (Read Path) | v3.0 | 0/3 | Not started | - |
 | 23. Write Path & Quality Gate | v3.0 | 0/TBD | Not started | - |
