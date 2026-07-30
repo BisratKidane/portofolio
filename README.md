@@ -313,6 +313,26 @@ Then boot the backend and confirm:
 - No `Unknown column 'status'` / missing-table errors in the logs; `curl http://localhost:4000/health` returns `{"status":"ok"}`.
 - An existing (now `Active`) user can still log in; the `invitations` and `audit_logs` tables exist and are empty.
 
+### Add Ge'ez-script name columns to family_members (Phase 18 / DATA-01, DATA-02)
+
+Adds three optional Ge'ez-script (Ethiopic) name columns to `family_members` — `geezFirstname`, `geezLastname`, and `geezMothersname` — each a nullable `VARCHAR(255) CHARACTER SET utf8mb4`, verified portable against local MariaDB (see the portability note below). There is **no backfill and no validation** beyond the column length (D-05): every existing member simply has no Ge'ez name until someone enters one, and a member without one renders its Latin name as today. The derived `geezFullname` is a Sequelize `VIRTUAL` getter, not a stored column, so it needs no DDL. Run this **before** deploying a backend that references the Ge'ez columns (an un-migrated DB errors with `Unknown column 'geezFirstname'`).
+
+1. Apply the migration against your database, using the `DB_USER`/`DB_PASSWORD`/`DB_NAME` values from the active env file:
+
+   ```bash
+   docker compose --env-file env/local.env exec -T mysql mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < backend/migrations/manual/018-add-family-members-geez-names.sql
+   ```
+
+   Or run the equivalent statements with any MySQL client pointed at your `DB_HOST`/`DB_PORT`/`DB_NAME`.
+
+2. Boot the backend against that same database and confirm:
+   - No `Unknown column 'geezFirstname'` (or `geezLastname`/`geezMothersname`) error appears in the startup/request logs.
+   - `curl http://localhost:4000/health` returns `{"status":"ok"}`.
+
+**Portability (D-03):** the DDL uses bare `CHARACTER SET utf8mb4` with **no** explicit `COLLATE` and **no** `ENCRYPTION` clause — both tokens (MySQL 8's `utf8mb4_0900_ai_ci` default collation and the `ENCRYPTION=` table option) break on MariaDB. This migration was verified against local MariaDB (a scratch-DB dry run applied it cleanly and round-tripped Ge'ez UTF-8 text unchanged), and is MySQL-8.4-safe by construction (each engine supplies its own default utf8mb4 collation); no live MySQL 8.4 container run was performed in this phase.
+
+**Prod apply deferred (D-04):** the production database (`agne.bisrat.ch`) is **deliberately not migrated in this phase**. The prod apply is deferred to the coordinated deploy that ships the Ge'ez API/UI (later v3.0 phases), so this schema change lands together with the code that reads and writes it.
+
 ## Project structure
 
 ```text
