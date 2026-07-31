@@ -146,6 +146,19 @@ describe('ManagePage (member branch)', () => {
     expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('myEditableMembers'));
   });
 
+  it("fetches geezFullname for parents' nested siblings so non-admin uncles/aunts render their Ge'ez name (VIEW-02, WR-01)", async () => {
+    graphqlRequest.mockResolvedValueOnce({ myEditableMembers: ALL_ROWS });
+
+    renderPage();
+    await screen.findByText('Parents');
+
+    const query = graphqlRequest.mock.calls[0][0];
+    // Uncles/aunts are derived from mother.siblings / father.siblings; those nested
+    // selections must include geezFullname or MemberCard silently drops the Ge'ez line.
+    expect(query).toMatch(/mother\s*\{[^}]*siblings\s*\{[^}]*\bgeezFullname\b/);
+    expect(query).toMatch(/father\s*\{[^}]*siblings\s*\{[^}]*\bgeezFullname\b/);
+  });
+
   it('renders the member subtitle copy', async () => {
     graphqlRequest.mockResolvedValueOnce({ myEditableMembers: ALL_ROWS });
 

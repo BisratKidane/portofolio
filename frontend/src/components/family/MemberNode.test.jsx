@@ -252,4 +252,17 @@ describe('MemberNode', () => {
     expect(geezLine).toBeInTheDocument();
     expect(geezLine).toHaveAttribute('lang', 'ti');
   });
+
+  it('clips the body column so the fixed-height card never overflows its border in the focus-root + Ge\'ez + all-rows worst case (WR-02)', () => {
+    // jsdom cannot measure real glyph overflow (that is the deferred manual gate),
+    // but the fixed 252x120 card MUST clip rather than spill past its border when
+    // Head + fullname + Ge'ez + birthday + mother + address all coexist. Pin the
+    // structural guard: the body column clips vertical overflow.
+    renderNode({
+      isFocusRoot: true,
+      member: { ...BASE_MEMBER, geezFullname: 'ጃነ ዶ', address: '12 Elm Street, Springfield' }
+    });
+    const body = screen.getByTestId(`member-node-body-${BASE_MEMBER.id}`);
+    expect(body).toHaveStyle({ overflow: 'hidden' });
+  });
 });
