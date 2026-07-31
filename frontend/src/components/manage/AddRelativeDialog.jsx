@@ -3,6 +3,7 @@ import {
   Alert,
   Autocomplete,
   Button,
+  createFilterOptions,
   Dialog,
   DialogContent,
   DialogTitle,
@@ -50,6 +51,13 @@ const EMPTY_FORM = {
   phone: '',
   address: ''
 };
+
+// FIND-02/D-06: matches typed text against fullname OR geezFullname
+// (null-guarded), decoupled from getOptionLabel so the visible option label
+// stays Latin-only while the search itself is Ge'ez-aware.
+const filterOptions = createFilterOptions({
+  stringify: (member) => `${member.fullname} ${member.geezFullname ?? ''}`
+});
 
 // Maps a gender to the mother/father slot that gender occupies. Used for BOTH
 // relations that need a role: a new parent's role follows the parent's own
@@ -243,6 +251,7 @@ export default function AddRelativeDialog({
             (showPicker ? (
               <Autocomplete
                 options={inScopeMembers}
+                filterOptions={filterOptions}
                 getOptionLabel={(member) => member.fullname}
                 value={otherParent}
                 onChange={(_event, value) => setOtherParent(value)}
