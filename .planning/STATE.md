@@ -118,6 +118,7 @@ Items acknowledged and carried forward from previous milestone close:
 | Ge'ez toggle | Latin ↔ Ge'ez display toggle for viewers | Deferred (v3.0 REQUIREMENTS.md Out of Scope) | v3.0 requirements |
 | Ge'ez surfaces | Detail panel / dashboard Ge'ez rendering, LinkAccounts picker Ge'ez search | Deferred | v3.0 requirements |
 | i18n | Broader Amharic/Tigrinya UI localization (labels/buttons) | Deferred | v3.0 requirements |
+| uat | Phase 22 — visual sign-off of Ge'ez name rendering/truncation on the fixed 252×120px `/family` card + both `/manage` surfaces against the LONGEST real Ge'ez name. Deferred because no member has a Ge'ez name yet (write-path forms are Phase 23); rendering logic is proven by 289 automated tests. Close during/after Phase 23 once real data can be entered. | pending | Phase 22 execution (2026-07-31) |
 
 ## Quick Tasks Completed
 
