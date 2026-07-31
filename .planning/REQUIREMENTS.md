@@ -28,8 +28,8 @@
 
 ### VIEW — Display
 
-- [ ] **VIEW-01**: On the `/family` tree, a member card shows the member's Ge'ez name stacked below the Latin name when a Ge'ez name is present, and renders nothing extra (no empty row, dash, or separator) when it is absent.
-- [ ] **VIEW-02**: Across `/manage` — the relationship panels and the admin member table — a member's Ge'ez name is shown alongside the Latin name when present.
+- [x] **VIEW-01**: On the `/family` tree, a member card shows the member's Ge'ez name stacked below the Latin name when a Ge'ez name is present, and renders nothing extra (no empty row, dash, or separator) when it is absent.
+- [x] **VIEW-02**: Across `/manage` — the relationship panels and the admin member table — a member's Ge'ez name is shown alongside the Latin name when present.
 - [x] **VIEW-03**: A single shared `displayName` helper drives the Latin/Ge'ez precedence and empty-handling identically across every render surface, and Ge'ez runs are marked with a `lang` attribute (Ge'ez is LTR — no `dir` change).
 
 ### EDIT — Entry
@@ -38,7 +38,7 @@
 
 ### FIND — Search
 
-- [ ] **FIND-01**: The `/manage` admin member-table search box matches Ge'ez name text in addition to Latin.
+- [x] **FIND-01**: The `/manage` admin member-table search box matches Ge'ez name text in addition to Latin.
 - [ ] **FIND-02**: The Manage add-relative Autocomplete picker matches typed Ge'ez text (via a custom `filterOptions`) in addition to the Latin label.
 
 ### QUAL — Quality
@@ -76,11 +76,11 @@
 | DATA-01 | Phase 18 | Complete |
 | DATA-02 | Phase 18 | Complete |
 | DATA-03 | Phase 19 | Complete |
-| VIEW-01 | Phase 22 | Pending |
-| VIEW-02 | Phase 22 | Pending |
+| VIEW-01 | Phase 22 | Complete |
+| VIEW-02 | Phase 22 | Complete |
 | VIEW-03 | Phase 21 | Complete |
 | EDIT-01 | Phase 23 | Pending |
-| FIND-01 | Phase 22 | Pending |
+| FIND-01 | Phase 22 | Complete |
 | FIND-02 | Phase 23 | Pending |
 | QUAL-01 | Phase 23 | Pending |
 
