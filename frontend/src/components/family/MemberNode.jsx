@@ -162,8 +162,15 @@ export default function MemberNode({ data }) {
         <MemberAvatarImage member={member} variant="rounded" fill />
       </Box>
 
-      {/* Right column: reserved row + fullname + birthday + mother + address. */}
-      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+      {/* Right column: reserved row + fullname + birthday + mother + address.
+          The card is a fixed 252x120 node (VIEW-01): clip vertical overflow so the
+          worst case (focus-root "Head" row + Ge'ez line + birthday + mother +
+          address) can never spill past the card border. minHeight:0 lets this flex
+          child shrink below its content so overflow:hidden actually clips. */}
+      <Box
+        data-testid={`member-node-body-${member.id}`}
+        sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0.25 }}
+      >
         {/* Top row: shows a "Head" tag when this card is the re-rooted tree
             head; otherwise reserved (kept for a future edit action). */}
         <Box sx={{ height: isFocusRoot ? 18 : 0, flexShrink: 0, display: 'flex', alignItems: 'center' }}>

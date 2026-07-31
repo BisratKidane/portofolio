@@ -32,8 +32,8 @@ const MY_EDITABLE_MEMBERS_QUERY = `
   query MyEditableMembers {
     myEditableMembers {
       ${EDITABLE_MEMBER_FIELDS}
-      mother { id siblings { id fullname gender birthdate photoUrl } }
-      father { id siblings { id fullname gender birthdate photoUrl } }
+      mother { id siblings { id fullname geezFullname gender birthdate photoUrl } }
+      father { id siblings { id fullname geezFullname gender birthdate photoUrl } }
       spouses { id fullname } children { id fullname } siblings { id fullname }
       linkedUser { id }
     }
