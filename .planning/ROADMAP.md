@@ -188,7 +188,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 23-01-PLAN.md — MemberFields Ge'ez inputs (D-01/D-02/D-04) + AddRelativeDialog/EditMemberDialog/ManagePage wiring for entry + round-trip (EDIT-01)
+- [x] 23-01-PLAN.md — MemberFields Ge'ez inputs (D-01/D-02/D-04) + AddRelativeDialog/EditMemberDialog/ManagePage wiring for entry + round-trip (EDIT-01)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -227,4 +227,4 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22 → 23. (Phase 2
 | 20. Self-Hosted Font & Theme | v3.0 | 1/1 | Complete    | 2026-07-30 |
 | 21. Shared Display Helper | v3.0 | 1/1 | Complete    | 2026-07-30 |
 | 22. Render Surfaces (Read Path) | v3.0 | 3/3 | Complete    | 2026-07-31 |
-| 23. Write Path & Quality Gate | v3.0 | 0/TBD | Not started | - |
+| 23. Write Path & Quality Gate | v3.0 | 1/3 | In Progress|  |
