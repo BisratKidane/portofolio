@@ -23,8 +23,11 @@ const MEMBER = {
   id: '1',
   firstname: 'Ada',
   lastname: 'Lovelace',
+  geezFirstname: 'አዳ',
+  geezLastname: 'ላቭሌስ',
   gender: 'Female',
   mothersname: 'Jane Doe',
+  geezMothersname: 'ጄን',
   email: 'ada@example.com',
   birthdate: '1815-12-10',
   isAlive: true,
@@ -51,12 +54,29 @@ describe('EditMemberDialog', () => {
   it('pre-fills the form fields from the member prop', () => {
     renderDialog();
 
-    expect(screen.getByLabelText('First name', { exact: false })).toHaveValue('Ada');
-    expect(screen.getByLabelText('Last name', { exact: false })).toHaveValue('Lovelace');
+    expect(screen.getByLabelText(/^First name/i)).toHaveValue('Ada');
+    expect(screen.getByLabelText(/^Last name/i)).toHaveValue('Lovelace');
     expect(screen.getByLabelText('Email', { exact: false })).toHaveValue('ada@example.com');
     expect(screen.getByLabelText('Phone', { exact: false })).toHaveValue('555-1234');
     expect(screen.getByLabelText('Address', { exact: false })).toHaveValue('1 Main St');
-    expect(screen.getByLabelText("Mother's name", { exact: false })).toHaveValue('Jane Doe');
+    expect(screen.getByLabelText(/^Mother's name/i)).toHaveValue('Jane Doe');
+  });
+
+  it("pre-fills the 3 Ge'ez fields from a member with real Ge'ez values (SC1 round-trip)", () => {
+    renderDialog();
+
+    expect(screen.getByLabelText("Ge'ez first name (ስም)", { exact: false })).toHaveValue('አዳ');
+    expect(screen.getByLabelText("Ge'ez last name (ስም ኣቦ)", { exact: false })).toHaveValue('ላቭሌስ');
+    expect(screen.getByLabelText("Ge'ez mother's name (ስም ኣደ)", { exact: false })).toHaveValue('ጄን');
+  });
+
+  it("pre-fills the 3 Ge'ez fields with empty string for a member with no Ge'ez data yet", () => {
+    const memberWithoutGeez = { ...MEMBER, geezFirstname: null, geezLastname: null, geezMothersname: null };
+    renderDialog({ member: memberWithoutGeez });
+
+    expect(screen.getByLabelText("Ge'ez first name (ስም)", { exact: false })).toHaveValue('');
+    expect(screen.getByLabelText("Ge'ez last name (ስም ኣቦ)", { exact: false })).toHaveValue('');
+    expect(screen.getByLabelText("Ge'ez mother's name (ስም ኣደ)", { exact: false })).toHaveValue('');
   });
 
   it('renders "Save changes" as the primary submit button', () => {
@@ -70,7 +90,7 @@ describe('EditMemberDialog', () => {
     });
     const { onClose, onSaved } = renderDialog();
 
-    const firstNameField = screen.getByLabelText('First name', { exact: false });
+    const firstNameField = screen.getByLabelText(/^First name/i);
     await userEvent.clear(firstNameField);
     await userEvent.type(firstNameField, 'Augusta');
 
@@ -82,8 +102,11 @@ describe('EditMemberDialog', () => {
         fields: {
           firstname: 'Augusta',
           lastname: 'Lovelace',
+          geezFirstname: 'አዳ',
+          geezLastname: 'ላቭሌስ',
           gender: 'Female',
           mothersname: 'Jane Doe',
+          geezMothersname: 'ጄን',
           email: 'ada@example.com',
           birthdate: '1815-12-10',
           isAlive: true,
@@ -95,6 +118,24 @@ describe('EditMemberDialog', () => {
 
     expect(onSaved).toHaveBeenCalled();
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("clearing a previously-filled Ge'ez field before submit sends '' for that key (D-05)", async () => {
+    graphqlRequest.mockResolvedValueOnce({ editMember: { id: '1' } });
+    renderDialog();
+
+    await userEvent.clear(screen.getByLabelText("Ge'ez first name (ስም)", { exact: false }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => {
+      expect(graphqlRequest).toHaveBeenCalledWith(
+        EDIT_MEMBER_MUTATION,
+        expect.objectContaining({
+          fields: expect.objectContaining({ geezFirstname: '' })
+        })
+      );
+    });
   });
 
   it('never sends motherId/fatherId/spouse in the fields argument', async () => {
@@ -134,7 +175,7 @@ describe('EditMemberDialog', () => {
       </LocalizationProvider>
     );
 
-    expect(screen.getByLabelText('First name', { exact: false })).toHaveValue('Grace');
-    expect(screen.getByLabelText('Last name', { exact: false })).toHaveValue('Hopper');
+    expect(screen.getByLabelText(/^First name/i)).toHaveValue('Grace');
+    expect(screen.getByLabelText(/^Last name/i)).toHaveValue('Hopper');
   });
 });

@@ -159,6 +159,18 @@ describe('ManagePage (member branch)', () => {
     expect(query).toMatch(/father\s*\{[^}]*siblings\s*\{[^}]*\bgeezFullname\b/);
   });
 
+  it("fetches the raw Ge'ez parts (not just geezFullname) so the edit dialog can hydrate from them (SC1)", async () => {
+    graphqlRequest.mockResolvedValueOnce({ myEditableMembers: ALL_ROWS });
+
+    renderPage();
+    await screen.findByText('Parents');
+
+    const query = graphqlRequest.mock.calls[0][0];
+    expect(query).toMatch(/\bgeezFirstname\b/);
+    expect(query).toMatch(/\bgeezLastname\b/);
+    expect(query).toMatch(/\bgeezMothersname\b/);
+  });
+
   it('renders the member subtitle copy', async () => {
     graphqlRequest.mockResolvedValueOnce({ myEditableMembers: ALL_ROWS });
 
@@ -180,8 +192,8 @@ describe('ManagePage (member branch)', () => {
 
     expect(await screen.findByText('Add child')).toBeInTheDocument();
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Grace');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Grace');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Lovelace');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Female' }));
 
@@ -221,8 +233,8 @@ describe('ManagePage (member branch)', () => {
     await screen.findByText('Parents');
 
     await userEvent.click(screen.getByRole('button', { name: '+ Add child' }));
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'New');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Child');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'New');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Child');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Female' }));
     await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
@@ -242,7 +254,7 @@ describe('ManagePage (member branch)', () => {
     await userEvent.click(editButtons[0]);
 
     expect(await screen.findByText('Edit member')).toBeInTheDocument();
-    expect(screen.getByLabelText('First name', { exact: false })).toHaveValue('Ada');
+    expect(screen.getByLabelText(/^First name/i)).toHaveValue('Ada');
 
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
@@ -380,11 +392,11 @@ describe('ManagePage (admin branch)', () => {
     await userEvent.click(editButtons[2]); // spouse
 
     expect(await screen.findByText('Edit member')).toBeInTheDocument();
-    expect(screen.getByLabelText('First name', { exact: false })).toHaveValue('John');
-    expect(screen.getByLabelText('Last name', { exact: false })).toHaveValue('Doe');
+    expect(screen.getByLabelText(/^First name/i)).toHaveValue('John');
+    expect(screen.getByLabelText(/^Last name/i)).toHaveValue('Doe');
     expect(screen.getByLabelText('Email', { exact: false })).toHaveValue('john@example.com');
     expect(screen.getByLabelText('Phone', { exact: false })).toHaveValue('555-9000');
-    expect(screen.getByLabelText("Mother's name", { exact: false })).toHaveValue('Mary Doe');
+    expect(screen.getByLabelText(/^Mother's name/i)).toHaveValue('Mary Doe');
   });
 
   it('shows an active Edit button for every card in the admin-focused panel regardless of linkedUser (D-06 bypass)', async () => {

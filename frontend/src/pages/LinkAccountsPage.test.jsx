@@ -168,8 +168,8 @@ describe('LinkAccountsPage', () => {
     await screen.findByText('ada@example.com');
     await userEvent.click(screen.getByRole('button', { name: 'Create new member instead' }));
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Bob');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Builder');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Bob');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Builder');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
@@ -228,8 +228,8 @@ describe('LinkAccountsPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Create new member instead' }));
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Bob');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Builder');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Bob');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Builder');
 
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
