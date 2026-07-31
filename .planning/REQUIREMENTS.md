@@ -39,11 +39,11 @@
 ### FIND — Search
 
 - [x] **FIND-01**: The `/manage` admin member-table search box matches Ge'ez name text in addition to Latin.
-- [ ] **FIND-02**: The Manage add-relative Autocomplete picker matches typed Ge'ez text (via a custom `filterOptions`) in addition to the Latin label.
+- [x] **FIND-02**: The Manage add-relative Autocomplete picker matches typed Ge'ez text (via a custom `filterOptions`) in addition to the Latin label.
 
 ### QUAL — Quality
 
-- [ ] **QUAL-01**: The shared `displayName` helper and the `geezFullname` derivation are unit-tested (including single-part-filled and all-empty cases), the full `npm test` suite (backend + frontend) stays green in CI, and visual glyph/rendering correctness is captured as a manual sign-off gate (jsdom cannot assert real glyph rendering).
+- [x] **QUAL-01**: The shared `displayName` helper and the `geezFullname` derivation are unit-tested (including single-part-filled and all-empty cases), the full `npm test` suite (backend + frontend) stays green in CI, and visual glyph/rendering correctness is captured as a manual sign-off gate (jsdom cannot assert real glyph rendering).
 
 ---
 
@@ -81,7 +81,7 @@
 | VIEW-03 | Phase 21 | Complete |
 | EDIT-01 | Phase 23 | Complete |
 | FIND-01 | Phase 22 | Complete |
-| FIND-02 | Phase 23 | Pending |
-| QUAL-01 | Phase 23 | Pending |
+| FIND-02 | Phase 23 | Complete |
+| QUAL-01 | Phase 23 | Complete |
 
 **Coverage:** 12/12 v3.0 requirements mapped. No orphans, no duplicates.
