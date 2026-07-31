@@ -49,7 +49,7 @@ const ADD_SIBLING_MUTATION = `
   }
 `;
 
-const IN_SCOPE_MEMBERS = [{ id: '20', fullname: 'William King' }];
+const IN_SCOPE_MEMBERS = [{ id: '20', fullname: 'William King', geezFullname: 'ዊልያም ኪንግ' }];
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -453,6 +453,49 @@ describe('AddRelativeDialog - child', () => {
     await userEvent.clear(picker);
     await userEvent.type(picker, 'Someone Not In Scope');
     expect(screen.queryByText('Someone Not In Scope')).not.toBeInTheDocument();
+  });
+
+  it("surfaces a matching option when typing a Ge'ez substring, with the visible label staying Latin-only (FIND-02, D-06)", async () => {
+    renderDialog({
+      relationType: 'child',
+      targetGender: 'Female',
+      targetFirstname: 'Ada',
+      inScopeMembers: IN_SCOPE_MEMBERS
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'or pick someone already in your family' }));
+    const picker = screen.getByLabelText('Other parent (optional)', { exact: false });
+    await userEvent.click(picker);
+    await userEvent.type(picker, 'ዊልያም');
+    expect(await screen.findByText('William King')).toBeInTheDocument();
+    expect(screen.queryByText('ዊልያም ኪንግ')).not.toBeInTheDocument();
+  });
+
+  it("does not throw and still matches by Latin fullname when a member has no geezFullname (null-guard, FIND-02)", async () => {
+    renderDialog({
+      relationType: 'child',
+      targetGender: 'Female',
+      targetFirstname: 'Ada',
+      inScopeMembers: [{ id: '21', fullname: 'Grace Hopper' }]
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'or pick someone already in your family' }));
+    const picker = screen.getByLabelText('Other parent (optional)', { exact: false });
+    await userEvent.click(picker);
+    await expect(userEvent.type(picker, 'Grace')).resolves.not.toThrow();
+    expect(await screen.findByText('Grace Hopper')).toBeInTheDocument();
+  });
+
+  it('surfaces no options when the typed text matches neither fullname nor geezFullname (FIND-02 regression)', async () => {
+    renderDialog({
+      relationType: 'child',
+      targetGender: 'Female',
+      targetFirstname: 'Ada',
+      inScopeMembers: IN_SCOPE_MEMBERS
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'or pick someone already in your family' }));
+    const picker = screen.getByLabelText('Other parent (optional)', { exact: false });
+    await userEvent.click(picker);
+    await userEvent.type(picker, 'ዘንድሮ');
+    expect(screen.queryByText('William King')).not.toBeInTheDocument();
   });
 
   it('blocks submit and warns when the anchor has no Male/Female gender', async () => {
