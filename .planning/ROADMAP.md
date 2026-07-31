@@ -182,8 +182,21 @@ Plans:
   3. The `displayName` helper and `geezFullname` derivation unit tests (from Phases 18 and 21) remain green, and the full `npm test` suite (backend + frontend) passes in CI at milestone close.
   4. A manual glyph/visual sign-off gate — real Tigrinya name fixtures checked on `/family` and `/manage` — is completed and recorded before the milestone ships.
 
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 23-01-PLAN.md — MemberFields Ge'ez inputs (D-01/D-02/D-04) + AddRelativeDialog/EditMemberDialog/ManagePage wiring for entry + round-trip (EDIT-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 23-02-PLAN.md — ManagePage inScopeMembers widen + AddRelativeDialog custom Ge'ez filterOptions (FIND-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 23-03-PLAN.md — Full-suite quality gate run + manual glyph/visual sign-off (QUAL-01)
 
 ## Progress
 
