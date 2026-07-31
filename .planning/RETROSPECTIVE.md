@@ -118,6 +118,41 @@ A full family-tree domain on the existing auth foundation: a cycle/cascade-safe 
 
 ---
 
+## Milestone: v3.0 — Ge'ez Native-Script Names
+
+**Shipped:** 2026-07-31
+**Phases:** 6 (18–23) | **Plans:** 11 | **Tasks:** 11
+
+### What Was Built
+Ge'ez (Ethiopic) native-script names end-to-end on the existing family-tree app: three nullable `utf8mb4` columns + a defensive `geezFullname` VIRTUAL (portable migration proven on real MariaDB), zero-new-resolver GraphQL passthrough with clear-to-null, a self-hosted Ethiopic-subset webfont (no CDN), one anti-drift `getGeezDisplay` helper feeding every read surface, and a write path (form inputs in Add/Edit dialogs + a Ge'ez-findable Autocomplete) closed by a human glyph/visual sign-off. Frontend 268→301 tests across the milestone; backend unchanged bar 2 named pre-existing failures.
+
+### What Worked
+- **Strict dependency-ordered phases** (data → API → font → shared helper → read → write) with the helper as a single source of truth — no surface re-derived the Latin/Ge'ez precedence, killing the drift bug by construction (Phase 21's whole reason to exist).
+- **Read-path-before-write-path sequencing**: rendering was proven against known data before end-user input was wired, so "renders wrong" and "form submits wrong" bugs never got conflated.
+- **Code review caught what green tests missed — again**: CR-01 flagged a data-loss risk on the untested non-admin uncle/aunt Edit path (`ManagePage.jsx:35-36` card-only projection) — the exact recurring pattern from Phases 14/15 where non-admin paths lacked coverage. `git show` confirmed it pre-dated v3.0.
+- **Human sign-off encoded as an explicit blocking checkpoint plan** (23-03, `autonomous:false`) rather than faked in jsdom — the milestone's real glyph/overflow verification.
+
+### What Was Inefficient
+- **The visual sign-off had to be deferred a whole phase (22→23)** because no real Ge'ez data existed until the write path shipped — a foreseen but real serialization cost; Phase 22 closed with a carry-forward UAT item instead of a clean sign-off.
+- **No single source of truth for the shared form's field shape**: three hand-copied `EMPTY_FORM`/`EMPTY_LINK_FORM` objects (WR-02) are the root cause behind both WR-01 (LinkAccountsPage missing the 3 new keys → uncontrolled-input warning) and the CR-01 blast radius — adding fields to `MemberFields` silently left consumers behind.
+- **New Ge'ez labels being substrings of their Latin twins** silently broke every non-exact `getByLabelText` across all consumers (incl. an out-of-plan file), surfacing only mid-execution and needing an anchored-query sweep.
+
+### Patterns Established
+- Server-derived VIRTUAL fields consumed **read-only** on the frontend (never recomputed) as the anti-drift contract.
+- Pre-existing/out-of-scope failures **explicitly enumerated by name (D-08)** in the quality gate rather than masked or silently passed over.
+- Irreducibly-human verifications (glyph rendering) modeled as blocking `checkpoint:human-verify` plans with concrete step-by-step resume signals.
+
+### Key Lessons
+- Shared form components need one authoritative field-shape definition; hand-copied empty-form objects drift silently, and one consumer's stale projection becomes a real data-loss bug on save.
+- When new UI text is a substring of existing text, non-exact test queries become fragile — anchor them from the start.
+- Some checks can't be automated honestly (real glyph rasterization/overflow) — encode them as explicit human gates instead of pretending jsdom covers them.
+
+### Cost Observations
+- Model mix: Opus orchestration + Sonnet executors/verifier/reviewer across 3 sequential single-plan waves (worktree-isolated).
+- Notable: fastest milestone yet (2 days, 11 plans) — small, tightly-scoped, dependency-linear phases. The code-review gate + human sign-off again caught what the suite structurally could not (data-loss on an untested path; real-glyph overflow).
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -126,6 +161,8 @@ A full family-tree domain on the existing auth foundation: a cycle/cascade-safe 
 |-----------|--------|-------|------------|
 | v1.0 | 6 | 13 | Established GSD wave execution + live-fire CI verification for this project |
 | v1.1 | 5 | 19 | Dependency-first sequencing on shared resolvers; adversarial re-verification (revert-to-confirm-RED); real-DB concurrency TDD |
+| v2.0 | 6 | 31 | Wave-parallel worktree executors + human spike checkpoints; adversarial-first security TDD; real-data feedback drove post-milestone edge-model rework |
+| v3.0 | 6 | 11 | Dependency-linear single-plan waves; shared anti-drift helper as single source of truth; human sign-off gate for un-automatable glyph rendering |
 
 ### Cumulative Quality
 
@@ -133,9 +170,13 @@ A full family-tree domain on the existing auth foundation: a cycle/cascade-safe 
 |-----------|-------|--------------------|
 | v1.0 | 51 (backend 39, frontend 12) | Test tooling only; no new runtime deps |
 | v1.1 | 121 backend green at close | nodemailer (mailer); no framework changes |
+| v2.0 | backend 321, frontend ~180 at close | @xyflow/react + @dagrejs/dagre (tree), file-type (upload), react-easy-crop |
+| v3.0 | frontend 301, backend 391 (+2 named pre-existing) | @fontsource/noto-sans-ethiopic (self-hosted font); no framework changes |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. Verify against real infrastructure, not just static config review. *(v1.0, reinforced v1.1 — real-MySQL concurrency)*
+1. Verify against real infrastructure, not just static config review. *(v1.0, reinforced v1.1 — real-MySQL concurrency; v3.0 — real-MariaDB migration + human glyph sign-off)*
 2. A test only counts once it's proven to fail against the broken code. *(v1.1)*
 3. Settle branch/merge/tag strategy at milestone start — deferring it compounded the divergence across v1.0→v1.1. *(v1.0, recurred v1.1)*
+4. A green suite only counts where its fixtures are real; code review + human testing repeatedly caught data-loss/rendering failures on untested non-admin paths that the suite structurally could not. *(v2.0 missing-edges, v3.0 CR-01 uncle/aunt edit + glyph overflow)*
+5. Shared components (resolvers, forms) need one authoritative shape; hand-copied duplicates drift silently into bugs. *(v1.1 resolvers, v3.0 EMPTY_FORM triplication)*
