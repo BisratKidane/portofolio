@@ -105,8 +105,8 @@ describe('AddRelativeDialog - parent', () => {
     graphqlRequest.mockResolvedValueOnce({ addParent: { id: '30', fullname: 'Byron Lovelace' } });
     const { onClose, onCreated } = renderDialog({ relationType: 'parent' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Byron');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Byron');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Lovelace');
 
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
@@ -120,6 +120,9 @@ describe('AddRelativeDialog - parent', () => {
         newMember: {
           firstname: 'Byron',
           lastname: 'Lovelace',
+          geezFirstname: '',
+          geezLastname: '',
+          geezMothersname: '',
           gender: 'Male',
           mothersname: '',
           email: '',
@@ -139,8 +142,8 @@ describe('AddRelativeDialog - parent', () => {
     graphqlRequest.mockResolvedValueOnce({ addParent: { id: '31', fullname: 'Ada Lovelace' } });
     renderDialog({ relationType: 'parent' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Ada');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Ada');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Lovelace');
 
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Female' }));
@@ -158,8 +161,8 @@ describe('AddRelativeDialog - parent', () => {
   it('keeps submit disabled for an Other-gender parent (no father/mother slot)', async () => {
     renderDialog({ relationType: 'parent' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Sky');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Doe');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Sky');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Doe');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Other' }));
 
@@ -178,8 +181,8 @@ describe('AddRelativeDialog - spouse', () => {
     graphqlRequest.mockResolvedValueOnce({ addSpouse: { id: '31', fullname: 'William King' } });
     const { onClose, onCreated } = renderDialog({ relationType: 'spouse' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'William');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'King');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'William');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'King');
 
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
@@ -192,6 +195,9 @@ describe('AddRelativeDialog - spouse', () => {
         newMember: {
           firstname: 'William',
           lastname: 'King',
+          geezFirstname: '',
+          geezLastname: '',
+          geezMothersname: '',
           gender: 'Male',
           mothersname: '',
           email: '',
@@ -207,13 +213,36 @@ describe('AddRelativeDialog - spouse', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("sends a Ge'ez value typed into the Ge'ez first name field through to the create mutation", async () => {
+    graphqlRequest.mockResolvedValueOnce({ addSpouse: { id: '31', fullname: 'William King' } });
+    renderDialog({ relationType: 'spouse' });
+
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'William');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'King');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
+
+    await userEvent.type(screen.getByLabelText("Ge'ez first name", { exact: false }), 'ጃነ');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => {
+      expect(graphqlRequest).toHaveBeenCalledWith(
+        ADD_SPOUSE_MUTATION,
+        expect.objectContaining({
+          newMember: expect.objectContaining({ geezFirstname: 'ጃነ' })
+        })
+      );
+    });
+  });
+
   it('attaches a deferred photo to the created member after the add mutation returns', async () => {
     graphqlRequest.mockResolvedValueOnce({ addSpouse: { id: '31', fullname: 'William King' } });
     uploadMemberPhoto.mockResolvedValueOnce({ photoUrl: '/api/family-members/31/photo' });
     const { onCreated } = renderDialog({ relationType: 'spouse' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'William');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'King');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'William');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'King');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
@@ -247,8 +276,8 @@ describe('AddRelativeDialog - spouse', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { onClose, onCreated } = renderDialog({ relationType: 'spouse' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'William');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'King');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'William');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'King');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
@@ -272,8 +301,8 @@ describe('AddRelativeDialog - spouse', () => {
     graphqlRequest.mockRejectedValueOnce(new Error('Something went wrong.'));
     const { onClose, onCreated } = renderDialog({ relationType: 'spouse' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'William');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'King');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'William');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'King');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
@@ -310,12 +339,12 @@ describe('AddRelativeDialog - child', () => {
 
   it('prefills the last name with a male anchor\'s first name', () => {
     renderDialog({ relationType: 'child', targetGender: 'Male', targetFirstname: 'Almaz' });
-    expect(screen.getByLabelText('Last name', { exact: false })).toHaveValue('Almaz');
+    expect(screen.getByLabelText(/^Last name/i)).toHaveValue('Almaz');
   });
 
   it('does not prefill the last name for a female anchor', () => {
     renderDialog({ relationType: 'child', targetGender: 'Female', targetFirstname: 'Almaz' });
-    expect(screen.getByLabelText('Last name', { exact: false })).toHaveValue('');
+    expect(screen.getByLabelText(/^Last name/i)).toHaveValue('');
   });
 
   it('submits addChild with role FATHER derived from a male anchor (otherParentId null)', async () => {
@@ -326,7 +355,7 @@ describe('AddRelativeDialog - child', () => {
       targetFirstname: 'Almaz'
     });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Byron');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Byron');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
@@ -339,6 +368,9 @@ describe('AddRelativeDialog - child', () => {
         newMember: {
           firstname: 'Byron',
           lastname: 'Almaz',
+          geezFirstname: '',
+          geezLastname: '',
+          geezMothersname: '',
           gender: 'Male',
           mothersname: '',
           email: '',
@@ -359,8 +391,8 @@ describe('AddRelativeDialog - child', () => {
     graphqlRequest.mockResolvedValueOnce({ addChild: { id: '42', fullname: 'Byron Lovelace' } });
     renderDialog({ relationType: 'child', targetGender: 'Female', targetFirstname: 'Ada' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Byron');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Byron');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Lovelace');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
@@ -382,8 +414,8 @@ describe('AddRelativeDialog - child', () => {
       targetFirstname: 'Ada'
     });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Byron');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Byron');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Lovelace');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
@@ -426,8 +458,8 @@ describe('AddRelativeDialog - child', () => {
   it('blocks submit and warns when the anchor has no Male/Female gender', async () => {
     renderDialog({ relationType: 'child', targetGender: 'Other', targetFirstname: 'Sky' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Byron');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Byron');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Lovelace');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
@@ -441,8 +473,8 @@ describe('AddRelativeDialog - child', () => {
     graphqlRequest.mockRejectedValueOnce(new Error(rel06Message));
     renderDialog({ relationType: 'child', targetGender: 'Female', targetFirstname: 'Almaz' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Sara');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Kidane');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Sara');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Kidane');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Female' }));
 
@@ -466,8 +498,8 @@ describe('AddRelativeDialog - sibling', () => {
     graphqlRequest.mockResolvedValueOnce({ addSibling: { id: '50', fullname: 'Byron Lovelace' } });
     const { onClose, onCreated } = renderDialog({ relationType: 'sibling' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Byron');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Byron');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Lovelace');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
@@ -479,6 +511,9 @@ describe('AddRelativeDialog - sibling', () => {
         newMember: {
           firstname: 'Byron',
           lastname: 'Lovelace',
+          geezFirstname: '',
+          geezLastname: '',
+          geezMothersname: '',
           gender: 'Male',
           mothersname: '',
           email: '',
@@ -499,8 +534,8 @@ describe('AddRelativeDialog - sibling', () => {
     graphqlRequest.mockRejectedValueOnce(new Error(d04Message));
     renderDialog({ relationType: 'sibling' });
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'Byron');
-    await userEvent.type(screen.getByLabelText('Last name', { exact: false }), 'Lovelace');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Byron');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Lovelace');
     await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
     await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
 
