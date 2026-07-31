@@ -14,6 +14,7 @@ const EDIT_MEMBER_MUTATION = `
 const EMPTY_FORM = {
   firstname: '',
   lastname: '',
+  geezFirstname: '', geezLastname: '', geezMothersname: '',
   gender: '',
   mothersname: '',
   email: '',
@@ -28,6 +29,9 @@ function formFromMember(member) {
   return {
     firstname: member.firstname ?? '',
     lastname: member.lastname ?? '',
+    geezFirstname: member.geezFirstname ?? '',
+    geezLastname: member.geezLastname ?? '',
+    geezMothersname: member.geezMothersname ?? '',
     gender: member.gender ?? '',
     mothersname: member.mothersname ?? '',
     email: member.email ?? '',
