@@ -34,7 +34,7 @@
 
 ### EDIT — Entry
 
-- [ ] **EDIT-01**: In the Manage add-relative and edit-member dialogs, a user can enter and update the Ge'ez first name, last name, and mother's name using their own device keyboard/IME.
+- [x] **EDIT-01**: In the Manage add-relative and edit-member dialogs, a user can enter and update the Ge'ez first name, last name, and mother's name using their own device keyboard/IME.
 
 ### FIND — Search
 
@@ -79,7 +79,7 @@
 | VIEW-01 | Phase 22 | Complete |
 | VIEW-02 | Phase 22 | Complete |
 | VIEW-03 | Phase 21 | Complete |
-| EDIT-01 | Phase 23 | Pending |
+| EDIT-01 | Phase 23 | Complete |
 | FIND-01 | Phase 22 | Complete |
 | FIND-02 | Phase 23 | Pending |
 | QUAL-01 | Phase 23 | Pending |
