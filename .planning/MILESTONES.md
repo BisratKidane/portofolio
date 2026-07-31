@@ -1,5 +1,20 @@
 # Milestones
 
+## v3.0 Ge'ez Native-Script Names (Shipped: 2026-07-31)
+
+**Phases completed:** 6 phases, 11 plans, 11 tasks
+
+**Key accomplishments:**
+
+- Portable manual migration 018 adds three nullable `utf8mb4` Ge'ez name columns to `family_members`, proven to apply cleanly and round-trip Ethiopic UTF-8 text on real local MariaDB, and documented in README with D-03 portability and D-04 prod-deferred notes.
+- Ge'ez name fields now flow through the FamilyMember GraphQL API via the existing spread-passthrough create/edit resolvers, with the geezFullname VIRTUAL hardened to declare its source-field dependencies.
+- Self-hosted `@fontsource/noto-sans-ethiopic` (Ethiopic-subset, 400+700 weights) wired into `main.jsx`, with `FONT_SANS`/`FONT_DISPLAY` theme stacks updated and ordering proven by a new `theme.test.js` (2/2 passing, full suite 268/268 green).
+- Pure-function `getGeezDisplay(member)` helper in a new `frontend/src/utils/` directory, returning `null` when `member.geezFullname` is absent/blank or `{ text, lang: 'ti' }` when present -- unit-tested with a 7-case none/partial/all-filled matrix using real Ethiopic fixtures, full 275/275 frontend suite green.
+- Every read surface (`/family` tree card, `/manage` admin table + relationship cards, incl. non-admin uncles/aunts) renders a member's Ge'ez name stacked below the Latin name via the shared `getGeezDisplay` helper, with admin-table Ge'ez substring search — verified 8/8, 291/291 frontend tests.
+- The Ge'ez write path shipped — three inputs in the shared `MemberFields` form wired through the Add-relative and Edit-member dialogs (round-trip + clear-to-null) and a Ge'ez-findable add-relative Autocomplete (Latin-only visible label) — closing the milestone with the full suite green (except two named pre-existing failures) and a human glyph/visual sign-off against a real Tigrinya name (QUAL-01).
+
+---
+
 ## v2.0 Collaborative Family Tree (Shipped: 2026-07-25)
 
 **Phases completed:** 6 phases, 31 plans, 68 tasks

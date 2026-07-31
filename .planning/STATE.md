@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: Ge'ez Native-Script Names
-status: milestone_complete
-stopped_at: Milestone complete (Phase 23 was final phase)
-last_updated: 2026-07-31T09:00:20.120Z
-last_activity: 2026-07-31 -- Phase 23 execution started
+status: Awaiting next milestone
+stopped_at: Phase 23 context gathered
+last_updated: "2026-07-31T09:18:45.527Z"
+last_activity: 2026-07-31 — Milestone v3.0 completed and archived
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 11
   completed_plans: 11
-  percent: 83
+  percent: 100
 ---
 
 # Project State
@@ -25,14 +25,10 @@ See: .planning/PROJECT.md (updated 2026-07-30)
 
 ## Current Position
 
-Phase: 23
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-07-31
-
-Milestone progress: [███████░░░] 4/6 phases (18, 19, 20, 21 complete) · 67%
-
-Phase 21 fully closed: getGeezDisplay helper verified 8/8, threats_open: 0, VIEW-03 complete. Phase 22 will consume this helper to render Ge'ez names on /family + /manage.
+Phase: Milestone v3.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-07-31 — Milestone v3.0 completed and archived
 
 ## Deferred Items
 
@@ -141,8 +137,4 @@ Resume file: .planning/phases/23-write-path-quality-gate/23-CONTEXT.md
 
 ## Operator Next Steps
 
-- Phase 22 setup path chosen (2026-07-30): **discuss → UI-SPEC → plan** (user-selected — it's a real visual/layout phase). Recommended sequence, each after `/clear` for fresh context:
-  1. `/gsd:discuss-phase 22` — lock layout decisions: tree-card stacking/truncation on the fixed 252×120px card (STATE blocker: already tight for Latin `noWrap`, Ge'ez glyphs are wider — needs a plan against the LONGEST real Ge'ez name in the dataset), which `/manage` surfaces (relationship panels + admin table), and admin-table Ge'ez search UX (substring).
-  2. `/gsd:ui-phase 22` — produce the UI-SPEC design contract.
-  3. `/gsd:plan-phase 22` — plan. VIEW-01, VIEW-02, FIND-01. Every surface must call the `getGeezDisplay` helper (Phase 21) — no re-derivation. SC4: add Ge'ez fields to `FAMILY_TREE_QUERY`, `EDITABLE_MEMBER_FIELDS`, `FAMILY_MEMBERS_QUERY` selection sets.
-- Consumers to retrofit (from Phase 21 verification): `MemberNode.jsx` (tree card, ~line 190), `RelationshipGroupedPanel`, `AdminMemberTable`, and the `/manage` search + `FamilyTreeCanvas.jsx:385` search filter. NOTE: `MemberDetailPanel` is OUT of v3.0 scope (do not retrofit it).
+- Start the next milestone with /gsd-new-milestone

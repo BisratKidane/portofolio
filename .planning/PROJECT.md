@@ -2,23 +2,25 @@
 
 ## What This Is
 
-A full-stack authentication application built as a portfolio piece: a React + MUI single-page frontend talking to an Express + Apollo GraphQL backend, with user accounts persisted in MySQL via Sequelize. It ships email-verified registration, JWT login with server-side session revocation, rate-limited auth mutations, protected routes, a dashboard, and (as of v1.0) a full-stack automated test suite enforced in CI. As of v1.1 the security posture is hardened — the account-takeover, brute-force, stale-session, and first-user-ADMIN privilege-escalation vulnerabilities that v1.0 deliberately documented are remediated.
+A full-stack authentication application built as a portfolio piece: a React + MUI single-page frontend talking to an Express + Apollo GraphQL backend, with user accounts persisted in MySQL via Sequelize. It ships email-verified registration, JWT login with server-side session revocation, rate-limited auth mutations, protected routes, a dashboard, and (as of v1.0) a full-stack automated test suite enforced in CI. As of v1.1 the security posture is hardened — the account-takeover, brute-force, stale-session, and first-user-ADMIN privilege-escalation vulnerabilities that v1.0 deliberately documented are remediated. As of v2.0 it is a collaborative family-tree app (membership-gated `/manage` editing + a pan/zoom `/family` tree), and as of v3.0 family members can carry their name in Ge'ez script (ግዕዝ) alongside Latin, rendered with a self-hosted Ethiopic webfont so it displays correctly on every device.
 
 ## Core Value
 
 Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
 
-## Current Milestone: v3.0 Ge'ez Native-Script Names
+## Shipped Milestone: v3.0 Ge'ez Native-Script Names (2026-07-31)
 
-**Goal:** Family members can carry their name in Ge'ez script (ግዕዝ) alongside the existing Latin name, rendered with a self-hosted Ge'ez-capable webfont so it displays correctly on every device — deepening the app's fit for the Tigrinya/Eritrean family it serves.
+**Goal (met):** Family members can carry their name in Ge'ez script (ግዕዝ) alongside the existing Latin name, rendered with a self-hosted Ge'ez-capable webfont so it displays correctly on every device — deepening the app's fit for the Tigrinya/Eritrean family it serves. All 6 phases (18–23) verified; 12/12 requirements delivered. Shipped as 11 plans across 2 days (+7,903/−133 LOC).
 
-**Target features:**
-- Bundle a self-hosted Ge'ez webfont (e.g. Noto Sans Ethiopic / Abyssinica SIL) — no external CDN, matching the app's self-contained deploy — so Ge'ez text renders consistently regardless of the viewer's OS fonts.
-- Add optional Ge'ez name columns to the `FamilyMember` model — `geezFirstname`, `geezLastname`, `geezMothersname`, plus a derived `geezFullname` VIRTUAL mirroring `fullname`. All optional; a member with no Ge'ez name shows the Latin name as today.
-- Enter/edit the Ge'ez names through the existing Manage add/edit dialogs, using the person's own device keyboard/IME (no in-app transliteration helper).
-- Render the Ge'ez name on `/family` tree cards and across `/manage` (relationship panels, member table, pickers).
+**Delivered:**
+- Ge'ez data model: three nullable `utf8mb4` columns (`geezFirstname`/`geezLastname`/`geezMothersname`) on `family_members` + a defensive `geezFullname` VIRTUAL getter, via a portable manual migration (`018-*.sql`) proven byte-exact against real local MariaDB (prod apply deferred, D-04).
+- GraphQL passthrough with **zero new resolver logic**: the three writable fields + derived `geezFullname` flow through the existing spread-passthrough create/edit resolvers; clearing a field persists `null` not `''` (added to `OPTIONAL_FAMILY_MEMBER_FIELDS`).
+- Self-hosted `@fontsource/noto-sans-ethiopic` (Ethiopic-subset, no CDN) wired into both MUI theme stacks after Latin/before OS-fallback — per-character fallback keeps Latin in Inter/Sora untouched.
+- A single anti-drift `getGeezDisplay(member)` helper (reads server-derived `geezFullname`, never recomputes) driving every render surface identically: `/family` tree card, `/manage` admin table + relationship cards (incl. non-admin uncles/aunts), with admin-table Ge'ez substring search.
+- Write path: three Ge'ez inputs in the shared `MemberFields` form wired through Add-relative + Edit-member dialogs (round-trip + clear-to-null), and a Ge'ez-findable add-relative Autocomplete (`createFilterOptions` matching Latin OR Ge'ez, Latin-only visible label).
+- Milestone quality gate: full backend+frontend suite green (except two named pre-existing/out-of-scope failures, D-08) + a **human glyph/visual sign-off** against a real Tigrinya name entered through the new write path.
 
-**Explicitly out of scope this milestone:** Latin↔Ge'ez display toggle; Ge'ez in the detail panel / dashboard; full Amharic/Tigrinya UI translation (label/button i18n); in-app Latin→Ge'ez transliteration input; Ge'ez equivalents for address/email/phone.
+**Deferred to a later milestone:** Latin↔Ge'ez display toggle; Ge'ez in the detail panel / dashboard; LinkAccounts picker Ge'ez search; full Amharic/Tigrinya UI translation (label/button i18n); in-app Latin→Ge'ez transliteration input; Ge'ez equivalents for address/email/phone. Two advisory code-review follow-ups remain open: CR-01 (pre-existing non-admin uncle/aunt edit data-loss risk at `ManagePage.jsx:35-36`, predates v3.0) and WR-01 (`LinkAccountsPage`'s `EMPTY_LINK_FORM` omits the 3 new Ge'ez keys).
 
 ## Shipped Milestone: v2.0 Collaborative Family Tree (2026-07-25)
 
@@ -81,12 +83,13 @@ Changes to the app can be made with confidence — auth and core flows are prote
 - ✓ Ge'ez script renders via a self-hosted `@fontsource/noto-sans-ethiopic` webfont (Ethiopic-subset, no CDN) wired into both MUI theme font stacks after Latin/before OS-fallback; Latin rendering unregressed — Validated in Phase 20: Self-Hosted Font & Theme (FONT-01, FONT-02), confirmed via UAT across ≥2 browsers + threat-secure (`frontend/src/main.jsx`, `frontend/src/theme.js`, `frontend/src/theme.test.js`)
 - ✓ A single shared `getGeezDisplay(member)` helper derives the Ge'ez display (`null | { text, lang: 'ti' }`) from the server-derived `member.geezFullname`, so every render surface handles Latin/Ge'ez precedence + empty-handling identically without re-deriving — Validated in Phase 21: Shared Display Helper (VIEW-03; helper half of QUAL-01), verified 8/8 + threat-secure (`frontend/src/utils/displayName.js`, `frontend/src/utils/displayName.test.js`)
 - ✓ A member's Ge'ez name renders stacked below the Latin name on the `/family` tree card and both `/manage` surfaces (admin table + relationship-panel cards, incl. non-admin uncles/aunts), showing nothing when absent, via the shared `getGeezDisplay` helper on every surface; the admin table search matches typed Ge'ez substrings against `geezFullname` — Validated in Phase 22: Render Surfaces / Read Path (VIEW-01, VIEW-02, FIND-01), verified 8/8, 291/291 frontend tests (`frontend/src/components/family/MemberNode.jsx`, `frontend/src/components/manage/AdminMemberTable.jsx`, `frontend/src/components/manage/MemberCard.jsx`, `frontend/src/pages/FamilyTreePage.jsx`, `frontend/src/pages/ManagePage.jsx`). Manual real-glyph visual sign-off (VIEW-01's fixed-card overflow check) deferred to Phase 23 — no member has a Ge'ez name yet (write path is Phase 23).
+- ✓ Ge'ez names can be entered/edited through the existing Manage add-relative + edit-member dialogs (three inputs in the shared `MemberFields` form, own-device keyboard/IME, full round-trip + clear-to-null), and the add-relative Autocomplete picker matches typed Ge'ez text via a custom `filterOptions` while keeping its Latin-only visible label; the milestone closed with the full suite green (except two named pre-existing failures) and a human glyph/visual sign-off against a real Tigrinya name — Validated in Phase 23: Write Path & Quality Gate (EDIT-01, FIND-02, QUAL-01), verified 8/8 (`frontend/src/components/manage/MemberFields.jsx`, `frontend/src/components/manage/AddRelativeDialog.jsx`, `frontend/src/components/manage/EditMemberDialog.jsx`, `frontend/src/pages/ManagePage.jsx`). This also closed Phase 22's deferred real-glyph visual sign-off (VIEW-01's fixed-card overflow check).
 
 ### Active
 
-<!-- v3.0 Ge'ez Native-Script Names scoped and confirmed. REQ-IDs defined in REQUIREMENTS.md at milestone start; see "Current Milestone: v3.0" above for target features. v2.0 Collaborative Family Tree shipped and archived (see Shipped Milestone sections). -->
+<!-- v3.0 Ge'ez Native-Script Names shipped and archived (2026-07-31). No active milestone — next milestone's requirements will be defined via /gsd:new-milestone. v1.0/v1.1/v2.0/v3.0 shipped (see Shipped Milestone sections + milestones/ archive). -->
 
-- v3.0 Ge'ez Native-Script Names requirements being defined in `.planning/REQUIREMENTS.md` (see Current Milestone section above).
+- (none) — v3.0 complete. Run `/gsd:new-milestone` to scope the next milestone's requirements.
 
 ### Out of Scope
 
@@ -135,6 +138,9 @@ Changes to the app can be made with confidence — auth and core flows are prote
 | v3.0 Phase 19: expose Ge'ez fields over GraphQL with zero new resolver logic (extend `OPTIONAL_FAMILY_MEMBER_FIELDS`, not resolver bodies) | The create/edit resolvers already spread-passthrough sanitized input; adding the three keys to the shared blank→null list is the entire mechanism for clear-to-null, mirroring `mothersname` | ✓ Good — DATA-03 validated; zero-new-resolver constraint verified via `git show` per commit; clear-to-null proven `=== null` |
 | v3.0 Phase 20: Ge'ez-font-only scope, using the Ethiopic-subset `@fontsource` import ordered after Latin | Success criterion #1's "zero external requests" applies to the Ge'ez font specifically — Inter/Sora deliberately stay on their CDN (out of scope per REQUIREMENTS.md); the subset has no Latin coverage so per-character fallback keeps Latin in Inter/Sora | ✓ Good — FONT-01/02 validated; glyph coverage (ቨ/ቐ) + same-origin serving + no-FOUT confirmed via UAT across ≥2 browsers; T-20-SC threat closed |
 | v3.0 Phase 21: the shared helper reads the server-derived `geezFullname` (not recomputed from parts) and returns `null | { text, lang: 'ti' }` mirroring the existing `formatDate()` null-or-value idiom | Recomputing the join on the frontend would relocate Phase 18's derivation into a second place — the exact drift bug this phase exists to eliminate; the null-or-value shape lets consumers render nothing when absent without re-deriving the check (SC3) | ✓ Good — VIEW-03 validated; anti-drift enforced by acceptance-criteria grep (zero `geezFirstname`/`geezLastname` refs); helper owns only the Ge'ez half, Latin untouched; no consumer edits (Phase 22's job) |
+| v3.0 Phase 22: every read surface consumes the Phase 21 `getGeezDisplay` helper; the fixed 252×120 `/family` card body column clips (`overflow:hidden` + `minHeight:0`) rather than growing | Re-deriving Ge'ez precedence per surface is the drift risk Phase 21 exists to kill; the card is fixed-size and already tight for Latin, so Ge'ez (visually wider) must clip not expand | ✓ Good — VIEW-01/02, FIND-01 validated 8/8; code review caught + fixed a non-admin uncle/aunt Ge'ez gap and the overflow risk test-first. Real-glyph visual sign-off deferred to Phase 23 (no Ge'ez data existed yet) |
+| v3.0 Phase 23: read path (Phase 22) sequenced before write path (Phase 23), and the milestone-closing visual sign-off done by entering a real Tigrinya name through the new dialogs (D-07), not by seeding data | Test-first convention — prove rendering against known data before wiring end-user input; and jsdom cannot rasterize glyphs, so the fixed-card overflow + IME round-trip can only be verified by a human against real freshly-entered data | ✓ Good — EDIT-01/FIND-02/QUAL-01 validated 8/8; human sign-off "approved" closed both D-07 and Phase 22's deferred gate; full suite green except two named pre-existing failures (VERIFY-04/REL-06, D-08 — flagged not masked, fix deferred) |
+| v3.0 Phase 23: the add-relative Autocomplete's Ge'ez findability uses a custom `filterOptions` (via `createFilterOptions`) decoupled from `getOptionLabel`, keeping the visible option label Latin-only (D-06) | MUI's default filter only matches `getOptionLabel`; matching Ge'ez without a visible label change requires overriding the filter, mirroring the Phase 22 FIND-01 admin-table match logic | ✓ Good — FIND-02 validated; null-guarded `fullname` OR `geezFullname` match; Latin-only label preserved; human-confirmed the picker surfaces members by typed Ge'ez substring |
 
 ## Current State
 
@@ -189,4 +195,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-31 — Phase 23 (Write Path & Quality Gate) complete; v3.0 Ge'ez Native-Script Names feature-complete (all 6 phases done: 18, 19, 20, 21, 22, 23). Ready for `/gsd:complete-milestone`.*
+*Last updated: 2026-07-31 after v3.0 Ge'ez Native-Script Names milestone — all 6 phases (18–23) shipped, 12/12 requirements validated, tagged v3.0. Next: `/gsd:new-milestone`.*
