@@ -188,7 +188,7 @@ function MemberBranch({ user }) {
 
   const inScopeMembers = rows
     .filter((row) => row.id !== scope.self.id)
-    .map(({ id, fullname }) => ({ id, fullname }));
+    .map(({ id, fullname, geezFullname }) => ({ id, fullname, geezFullname }));
 
   return (
     <Stack spacing={4}>
@@ -367,7 +367,9 @@ function AdminBranch({ user }) {
   if (pageError) return <Alert severity="error">{pageError}</Alert>;
 
   const inScopeMembers = focusedScope
-    ? members.filter((member) => member.id !== focusedScope.self.id).map(({ id, fullname }) => ({ id, fullname }))
+    ? members
+        .filter((member) => member.id !== focusedScope.self.id)
+        .map(({ id, fullname, geezFullname }) => ({ id, fullname, geezFullname }))
     : [];
 
   return (
