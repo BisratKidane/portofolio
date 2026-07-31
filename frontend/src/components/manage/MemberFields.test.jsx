@@ -38,12 +38,12 @@ describe('MemberFields', () => {
   it('renders every member field once', () => {
     renderFields();
 
-    expect(screen.getByLabelText('First name', { exact: false })).toBeInTheDocument();
-    expect(screen.getByLabelText('Last name', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^First name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Last name/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Ge'ez first name (ስም)", { exact: false })).toBeInTheDocument();
     expect(screen.getByLabelText("Ge'ez last name (ስም ኣቦ)", { exact: false })).toBeInTheDocument();
     expect(screen.getByLabelText('Gender', { exact: false })).toBeInTheDocument();
-    expect(screen.getByLabelText("Mother's name", { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Mother's name/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Ge'ez mother's name (ስም ኣደ)", { exact: false })).toBeInTheDocument();
     expect(screen.getByLabelText('Birthdate', { exact: false })).toBeInTheDocument();
     expect(screen.getByLabelText('Living')).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe('MemberFields', () => {
   it('calls onChange(field, value) for a text field', async () => {
     const { onChange } = renderFields();
 
-    await userEvent.type(screen.getByLabelText('First name', { exact: false }), 'A');
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'A');
 
     expect(onChange).toHaveBeenCalledWith('firstname', 'A');
   });

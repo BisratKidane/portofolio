@@ -109,6 +109,21 @@ export default function MemberFields({
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
         <TextField
+          label="Ge'ez first name (ስም)"
+          value={form.geezFirstname}
+          onChange={handleTextChange('geezFirstname')}
+          fullWidth
+        />
+        <TextField
+          label="Ge'ez last name (ስም ኣቦ)"
+          value={form.geezLastname}
+          onChange={handleTextChange('geezLastname')}
+          fullWidth
+        />
+      </Stack>
+
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <TextField
           select
           label="Gender"
           required
@@ -124,6 +139,16 @@ export default function MemberFields({
           label="Mother's name"
           value={form.mothersname}
           onChange={handleTextChange('mothersname')}
+          fullWidth
+        />
+      </Stack>
+
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <Box sx={{ flex: 1 }} />
+        <TextField
+          label="Ge'ez mother's name (ስም ኣደ)"
+          value={form.geezMothersname}
+          onChange={handleTextChange('geezMothersname')}
           fullWidth
         />
       </Stack>
