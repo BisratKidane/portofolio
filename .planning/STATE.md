@@ -18,10 +18,10 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-30)
+See: .planning/PROJECT.md (updated 2026-07-31 after v3.0 milestone)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Milestone complete
+**Current focus:** Planning next milestone — run `/gsd:new-milestone`
 
 ## Current Position
 
@@ -40,6 +40,17 @@ Items acknowledged and deferred at the v2.0 milestone close on 2026-07-25:
 | uat | Phase 16 — remove-photo confirm flow end-to-end in a real browser | pending |
 
 Both are browser-only manual checks from Phase 16 (Photo Upload); the underlying code is verified and unit/component-tested. Close them via `/gsd:verify-work 16` when convenient.
+
+Items acknowledged and deferred at the v3.0 milestone close on 2026-07-31:
+
+| Category | Item | Status |
+|----------|------|--------|
+| code-review | CR-01 — non-admin uncle/aunt Edit path data-loss risk (`ManagePage.jsx:35-36` card-only projection → blank-form overwrite on save). Pre-existing (commit `c43e5be`, v2.0), untouched by v3.0. | open — needs `/gsd:debug` |
+| code-review | WR-01 — `LinkAccountsPage`'s `EMPTY_LINK_FORM` omits the 3 new Ge'ez keys → uncontrolled-input warning + no Ge'ez in create-and-link. Introduced by v3.0's shared `MemberFields` change. | open — `/gsd:code-review 23 --fix` candidate |
+| bug | Two named pre-existing backend integration failures (VERIFY-04 verify-race, REL-06 dedup TOCTOU) — flagged per D-08, explicitly out of v3.0 scope. | open — deferred |
+| housekeeping | 6 completed v2.0 quick-tasks (`260726-*`, `260727-*`) flagged "missing" by pre-close audit — work is done (see Quick Tasks Completed below); tracking files were cleaned up. | acknowledged — no action |
+
+The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "approved" against a real Tigrinya name) — no longer pending.
 
 ## Performance Metrics
 
