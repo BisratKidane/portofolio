@@ -65,7 +65,7 @@ _Post-milestone note: the `/family` tree edge model was later changed from the u
 - [x] **Phase 20: Self-Hosted Font & Theme** - Ge'ez script renders correctly and consistently via a self-hosted webfont, with zero CDN dependency and no Latin regression. (completed 2026-07-30)
 - [x] **Phase 21: Shared Display Helper** - One helper drives Latin/Ge'ez precedence and empty-handling identically everywhere. (completed 2026-07-30)
 - [x] **Phase 22: Render Surfaces (Read Path)** - A member's Ge'ez name is visible on `/family` tree cards and across `/manage`, and searchable in the admin table. (completed 2026-07-31)
-- [ ] **Phase 23: Write Path & Quality Gate** - Ge'ez names can be entered/edited via existing dialogs and found via the add-relative picker, with the full suite green and a manual glyph sign-off closing the milestone.
+- [x] **Phase 23: Write Path & Quality Gate** - Ge'ez names can be entered/edited via existing dialogs and found via the add-relative picker, with the full suite green and a manual glyph sign-off closing the milestone. (completed 2026-07-31)
 
 ## Phase Details
 
@@ -196,7 +196,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 23-03-PLAN.md — Full-suite quality gate run + manual glyph/visual sign-off (QUAL-01)
+- [x] 23-03-PLAN.md — Full-suite quality gate run + manual glyph/visual sign-off (QUAL-01)
 
 ## Progress
 
@@ -227,4 +227,4 @@ Phases execute in numeric order: 18 → 19 → 20 → 21 → 22 → 23. (Phase 2
 | 20. Self-Hosted Font & Theme | v3.0 | 1/1 | Complete    | 2026-07-30 |
 | 21. Shared Display Helper | v3.0 | 1/1 | Complete    | 2026-07-30 |
 | 22. Render Surfaces (Read Path) | v3.0 | 3/3 | Complete    | 2026-07-31 |
-| 23. Write Path & Quality Gate | v3.0 | 2/3 | In Progress|  |
+| 23. Write Path & Quality Gate | v3.0 | 3/3 | Complete   | 2026-07-31 |
