@@ -14,7 +14,12 @@ findings:
   warning: 2
   info: 2
   total: 4
-status: issues_found
+status: resolved
+resolution:
+  WR-01: fixed (1917ff3) — geezFullname added to nested mother/father siblings; RED test e3261ff
+  WR-02: fixed (1917ff3) — body column clips overflow (overflow:hidden + minHeight:0); RED test e3261ff
+  IN-01: deferred — lang hardcoded to 'ti' lives in out-of-scope displayName.js; revisit for Amharic support
+  IN-02: deferred — search/display trim inconsistency; low-impact, revisit in Phase 23 write-path work
 ---
 
 # Phase 22: Code Review Report
