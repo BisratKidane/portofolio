@@ -17,7 +17,7 @@
     "@dagrejs/dagre": "^3.0.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
-    "@fontsource/noto-sans-ethiopic": "^5.3.0",
+    "@fontsource/abyssinica-sil": "^5.3.0",
     "@mui/icons-material": "^6.3.1",
     "@mui/material": "^6.3.1",
     "@mui/x-date-pickers": "^7.29.4",
