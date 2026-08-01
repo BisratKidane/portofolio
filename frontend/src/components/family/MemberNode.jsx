@@ -1,7 +1,8 @@
 // Custom xyflow node type rendering a FamilyMember card on the /family tree
 // (Phase 17, Plan 17-03; restyled by quick task 260726-sh4). Two-column card:
-// a 1/3-width avatar column + a rows column (reserved top row, fullname,
-// birthday, mother name, address-if-alive). Preserves the non-color-only
+// a 1/3-width avatar column + a rows column (fullname, Ge'ez name, mother name
+// [Ge'ez-preferred], address-if-alive). The re-rooted tree "head" is shown by
+// the card's boxShadow glow, not a text tag. Preserves the non-color-only
 // gender cue + viewer ring/chip + descendant/ancestor hidden-count badges
 // (D-03/D-09).
 //
@@ -21,13 +22,6 @@ import MemberAvatarImage from '../manage/MemberAvatarImage.jsx';
 // aria-label so it is not conveyed by colour alone.
 const MALE_TINT = '#3b82f6';
 const FEMALE_TINT = '#ec4899';
-
-function formatDate(dateStr) {
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString();
-}
 
 function genderMeta(gender) {
   if (gender === 'Male') return { label: 'Male', tint: MALE_TINT };
@@ -62,9 +56,15 @@ export default function MemberNode({ data }) {
     onToggleAncestorExpand
   } = data;
 
-  const birthday = formatDate(member.birthdate);
   const geez = getGeezDisplay(member);
-  const motherName = member.mother?.fullname || member.mothersname;
+  // Prefer the mother's name in Ge'ez (linked mother's geezFullname, then the
+  // free-text geezMothersname), falling back to the Latin name when no Ge'ez
+  // mother name exists — so the row never disappears for pre-Ge'ez members.
+  const motherName =
+    member.mother?.geezFullname ||
+    member.geezMothersname ||
+    member.mother?.fullname ||
+    member.mothersname;
   const showAddress = member.isAlive !== false && Boolean(member.address);
   const { label: genderLabel, tint: genderTint } = genderMeta(member.gender);
 
@@ -162,37 +162,16 @@ export default function MemberNode({ data }) {
         <MemberAvatarImage member={member} variant="rounded" fill />
       </Box>
 
-      {/* Right column: reserved row + fullname + birthday + mother + address.
-          The card is a fixed 252x120 node (VIEW-01): clip vertical overflow so the
-          worst case (focus-root "Head" row + Ge'ez line + birthday + mother +
-          address) can never spill past the card border. minHeight:0 lets this flex
-          child shrink below its content so overflow:hidden actually clips. */}
+      {/* Right column: fullname + Ge'ez name + mother + address. The re-rooted
+          tree "head" is marked by the card's boxShadow glow (see Paper sx), not a
+          text tag. The card is a fixed 252x120 node (VIEW-01): clip vertical
+          overflow so the worst case (Ge'ez line + mother + address) can never
+          spill past the card border. minHeight:0 lets this flex child shrink
+          below its content so overflow:hidden actually clips. */}
       <Box
         data-testid={`member-node-body-${member.id}`}
         sx={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 0.25 }}
       >
-        {/* Top row: shows a "Head" tag when this card is the re-rooted tree
-            head; otherwise reserved (kept for a future edit action). */}
-        <Box sx={{ height: isFocusRoot ? 18 : 0, flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-          {isFocusRoot && (
-            <Typography
-              component="span"
-              sx={{
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: 0.4,
-                color: colors.primaryDark,
-                bgcolor: colors.gradientSoft,
-                px: 0.75,
-                borderRadius: 0.5,
-                lineHeight: 1.5
-              }}
-            >
-              Head
-            </Typography>
-          )}
-        </Box>
-
         {/* The viewer is identified by the card's double border (gender border +
             viewer outline ring), so no separate "You" chip is needed. */}
         <Typography sx={{ fontSize: 14, fontWeight: 600 }} noWrap>
@@ -202,12 +181,6 @@ export default function MemberNode({ data }) {
         {geez && (
           <Typography sx={{ ...ROW_SX, color: genderTint }} lang={geez.lang} noWrap>
             {geez.text}
-          </Typography>
-        )}
-
-        {birthday && (
-          <Typography sx={ROW_SX} noWrap>
-            {birthday}
           </Typography>
         )}
 

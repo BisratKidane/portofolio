@@ -53,39 +53,39 @@ function renderNode(dataOverrides = {}) {
 }
 
 describe('MemberNode', () => {
-  it('renders the full name and the formatted birthday', () => {
+  it('renders the full name', () => {
     renderNode();
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
-    const expectedBirthday = new Date('1932-01-01').toLocaleDateString();
-    expect(screen.getByText(expectedBirthday)).toBeInTheDocument();
   });
 
-  it('omits the birthday row when birthdate is missing or invalid', () => {
-    const { rerender } = renderNode({ member: { ...BASE_MEMBER, birthdate: null } });
+  it('does not render a birthday row (removed from the card)', () => {
+    renderNode();
     const formattedBirthday = new Date('1932-01-01').toLocaleDateString();
     expect(screen.queryByText(formattedBirthday)).not.toBeInTheDocument();
-
-    rerender(
-      <ReactFlowProvider>
-        <MemberNode
-          data={{
-            member: { ...BASE_MEMBER, birthdate: 'not-a-date' },
-            isViewer: false,
-            hiddenCount: 0,
-            onToggleExpand: vi.fn(),
-            ancestorHiddenCount: 0,
-            onToggleAncestorExpand: vi.fn()
-          }}
-        />
-      </ReactFlowProvider>
-    );
-    expect(screen.queryByText('Invalid Date')).not.toBeInTheDocument();
   });
 
   it('renders the linked mother full name, preferring it over the stored mothersname text', () => {
     renderNode({ member: { ...BASE_MEMBER, mother: { id: '9', fullname: 'Mary Mother' }, mothersname: 'Wrong Text' } });
     expect(screen.getByText('Mary Mother')).toBeInTheDocument();
     expect(screen.queryByText('Wrong Text')).not.toBeInTheDocument();
+  });
+
+  it("prefers the mother's Ge'ez name over the Latin name when present", () => {
+    renderNode({
+      member: {
+        ...BASE_MEMBER,
+        mother: { id: '9', fullname: 'Mary Mother', geezFullname: 'ማርያም እናት' },
+        geezMothersname: 'Ignored Free Text'
+      }
+    });
+    expect(screen.getByText('ማርያም እናት')).toBeInTheDocument();
+    expect(screen.queryByText('Mary Mother')).not.toBeInTheDocument();
+  });
+
+  it("falls back to the free-text geezMothersname, then Latin, for the mother row", () => {
+    renderNode({ member: { ...BASE_MEMBER, mother: null, geezMothersname: 'እናት ብቻ', mothersname: 'Latin Only' } });
+    expect(screen.getByText('እናት ብቻ')).toBeInTheDocument();
+    expect(screen.queryByText('Latin Only')).not.toBeInTheDocument();
   });
 
   it('falls back to the stored mothersname text when no mother is linked', () => {
@@ -147,14 +147,15 @@ describe('MemberNode', () => {
     expect(screen.queryByText('You')).not.toBeInTheDocument();
   });
 
-  it('marks the re-rooted head with data-focus-root and a "Head" tag', () => {
+  it('marks the re-rooted head with data-focus-root and no "Head" text tag (glow only)', () => {
     renderNode({ isFocusRoot: true });
     const card = screen.getByTestId(`member-node-${BASE_MEMBER.id}`);
     expect(card).toHaveAttribute('data-focus-root', 'true');
-    expect(screen.getByText('Head')).toBeInTheDocument();
+    // The head is shown by the card's boxShadow glow, not a text label.
+    expect(screen.queryByText('Head')).not.toBeInTheDocument();
   });
 
-  it('has data-focus-root false and no "Head" tag by default', () => {
+  it('has data-focus-root false by default', () => {
     renderNode();
     expect(screen.getByTestId(`member-node-${BASE_MEMBER.id}`)).toHaveAttribute('data-focus-root', 'false');
     expect(screen.queryByText('Head')).not.toBeInTheDocument();
@@ -245,9 +246,9 @@ describe('MemberNode', () => {
     expect(screen.queryByText('ጃነ ዶ')).not.toBeInTheDocument();
   });
 
-  it("renders both the 'Head' tag and the Ge'ez line when isFocusRoot and geezFullname coexist", () => {
+  it("renders the Ge'ez line (no 'Head' text) when isFocusRoot and geezFullname coexist", () => {
     renderNode({ isFocusRoot: true, member: { ...BASE_MEMBER, geezFullname: 'ጃነ ዶ' } });
-    expect(screen.getByText('Head')).toBeInTheDocument();
+    expect(screen.queryByText('Head')).not.toBeInTheDocument();
     const geezLine = screen.getByText('ጃነ ዶ');
     expect(geezLine).toBeInTheDocument();
     expect(geezLine).toHaveAttribute('lang', 'ti');
@@ -256,8 +257,8 @@ describe('MemberNode', () => {
   it('clips the body column so the fixed-height card never overflows its border in the focus-root + Ge\'ez + all-rows worst case (WR-02)', () => {
     // jsdom cannot measure real glyph overflow (that is the deferred manual gate),
     // but the fixed 252x120 card MUST clip rather than spill past its border when
-    // Head + fullname + Ge'ez + birthday + mother + address all coexist. Pin the
-    // structural guard: the body column clips vertical overflow.
+    // fullname + Ge'ez + mother + address all coexist. Pin the structural guard:
+    // the body column clips vertical overflow.
     renderNode({
       isFocusRoot: true,
       member: { ...BASE_MEMBER, geezFullname: 'ጃነ ዶ', address: '12 Elm Street, Springfield' }

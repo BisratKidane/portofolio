@@ -140,6 +140,7 @@ Items acknowledged and carried forward from previous milestone close:
 | 260727-rvt | Dashboard user management (TDD): updateUser/changePassword/setUserPassword mutations + Edit/Change-password/Set-password dialogs, richer users list (last-updated + Unverified chip), self-vs-admin authz, last-admin guard, email re-verification — on branch `dashboard-user-management` | complete ✓ | 2026-07-27 |
 | 260727-tb1 | Family member provenance + isAlive (TDD): createdBy/updatedBy + timestamps (admin-only), isAlive replaces deathdate in API/UI (deathdate column kept), admin isAlive toggle in /manage list + /family detail panel, provenance columns; manual migration 014 — on branch `member-provenance-isalive` (stacked on dashboard-user-management) | complete ✓ | 2026-07-27 |
 | 260801-fsa | Switch Ge'ez webfont Noto Sans Ethiopic → SIL Abyssinica SIL (`@fontsource/abyssinica-sil`, weight 400 only) + gender-tint the Ge'ez name & mother's-name rows on the `/family` tree card (male #3b82f6 / female #ec4899). 301/301 frontend tests + prod build green. Manual follow-up: human `/family` glyph-coverage + tint-legibility check. | complete ✓ | 2026-08-01 |
+| 260801-fst (fast) | `/family` tree card: remove the birthday row; show the mother's name in Ge'ez (Ge'ez-preferred, Latin fallback — added `geezMothersname` + `mother{geezFullname}` to `FAMILY_TREE_QUERY`); remove the "Head" text label (re-root still shown by the boxShadow glow; single-click re-heading unchanged). 303/303 frontend tests green. | complete ✓ | 2026-08-01 |
 
 ## Session Continuity
 
