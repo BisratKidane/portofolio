@@ -129,7 +129,10 @@ const EMPTY_DIALOG_STATE = {
   targetId: null,
   targetName: '',
   targetGender: '',
-  targetFirstname: ''
+  targetFirstname: '',
+  targetLastname: '',
+  targetGeezFirstname: '',
+  targetGeezLastname: ''
 };
 const EMPTY_CROP_STATE = { open: false, file: null, member: null };
 
@@ -210,7 +213,10 @@ function MemberBranch({ user }) {
             targetId: scope.self.id,
             targetName: scope.self.fullname,
             targetGender: scope.self.gender,
-            targetFirstname: scope.self.firstname
+            targetFirstname: scope.self.firstname,
+            targetLastname: scope.self.lastname,
+            targetGeezFirstname: scope.self.geezFirstname,
+            targetGeezLastname: scope.self.geezLastname
           })
         }
         onEdit={(member) => setEditTarget(member)}
@@ -226,6 +232,9 @@ function MemberBranch({ user }) {
         targetName={dialogState.targetName}
         targetGender={dialogState.targetGender}
         targetFirstname={dialogState.targetFirstname}
+        targetLastname={dialogState.targetLastname}
+        targetGeezFirstname={dialogState.targetGeezFirstname}
+        targetGeezLastname={dialogState.targetGeezLastname}
         inScopeMembers={inScopeMembers}
         onClose={() => setDialogState(EMPTY_DIALOG_STATE)}
         onCreated={refetch}
@@ -404,7 +413,10 @@ function AdminBranch({ user }) {
                   targetId: focusedScope.self.id,
                   targetName: focusedScope.self.fullname,
                   targetGender: focusedScope.self.gender,
-                  targetFirstname: focusedScope.self.firstname
+                  targetFirstname: focusedScope.self.firstname,
+                  targetLastname: focusedScope.self.lastname,
+                  targetGeezFirstname: focusedScope.self.geezFirstname,
+                  targetGeezLastname: focusedScope.self.geezLastname
                 })
               }
               onEdit={(member) => setEditTarget(member)}
@@ -437,6 +449,9 @@ function AdminBranch({ user }) {
         targetName={dialogState.targetName}
         targetGender={dialogState.targetGender}
         targetFirstname={dialogState.targetFirstname}
+        targetLastname={dialogState.targetLastname}
+        targetGeezFirstname={dialogState.targetGeezFirstname}
+        targetGeezLastname={dialogState.targetGeezLastname}
         inScopeMembers={inScopeMembers}
         onClose={() => setDialogState(EMPTY_DIALOG_STATE)}
         onCreated={() => {
