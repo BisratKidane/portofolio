@@ -200,7 +200,7 @@ export default function MemberNode({ data }) {
         </Typography>
 
         {geez && (
-          <Typography sx={ROW_SX} lang={geez.lang} noWrap>
+          <Typography sx={{ ...ROW_SX, color: genderTint }} lang={geez.lang} noWrap>
             {geez.text}
           </Typography>
         )}
@@ -212,7 +212,7 @@ export default function MemberNode({ data }) {
         )}
 
         {motherName && (
-          <Typography sx={ROW_SX} noWrap>
+          <Typography sx={{ ...ROW_SX, color: genderTint }} noWrap>
             {motherName}
           </Typography>
         )}
