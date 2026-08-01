@@ -119,7 +119,7 @@ export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
                       {member.fullname}
                     </Typography>
                     {geez && (
-                      <Typography sx={{ fontSize: 12, fontWeight: 400, color: colors.slate }} lang={geez.lang} noWrap>
+                      <Typography sx={{ fontSize: 16, fontWeight: 400, color: colors.secondary }} lang={geez.lang} noWrap>
                         {geez.text}
                       </Typography>
                     )}
