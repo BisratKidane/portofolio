@@ -2,6 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { buildForest } from './familyTree.assembly.js';
 import { layoutWithDagre } from './familyTree.layout.js';
 
+// Mirrors the module-private constants in familyTree.layout.js. Kept local
+// (not imported) since the module intentionally only exports
+// layoutWithDagre; these values must match PERSON_W/PERSON_H/SPOUSE_GAP
+// there exactly (252/120/40, unchanged by the couple-footprint fix).
+const PERSON_W = 252;
+const PERSON_H = 120;
+const SPOUSE_GAP = 40;
+
 // Fixture: a two-parent child (3) of parents 1 and 2 — pure hierarchical
 // model, direct parent->child edges only, no union node.
 const twoParentFixture = [
@@ -102,5 +110,51 @@ describe('layoutWithDagre — spouse edges excluded from dagre ranking', () => {
 
     expect(byId.get('2').position.y).toBe(byId.get('1').position.y);
     expect(byId.get('3').position.y).toBeGreaterThan(byId.get('1').position.y);
+  });
+
+  it('snaps the mover exactly PERSON_W + SPOUSE_GAP to the right of the anchor, same y (relative invariant)', () => {
+    const flat = [
+      { id: '6', mother: null, father: null, spouses: [{ id: '14' }], children: [] },
+      { id: '14', mother: null, father: null, spouses: [{ id: '6' }], children: [] }
+    ];
+    const { nodes, edges } = buildForest(flat);
+    const laidOut = layoutWithDagre(nodes, edges);
+    const byId = new Map(laidOut.map((n) => [n.id, n]));
+
+    const anchor = byId.get('6');
+    const mover = byId.get('14');
+
+    expect(mover.position.x).toBe(anchor.position.x + PERSON_W + SPOUSE_GAP);
+    expect(mover.position.y).toBe(anchor.position.y);
+  });
+});
+
+describe('layoutWithDagre — spouse/sibling overlap regression', () => {
+  it('never overlaps a spouse rect with any other node rect, even when the bloodline anchor has a sibling to its right', () => {
+    // Apex (1) has two children: '2' (the spouse-pairing anchor, so it has
+    // a sibling on the same rank) and '3' (the sibling). '4' is a married-in
+    // spouse of '2' with no parents/children of her own. Before the
+    // couple-footprint fix, dagre reserved only one PERSON_W slot for '2'
+    // and the post-layout snap of '4' beside '2' could land on top of '3'.
+    const fixture = [
+      { id: '1', mother: null, father: null, spouses: [], children: [{ id: '2' }, { id: '3' }] },
+      { id: '2', mother: { id: '1' }, father: null, spouses: [{ id: '4' }], children: [] },
+      { id: '3', mother: { id: '1' }, father: null, spouses: [], children: [] },
+      { id: '4', mother: null, father: null, spouses: [{ id: '2' }], children: [] }
+    ];
+    const { nodes, edges } = buildForest(fixture);
+    const laidOut = layoutWithDagre(nodes, edges);
+
+    const rectsOverlap = (a, b) =>
+      a.position.x < b.position.x + PERSON_W &&
+      a.position.x + PERSON_W > b.position.x &&
+      a.position.y < b.position.y + PERSON_H &&
+      a.position.y + PERSON_H > b.position.y;
+
+    for (let i = 0; i < laidOut.length; i += 1) {
+      for (let j = i + 1; j < laidOut.length; j += 1) {
+        expect(rectsOverlap(laidOut[i], laidOut[j])).toBe(false);
+      }
+    }
   });
 });
