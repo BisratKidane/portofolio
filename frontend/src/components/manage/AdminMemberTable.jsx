@@ -55,7 +55,11 @@ export default function AdminMemberTable({ members, onSelect, onToggleAlive }) {
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const term = search.trim().toLowerCase();
-  const filtered = members.filter(
+  // Always list the family by ascending id (integer primary keys), independent of
+  // the order the query returns them in — search and pagination below then operate
+  // on this stable id-ordered list.
+  const sorted = [...members].sort((a, b) => Number(a.id) - Number(b.id));
+  const filtered = sorted.filter(
     (member) =>
       member.fullname.toLowerCase().includes(term) ||
       member.geezFullname?.toLowerCase().includes(term)

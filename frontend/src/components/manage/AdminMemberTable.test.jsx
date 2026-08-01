@@ -45,6 +45,22 @@ describe('AdminMemberTable', () => {
     expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument();
   });
 
+  it('always lists members in ascending numeric id order, regardless of input order', () => {
+    const outOfOrder = [
+      { id: '3', firstname: 'Cara', lastname: 'Gamma', fullname: 'Cara Gamma', gender: 'Female', linkedUser: null },
+      { id: '1', firstname: 'Ann', lastname: 'Alpha', fullname: 'Ann Alpha', gender: 'Female', linkedUser: null },
+      { id: '2', firstname: 'Bea', lastname: 'Beta', fullname: 'Bea Beta', gender: 'Female', linkedUser: null }
+    ];
+    render(<AdminMemberTable members={outOfOrder} onSelect={vi.fn()} />);
+
+    const first = screen.getByText('Ann Alpha');
+    const second = screen.getByText('Bea Beta');
+    const third = screen.getByText('Cara Gamma');
+    // DOM order follows ascending id (1 -> 2 -> 3), not the input order (3, 1, 2).
+    expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(second.compareDocumentPosition(third) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('exposes the search field as an accessible labelled input', () => {
     render(<AdminMemberTable members={MEMBERS} onSelect={vi.fn()} />);
 
