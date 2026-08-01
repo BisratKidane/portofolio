@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-07-31 after v3.0 milestone)
 Phase: Milestone v3.0 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-07-31 — Milestone v3.0 completed and archived
+Last activity: 2026-08-01 — Completed quick task 260801-fsa (Ge'ez font → Abyssinica SIL + tree-card gender color)
 
 ## Deferred Items
 
@@ -139,6 +139,7 @@ Items acknowledged and carried forward from previous milestone close:
 | 260727-byh | /manage forms pass 1: role clarity (names active member), shared MemberFields ≤2 cols + MUI X DatePicker, photo-on-create, side-by-side account↔member connection card — on branch `manage-forms` | complete ✓ | 2026-07-27 |
 | 260727-rvt | Dashboard user management (TDD): updateUser/changePassword/setUserPassword mutations + Edit/Change-password/Set-password dialogs, richer users list (last-updated + Unverified chip), self-vs-admin authz, last-admin guard, email re-verification — on branch `dashboard-user-management` | complete ✓ | 2026-07-27 |
 | 260727-tb1 | Family member provenance + isAlive (TDD): createdBy/updatedBy + timestamps (admin-only), isAlive replaces deathdate in API/UI (deathdate column kept), admin isAlive toggle in /manage list + /family detail panel, provenance columns; manual migration 014 — on branch `member-provenance-isalive` (stacked on dashboard-user-management) | complete ✓ | 2026-07-27 |
+| 260801-fsa | Switch Ge'ez webfont Noto Sans Ethiopic → SIL Abyssinica SIL (`@fontsource/abyssinica-sil`, weight 400 only) + gender-tint the Ge'ez name & mother's-name rows on the `/family` tree card (male #3b82f6 / female #ec4899). 301/301 frontend tests + prod build green. Manual follow-up: human `/family` glyph-coverage + tint-legibility check. | complete ✓ | 2026-08-01 |
 
 ## Session Continuity
 
