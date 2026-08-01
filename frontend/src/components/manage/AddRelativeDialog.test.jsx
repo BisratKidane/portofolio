@@ -347,6 +347,46 @@ describe('AddRelativeDialog - child', () => {
     expect(screen.getByLabelText(/^Last name/i)).toHaveValue('');
   });
 
+  it("prefills the Ge'ez last name with a male anchor's Ge'ez first name", () => {
+    renderDialog({
+      relationType: 'child',
+      targetGender: 'Male',
+      targetFirstname: 'Almaz',
+      targetGeezFirstname: 'ኣልማዝ'
+    });
+    expect(screen.getByLabelText("Ge'ez last name", { exact: false })).toHaveValue('ኣልማዝ');
+  });
+
+  it("leaves the Ge'ez last name empty for a male anchor with no Ge'ez first name, while last name still fills", () => {
+    renderDialog({ relationType: 'child', targetGender: 'Male', targetFirstname: 'Almaz' });
+    expect(screen.getByLabelText("Ge'ez last name", { exact: false })).toHaveValue('');
+    expect(screen.getByLabelText(/^Last name/i)).toHaveValue('Almaz');
+  });
+
+  it("prefills mother's name and Ge'ez mother's name from a female anchor's own names", () => {
+    renderDialog({
+      relationType: 'child',
+      targetGender: 'Female',
+      targetFirstname: 'Ada',
+      targetLastname: 'Lovelace',
+      targetGeezFirstname: 'ኣዳ',
+      targetGeezLastname: 'ላቭሌስ'
+    });
+    expect(screen.getByLabelText(/^Mother/i, { exact: false })).toHaveValue('Ada Lovelace');
+    expect(screen.getByLabelText(/^Ge'ez mother/i, { exact: false })).toHaveValue('ኣዳ ላቭሌስ');
+  });
+
+  it("leaves Ge'ez mother's name empty for a female anchor with no Ge'ez source data, while mother's name still fills", () => {
+    renderDialog({
+      relationType: 'child',
+      targetGender: 'Female',
+      targetFirstname: 'Ada',
+      targetLastname: 'Lovelace'
+    });
+    expect(screen.getByLabelText(/^Mother/i, { exact: false })).toHaveValue('Ada Lovelace');
+    expect(screen.getByLabelText(/^Ge'ez mother/i, { exact: false })).toHaveValue('');
+  });
+
   it('submits addChild with role FATHER derived from a male anchor (otherParentId null)', async () => {
     graphqlRequest.mockResolvedValueOnce({ addChild: { id: '40', fullname: 'Byron Almaz' } });
     const { onClose, onCreated } = renderDialog({

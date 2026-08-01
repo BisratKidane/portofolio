@@ -77,6 +77,9 @@ export default function AddRelativeDialog({
   targetName,
   targetGender,
   targetFirstname,
+  targetLastname,
+  targetGeezFirstname,
+  targetGeezLastname,
   inScopeMembers,
   onClose,
   onCreated
@@ -111,14 +114,30 @@ export default function AddRelativeDialog({
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  // When adding a child to a male anchor, the child inherits the anchor's first
-  // name as its last name (father's-first-name convention). Prefill it on open;
-  // it stays editable.
+  // When adding a child, the child's father/mother-name fields are prefilled
+  // from the anchor's own names (patronymic convention: lastname = father's
+  // firstname; mothersname = "mother's firstname + mother's fathername"), in
+  // BOTH Latin and Ge'ez. Prefill on open; every field stays editable. A
+  // missing Ge'ez source part is simply omitted from the update rather than
+  // written as 'undefined' or an empty-but-present value.
   useEffect(() => {
-    if (open && relationType === 'child' && targetGender === 'Male' && targetFirstname) {
-      setForm((prev) => ({ ...prev, lastname: targetFirstname }));
+    if (!open || relationType !== 'child') return;
+
+    const update = {};
+    if (targetGender === 'Male') {
+      if (targetFirstname) update.lastname = targetFirstname;
+      if (targetGeezFirstname) update.geezLastname = targetGeezFirstname;
+    } else if (targetGender === 'Female') {
+      const mothersname = [targetFirstname, targetLastname].filter(Boolean).join(' ');
+      const geezMothersname = [targetGeezFirstname, targetGeezLastname].filter(Boolean).join(' ');
+      if (mothersname) update.mothersname = mothersname;
+      if (geezMothersname) update.geezMothersname = geezMothersname;
     }
-  }, [open, relationType, targetGender, targetFirstname]);
+
+    if (Object.keys(update).length > 0) {
+      setForm((prev) => ({ ...prev, ...update }));
+    }
+  }, [open, relationType, targetGender, targetFirstname, targetLastname, targetGeezFirstname, targetGeezLastname]);
 
   const resetState = () => {
     setForm(EMPTY_FORM);
