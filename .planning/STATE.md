@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
-status: ready_to_plan
-stopped_at: Phase 24 complete (3/3) — ready to discuss Phase 25
-last_updated: 2026-08-03T11:34:54.582Z
-last_activity: 2026-08-03 -- Phase 24 execution started
+status: planning
+stopped_at: Phase 25 context gathered
+last_updated: "2026-08-03T15:53:08.094Z"
+last_activity: 2026-08-03
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
   completed_plans: 3
-  percent: 0
+  percent: 17
 ---
 
 # Project State
@@ -148,9 +148,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-03T09:13:33.837Z
-Stopped at: Phase 24 context gathered
-Resume file: .planning/phases/24-backend-read-layer-for-detail/24-CONTEXT.md
+Last session: 2026-08-03T15:53:08.087Z
+Stopped at: Phase 25 context gathered
+Resume file: .planning/phases/25-reusable-personcard/25-CONTEXT.md
 
 ## Operator Next Steps
 
