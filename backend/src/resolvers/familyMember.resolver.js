@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { requireAdmin, requireFamilyAccess } from '../utils/auth.js';
 import { sanitizeNewMember } from './user.resolver.js';
 import {
@@ -8,6 +9,12 @@ import {
   deleteMember as deleteFamilyMember,
   getFamilyHeadId
 } from '../services/familyMember.service.js';
+
+// D-04: server-side ceiling independent of any client-requested `limit` --
+// a client can request FEWER results than SEARCH_RESULT_CAP but never more
+// than SEARCH_RESULT_HARD_MAX (T-24-04).
+const SEARCH_RESULT_CAP = 20;
+const SEARCH_RESULT_HARD_MAX = 50;
 
 export const familyMemberResolvers = {
   Query: {
@@ -39,6 +46,30 @@ export const familyMemberResolvers = {
       requireFamilyAccess(user);
       const headId = await getFamilyHeadId(models);
       return headId != null ? models.FamilyMember.findByPk(headId) : null;
+    },
+    // D-03/D-04: partial, case-insensitive Latin+Ge'ez first/last name match
+    // only -- mothersname/geezMothersname are deliberately excluded. Op.substring
+    // parameterizes `trimmed` (no raw string interpolation, T-24-03).
+    searchFamilyMembers: async (_parent, { term, limit }, { models, user }) => {
+      requireFamilyAccess(user);
+
+      const trimmed = term.trim();
+      if (trimmed.length === 0) return [];
+
+      const cap = Math.min(limit ?? SEARCH_RESULT_CAP, SEARCH_RESULT_HARD_MAX);
+
+      return models.FamilyMember.findAll({
+        where: {
+          [Op.or]: [
+            { firstname: { [Op.substring]: trimmed } },
+            { lastname: { [Op.substring]: trimmed } },
+            { geezFirstname: { [Op.substring]: trimmed } },
+            { geezLastname: { [Op.substring]: trimmed } }
+          ]
+        },
+        order: [['lastname', 'ASC'], ['firstname', 'ASC']],
+        limit: cap
+      });
     }
   },
   Mutation: {
