@@ -92,3 +92,10 @@ None - no external service configuration required.
 ---
 *Phase: 24-backend-read-layer-for-detail*
 *Completed: 2026-08-03*
+
+## Self-Check: PASSED
+
+- FOUND: backend/src/services/familyMember.queryCount.test.js
+- FOUND: .planning/phases/24-backend-read-layer-for-detail/24-02-SUMMARY.md
+- FOUND commit: ec11608 (test(24-02): prove bounded SQL count for children+spouses read shape)
+- FOUND commit: fa97620 (docs(24-02): complete SC-4/PERF-02 bounded-SQL N+1 proof plan)
