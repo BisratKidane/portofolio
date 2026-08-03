@@ -155,7 +155,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 26-01-PLAN.md — /detail protected route, initial-load-on-head, edge/empty states + nav wiring (DETAIL-01/02/03)
+- [x] 26-01-PLAN.md — /detail protected route, initial-load-on-head, edge/empty states + nav wiring (DETAIL-01/02/03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -239,7 +239,7 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 23. Write Path & Quality Gate | v3.0 | 3/3 | Complete    | 2026-07-31 |
 | 24. Backend Read Layer for /detail | v4.0 | 3/3 | Complete    | 2026-08-03 |
 | 25. Reusable PersonCard | v4.0 | 2/2 | Complete    | 2026-08-03 |
-| 26. /detail Page, Search & Initial Load | v4.0 | 0/2 | Planned | - |
+| 26. /detail Page, Search & Initial Load | v4.0 | 1/2 | In Progress|  |
 | 27. Descendant Navigation & Performance | v4.0 | 0/TBD | Not started | - |
 | 28. Admin Actions on /detail | v4.0 | 0/TBD | Not started | - |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 0/TBD | Not started | - |
