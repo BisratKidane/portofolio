@@ -10,9 +10,9 @@
 
 ### Page & States (DETAIL)
 
-- [ ] **DETAIL-01**: The `/detail` page is reachable by any authenticated user; unauthenticated users are redirected to login like every other protected route.
-- [ ] **DETAIL-02**: On first load the page shows only the family head (the tree's top ancestor) in a person card, with no descendants expanded.
-- [ ] **DETAIL-03**: The page handles loading, no-search-results, no-children, failed-request, missing-family-head, and missing-person-info states using the app's existing loading/notification/error components — never rendering empty cards or broken placeholders.
+- [x] **DETAIL-01**: The `/detail` page is reachable by any authenticated user; unauthenticated users are redirected to login like every other protected route.
+- [x] **DETAIL-02**: On first load the page shows only the family head (the tree's top ancestor) in a person card, with no descendants expanded.
+- [x] **DETAIL-03**: The page handles loading, no-search-results, no-children, failed-request, missing-family-head, and missing-person-info states using the app's existing loading/notification/error components — never rendering empty cards or broken placeholders.
 
 ### Person Card (CARD)
 
@@ -23,9 +23,9 @@
 
 ### Search (SEARCH)
 
-- [ ] **SEARCH-01**: The search bar finds people by partial or full first/last name in both Latin (case-insensitive) and Ge'ez.
-- [ ] **SEARCH-02**: Matches appear as inline suggestions below the bar (no separate results page), each showing enough to disambiguate similar names — avatar, full Latin name, full Ge'ez name (when present), birth year, and parent/family context where available.
-- [ ] **SEARCH-03**: Selecting a suggestion clears the current family-tree view, sets that person as the new main person, and displays only their card initially (descendants expandable from there).
+- [x] **SEARCH-01**: The search bar finds people by partial or full first/last name in both Latin (case-insensitive) and Ge'ez.
+- [x] **SEARCH-02**: Matches appear as inline suggestions below the bar (no separate results page), each showing enough to disambiguate similar names — avatar, full Latin name, full Ge'ez name (when present), birth year, and parent/family context where available.
+- [x] **SEARCH-03**: Selecting a suggestion clears the current family-tree view, sets that person as the new main person, and displays only their card initially (descendants expandable from there).
 
 ### Descendant Navigation (NAV)
 
