@@ -109,3 +109,14 @@ None - no external service configuration required.
 ---
 *Phase: 25-reusable-personcard*
 *Completed: 2026-08-03*
+
+## Self-Check: PASSED
+
+- FOUND: frontend/src/utils/genderTheme.js
+- FOUND: frontend/src/components/person/PersonCard.jsx
+- FOUND: frontend/src/components/person/PersonCard.test.jsx
+- FOUND: .planning/phases/25-reusable-personcard/25-01-SUMMARY.md
+- FOUND commit: 91a4cb9 (refactor - Task 1)
+- FOUND commit: 2349d75 (test - Task 2 RED)
+- FOUND commit: 1e1c558 (feat - Task 2 GREEN)
+- FOUND commit: ce138f9 (docs - summary)
