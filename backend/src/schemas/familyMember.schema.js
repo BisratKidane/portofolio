@@ -38,6 +38,10 @@ export const familyMemberTypeDefs = `#graphql
     updatedBy: User
     createdAt: String
     updatedAt: String
+    # D-07/D-08: reuses the existing admin check verbatim (no new scope
+    # logic) -- true only for an ADMIN viewer, false for a non-admin or
+    # anonymous viewer (rejected upstream by requireFamilyAccess).
+    canEdit: Boolean!
   }
 
   input NewFamilyMemberInput {
