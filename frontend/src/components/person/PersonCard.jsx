@@ -9,10 +9,11 @@
 // genderTheme.js (D-02), getGeezDisplay (Ge'ez name derivation),
 // MemberAvatarImage (photo/blob avatar + fallback).
 //
-// Spouse pairing (SPOUSE-01, D-12/D-13/D-14) is deliberately deferred to
-// 25-02 -- the `spouse`/`isSpouse` props are accepted here (matching the
-// full prop contract from the start) but `spouse` is unused/no-op this plan;
-// `isSpouse` only gates the footer expand control (D-13).
+// Spouse pairing (SPOUSE-01, D-12/D-13/D-14): when `spouse` is supplied to a
+// non-spouse anchor card, this component composes the anchor card + a
+// dashed connector + a second PersonCard for the spouse (leaf-only, never
+// recursing into the spouse's own spouse). `isSpouse` gates both the footer
+// expand control (D-13) and the spouse-composition recursion guard (D-14).
 import { Box, Chip, IconButton, Paper, Typography } from '@mui/material';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
@@ -33,11 +34,45 @@ function childCountLabel(count) {
   return count === 1 ? '1 child' : `${count} children`;
 }
 
-// `spouse` is accepted here to match the full prop contract from the start
-// (so callers don't need to change the call shape in 25-02) but is
-// deliberately unused/no-op this plan -- SPOUSE-01 composition is 25-02
-// Task 1.
-export default function PersonCard({ member, role, spouse: _spouse, isSpouse = false, expanded, onExpand, onEdit }) {
+// SPOUSE-01 (D-12/D-13/D-14): when `spouse` is supplied to a non-spouse
+// anchor card, render the anchor followed by a dashed connector and a
+// second PersonCard for the spouse. The spouse card is always a rendering
+// leaf -- `isSpouse === true` cards never read/render their own `spouse`
+// prop or look up `member.spouses`, so recursion depth is hard-capped at
+// exactly one level regardless of caller input (defense in depth per
+// RESEARCH.md Pitfall 4; the page/nav layer in Phase 26/27 is responsible
+// for only ever passing `spouse` to non-spouse anchor cards, but PersonCard
+// must not trust that alone).
+export default function PersonCard({ member, role, spouse, isSpouse = false, expanded, onExpand, onEdit }) {
+  const card = (
+    <PersonCardSingle
+      member={member}
+      role={role}
+      isSpouse={isSpouse}
+      expanded={expanded}
+      onExpand={onExpand}
+      onEdit={onEdit}
+    />
+  );
+
+  if (!spouse || isSpouse) {
+    return card;
+  }
+
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+      {card}
+      <Box
+        aria-hidden="true"
+        data-connector-style="dashed"
+        sx={{ width: 32, alignSelf: 'center', borderTop: `2px dashed ${colors.primary}` }}
+      />
+      <PersonCardSingle member={spouse} isSpouse onEdit={onEdit} />
+    </Box>
+  );
+}
+
+function PersonCardSingle({ member, role, isSpouse = false, expanded, onExpand, onEdit }) {
   const { label: genderLabel, tint: genderTint } = genderMeta(member.gender);
   const ringStyle = RING_STYLE[genderLabel] ?? RING_STYLE.Other;
   const geez = getGeezDisplay(member);

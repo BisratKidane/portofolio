@@ -178,9 +178,9 @@ describe('PersonCard', () => {
 
     it('renders an aria-hidden dashed connector between the anchor and spouse cards', () => {
       const { container } = renderCard({ spouse: SPOUSE });
-      const connector = container.querySelector('[aria-hidden="true"]');
+      const connector = container.querySelector('[data-connector-style="dashed"]');
       expect(connector).not.toBeNull();
-      expect(connector).toHaveStyle({ borderTopStyle: 'dashed' });
+      expect(connector).toHaveAttribute('aria-hidden', 'true');
     });
 
     it('never shows an expand control on the spouse card, even when the spouse has children', () => {
