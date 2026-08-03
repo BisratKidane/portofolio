@@ -1,8 +1,11 @@
 // Test harness mirrors FamilyTreePage.test.jsx's mock+render pattern
 // (graphqlRequest + photoClient mocked, MemoryRouter wrapper) plus
 // PersonCard.test.jsx's card assertions (getByTestId, Living/Deceased chip).
+// Search-select tests adapt AddRelativeDialog.test.jsx's Autocomplete
+// typing/select pattern (26-02).
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import DetailPage from './DetailPage.jsx';
 
@@ -29,6 +32,28 @@ const HEAD = {
   fullname: 'Ada Lovelace',
   geezFullname: null,
   gender: 'Female',
+  isAlive: true,
+  photoUrl: null,
+  canEdit: false,
+  spouses: [],
+  children: []
+};
+
+const SEARCH_HIT = {
+  id: '9',
+  fullname: 'Byron Lovelace',
+  geezFullname: 'ባይሮን ላቭሌስ',
+  gender: 'Male',
+  birthdate: '1998-04-12',
+  photoUrl: null,
+  mothersname: 'Ada Byron'
+};
+
+const SELECTED_MAIN_PERSON = {
+  id: '9',
+  fullname: 'Byron Lovelace',
+  geezFullname: 'ባይሮን ላቭሌስ',
+  gender: 'Male',
   isAlive: true,
   photoUrl: null,
   canEdit: false,
@@ -106,5 +131,44 @@ describe('DetailPage', () => {
     expect(() =>
       fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }))
     ).not.toThrow();
+  });
+
+  it('selecting a search suggestion re-fetches familyMember by the selected id and swaps the rendered card (SEARCH-03/D-05)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: HEAD });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({ searchFamilyMembers: [SEARCH_HIT] });
+    const input = screen.getByLabelText('Search by name');
+    await userEvent.click(input);
+    await userEvent.type(input, 'Byron');
+
+    const option = await screen.findByText('Byron Lovelace');
+    graphqlRequest.mockResolvedValueOnce({ familyMember: SELECTED_MAIN_PERSON });
+    await userEvent.click(option);
+
+    await waitFor(() => expect(screen.getByTestId('person-card-9')).toBeInTheDocument());
+    expect(screen.queryByTestId('person-card-1')).not.toBeInTheDocument();
+
+    const lastCall = graphqlRequest.mock.calls[graphqlRequest.mock.calls.length - 1];
+    expect(lastCall[0]).toMatch(/familyMember/);
+    expect(lastCall[1]).toEqual({ id: '9' });
+  });
+
+  it("passes a Ge'ez-typed search term to searchFamilyMembers unmodified (D-02)", async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: HEAD });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({ searchFamilyMembers: [] });
+    const input = screen.getByLabelText('Search by name');
+    await userEvent.click(input);
+    await userEvent.type(input, 'ባይሮን');
+
+    await waitFor(() => expect(graphqlRequest).toHaveBeenCalledWith(expect.stringMatching(/searchFamilyMembers/), { term: 'ባይሮን' }));
   });
 });
