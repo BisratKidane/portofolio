@@ -15,20 +15,8 @@ import { Handle, Position } from '@xyflow/react';
 import { Box, IconButton, Paper, Typography } from '@mui/material';
 import { colors } from '../../theme.js';
 import { getGeezDisplay } from '../../utils/displayName.js';
+import { genderMeta } from '../../utils/genderTheme.js';
 import MemberAvatarImage from '../manage/MemberAvatarImage.jsx';
-
-// Gender is now depicted by the card's COLOR (border + soft background tint)
-// rather than a gender icon. Because colour is a single perceptual channel,
-// the gender is also exposed to assistive tech via `data-gender` + the node's
-// aria-label so it is not conveyed by colour alone.
-const MALE_TINT = '#3b82f6';
-const FEMALE_TINT = '#ec4899';
-
-function genderMeta(gender) {
-  if (gender === 'Male') return { label: 'Male', tint: MALE_TINT };
-  if (gender === 'Female') return { label: 'Female', tint: FEMALE_TINT };
-  return { label: 'Other', tint: colors.slate };
-}
 
 const BADGE_SX = {
   position: 'absolute',
