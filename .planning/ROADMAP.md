@@ -79,7 +79,7 @@ Full detail archived in [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 
 - [x] **Phase 24: Backend Read Layer for /detail** - GraphQL reads (head, person-by-id, name search, direct-children+counts, spouses, edit-permission) with no schema change and no N+1 (completed 2026-08-03)
 - [x] **Phase 25: Reusable PersonCard** - one card component renders head/children/grandchildren with all supported fields, gender cues, child count, and spouse(s) (completed 2026-08-03)
-- [ ] **Phase 26: /detail Page, Search & Initial Load** - authenticated route opening on the family head, with Latin+Ge'ez inline search to reset the main person, and full state coverage
+- [x] **Phase 26: /detail Page, Search & Initial Load** - authenticated route opening on the family head, with Latin+Ge'ez inline search to reset the main person, and full state coverage (completed 2026-08-03)
 - [ ] **Phase 27: Descendant Navigation & Performance** - expand/collapse grid grouped by generation, 3-generation cap with forward-shift, lazy loading + session cache
 - [ ] **Phase 28: Admin Actions on /detail** - admin-only edit/add-child/add-spouse reusing existing dialogs, backend-enforced
 - [ ] **Phase 29: Accessibility, Responsive & Quality Gate** - keyboard operability, WCAG AA contrast, mobile layout, full-suite green at close
@@ -159,7 +159,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 26-02-PLAN.md — Inline debounced Latin+Ge'ez search; select resets the main person (SEARCH-01/02/03)
+- [x] 26-02-PLAN.md — Inline debounced Latin+Ge'ez search; select resets the main person (SEARCH-01/02/03)
 
 **UI hint**: yes
 
@@ -239,7 +239,7 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 23. Write Path & Quality Gate | v3.0 | 3/3 | Complete    | 2026-07-31 |
 | 24. Backend Read Layer for /detail | v4.0 | 3/3 | Complete    | 2026-08-03 |
 | 25. Reusable PersonCard | v4.0 | 2/2 | Complete    | 2026-08-03 |
-| 26. /detail Page, Search & Initial Load | v4.0 | 1/2 | In Progress|  |
+| 26. /detail Page, Search & Initial Load | v4.0 | 2/2 | Complete   | 2026-08-03 |
 | 27. Descendant Navigation & Performance | v4.0 | 0/TBD | Not started | - |
 | 28. Admin Actions on /detail | v4.0 | 0/TBD | Not started | - |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 0/TBD | Not started | - |
