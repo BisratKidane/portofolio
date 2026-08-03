@@ -1,7 +1,52 @@
-import { Op, UniqueConstraintError } from 'sequelize';
+import { Op, QueryTypes, UniqueConstraintError } from 'sequelize';
 import { models, sequelize } from '../models/index.js';
 
 const MAX_DEPTH = 100; // generous upper bound; tree is documented at ~10-23 generations
+const CANONICAL_HEAD_ID = 1;
+
+// D-01/D-02: mirrors the client's resolveRootAncestorId rule (prefer id 1;
+// else the parentless-apex member with the largest descendant subtree,
+// spouses excluded from the size count; else the first member in
+// lastname/firstname order; null for an empty table) via a single bounded
+// SQL statement per branch -- never a findAll()-then-walk-in-JS.
+export async function getFamilyHeadId(models) {
+  const canonical = await models.FamilyMember.findByPk(CANONICAL_HEAD_ID, { attributes: ['id'] });
+  if (canonical) return canonical.id;
+
+  // Fallback: one recursive CTE computes every parentless apex's
+  // descendant-subtree size in-DB. Tie-break (lastname ASC, firstname ASC)
+  // matches the client's array-scan order over the already lastname/firstname
+  // sorted `familyMembers` query (Pitfall 1).
+  const [best] = await sequelize.query(
+    `
+    WITH RECURSIVE descendants AS (
+      SELECT id, id AS root_id
+      FROM family_members
+      WHERE motherId IS NULL AND fatherId IS NULL
+      UNION ALL
+      SELECT fm.id, d.root_id
+      FROM family_members fm
+      JOIN descendants d ON fm.motherId = d.id OR fm.fatherId = d.id
+    )
+    SELECT d.root_id AS id, COUNT(*) AS size
+    FROM descendants d
+    JOIN family_members apex ON apex.id = d.root_id
+    GROUP BY d.root_id, apex.lastname, apex.firstname
+    ORDER BY size DESC, apex.lastname ASC, apex.firstname ASC
+    LIMIT 1
+    `,
+    { type: QueryTypes.SELECT }
+  );
+  if (best) return best.id;
+
+  // No apex at all (empty table, or a cyclic-data anomaly) -- mirror the
+  // client's final fallback: first member in lastname/firstname order.
+  const first = await models.FamilyMember.findOne({
+    attributes: ['id'],
+    order: [['lastname', 'ASC'], ['firstname', 'ASC']]
+  });
+  return first ? first.id : null;
+}
 
 export async function wouldCreateCycle(childId, candidateParentId, { transaction } = {}) {
   if (childId === candidateParentId) return true;

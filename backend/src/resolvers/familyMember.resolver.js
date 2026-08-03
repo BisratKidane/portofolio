@@ -5,7 +5,8 @@ import {
   linkParent,
   setSpouse,
   addChild,
-  deleteMember as deleteFamilyMember
+  deleteMember as deleteFamilyMember,
+  getFamilyHeadId
 } from '../services/familyMember.service.js';
 
 export const familyMemberResolvers = {
@@ -33,6 +34,11 @@ export const familyMemberResolvers = {
       const seen = new Map();
       for (const row of rows) seen.set(row.id, row);
       return [...seen.values()];
+    },
+    familyHead: async (_parent, _args, { models, user }) => {
+      requireFamilyAccess(user);
+      const headId = await getFamilyHeadId(models);
+      return headId != null ? models.FamilyMember.findByPk(headId) : null;
     }
   },
   Mutation: {

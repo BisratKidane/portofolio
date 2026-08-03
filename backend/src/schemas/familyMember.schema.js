@@ -77,6 +77,7 @@ export const familyMemberTypeDefs = `#graphql
     familyMembers: [FamilyMember!]!
     familyMember(id: ID!): FamilyMember
     myEditableMembers: [FamilyMember!]!
+    familyHead: FamilyMember
   }
 
   extend type Mutation {
