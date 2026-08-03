@@ -36,7 +36,7 @@
 
 ### Spouse Visualization (SPOUSE)
 
-- [ ] **SPOUSE-01**: For every person displayed on the page (head, children, grandchildren), their spouse(s) are surfaced alongside them using the app's existing partnered/spouse-connector convention; spouses are lateral and never count toward the three-generation cap.
+- [x] **SPOUSE-01**: For every person displayed on the page (head, children, grandchildren), their spouse(s) are surfaced alongside them using the app's existing partnered/spouse-connector convention; spouses are lateral and never count toward the three-generation cap.
 
 ### Permissions & Admin Actions (PERM)
 
