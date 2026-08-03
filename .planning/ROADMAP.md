@@ -175,7 +175,22 @@ Plans:
   3. No more than three generations are ever shown at once; expanding a grandchild with children shifts the view forward one generation (the grandparent and the parent's siblings drop, the parent becomes the new top person, the grandchild remains their child, and the grandchild's children become the third generation) — all without a full page reload.
   4. Opening `/detail` or expanding a card fetches only the data needed for that step (never the whole tree), and descendants already loaded this session are served from cache — no duplicate requests or unnecessary re-renders on repeat expand/collapse.
 
-**Plans**: TBD
+**Plans**: 4 plans (3 waves)
+
+Plans:
+**Wave 1**
+
+- [ ] 27-01-PLAN.md — Descendant-nav reducer: expand/collapse, sibling auto-collapse, forward-shift + symmetric undo (NAV-02/03/04)
+- [ ] 27-02-PLAN.md — GenerationGrid: responsive per-generation grid + group-level inverted-V connector (NAV-01)
+
+**Wave 2** *(blocked on 27-01)*
+
+- [ ] 27-03-PLAN.md — useDescendantNav hook: session cache + expand-only lazy fetch (PERF-01/PERF-03)
+
+**Wave 3** *(blocked on 27-02, 27-03)*
+
+- [ ] 27-04-PLAN.md — Wire useDescendantNav + GenerationGrid into DetailPage; end-to-end NAV/PERF proof
+
 **UI hint**: yes
 
 ### Phase 28: Admin Actions on /detail
