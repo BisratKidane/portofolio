@@ -506,17 +506,17 @@ Calling `familyMember(id) { children { spouses{...} children{id} } }` triggers: 
 | A1 | MUI v6.3.1's `Grid` default export is the stabilized `size`-prop API (not the legacy `item`/breakpoint-prop API requiring a different import) | Standard Stack, Architecture Patterns (Pattern 4) | Low — if wrong, the planner/implementer would need to fall back to `<Grid item xs={12} sm={6} md={4}>` syntax instead, a one-line-per-usage change with no architectural impact. Recommend a 2-minute smoke check (render one `Grid` with `size` prop and confirm no console warning) at the start of implementation. |
 | A2 | `colors.line` (`#e6e8f0`) is the intended "theme line color" referenced by D-06, rather than `colors.slate` (used for `/family`'s parent→child edges) or `colors.primary` (used for the spouse dashed connector) | Architecture Patterns (Pattern 4) | Low-Medium — this is an interpretive reading of D-06's "light... restrained... not a heavy tree edge" language against the three candidate tokens in `theme.js`; if the intended color is actually `colors.slate` (matching `/family`'s edges, just thinner), the visual is a one-line hex swap, no structural change. Worth confirming with the user during `/gsd:discuss-phase` follow-up or noting as a planner discretion point. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact grid breakpoint values (which pixel-width maps to "tablet")**
    - What we know: NAV-01/D-05 specify ≤3/row desktop, "fewer" on tablet, 1/row mobile.
    - What's unclear: MUI's default breakpoints (`xs<600px, sm<900px, md<1200px...`) don't have a single canonical "tablet" cutoff — CONTEXT leaves exact px values unspecified.
-   - Recommendation: `size={{ xs: 12, sm: 6, md: 4 }}` (1/row mobile, 2/row tablet ~600-900px, 3/row desktop ≥900px) is a reasonable, idiomatic default matching MUI's own breakpoint semantics; treat as Claude's Discretion per CONTEXT, no further research needed.
+   - RESOLVED: `size={{ xs: 12, sm: 6, md: 4 }}` (1/row mobile, 2/row tablet ~600-900px, 3/row desktop ≥900px) is a reasonable, idiomatic default matching MUI's own breakpoint semantics; treated as Claude's Discretion per CONTEXT — implemented in Plan 27-02.
 
 2. **Loading-state UI during an expand (spinner-on-card vs. skeleton-row) — explicitly Claude's Discretion per CONTEXT**
    - What we know: CONTEXT defers this choice explicitly, pointing at `DetailPage`/`FamilyTreePage` idioms.
    - What's unclear: `DetailPage` currently only has a full-page `CircularProgress` (initial load); there's no existing "inline small loading" idiom in this specific page to mirror yet.
-   - Recommendation: A small `CircularProgress` (MUI default `size` ~20-24px) replacing the expand chevron temporarily, OR disabling the expand button with an `aria-busy` attribute during `loadingId === person.id`, is consistent with the app's existing sparse use of `CircularProgress` elsewhere (e.g., `DetailPage`'s own full-page spinner) and needs no new component. Planner should pick one; either satisfies the phase's requirements.
+   - RESOLVED: A small `CircularProgress` (16px) badge, absolutely positioned on the expanding card, replacing nothing (the chevron stays put) — consistent with the app's existing sparse use of `CircularProgress` elsewhere (e.g., `DetailPage`'s own full-page spinner) and needs no new component. Implemented identically in `GenerationGrid` (Plan 27-02, `generation-loading-{id}` testid) and `DetailPage`'s head card (Plan 27-04, `top-loading` testid).
 
 ## Environment Availability
 
@@ -613,3 +613,4 @@ No new authentication, authorization, or input-handling surface is introduced by
 
 **Research date:** 2026-08-03
 **Valid until:** 30 days (stable, no fast-moving external dependencies; re-verify MUI Grid API note if `@mui/material` is upgraded past 6.x before this phase executes)
+</content>
