@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from './components/AppLayout.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import DetailPage from './pages/DetailPage.jsx';
 import FamilyTreePage from './pages/FamilyTreePage.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import Login from './pages/Login.jsx';
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="manage" element={<ManagePage />} />
           <Route path="family" element={<FamilyTreePage />} />
+          <Route path="detail" element={<DetailPage />} />
           <Route path="invitations" element={<InvitationsPage />} />
           {/* Old split routes now redirect to the merged Invitations page. */}
           <Route path="invite" element={<Navigate to="/invitations" replace />} />
