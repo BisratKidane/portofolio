@@ -345,6 +345,13 @@ export const familyMemberResolvers = {
     updatedBy: (member, _args, { user, loaders }) => {
       if (user?.role !== 'ADMIN' || member.updatedByUserId == null) return null;
       return loaders.userById.load(Number(member.updatedByUserId));
+    },
+    // D-07/D-08: identical admin-check shape to createdBy/updatedBy above,
+    // just returned instead of gating a loader call -- no computeEditableScope
+    // call for this field (T-24-07 mitigate: purely server-derived from
+    // context.user.role, no client-supplied argument reaches this resolver).
+    canEdit: (_member, _args, { user }) => {
+      return Boolean(user?.role === 'ADMIN');
     }
   }
 };
