@@ -2,9 +2,10 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
-status: roadmapped
-last_updated: "2026-08-03T09:15:00.000Z"
-last_activity: 2026-08-03
+status: "Roadmap created — ready to run `/gsd:plan-phase 24`"
+stopped_at: Phase 24 context gathered
+last_updated: "2026-08-03T09:13:33.843Z"
+last_activity: 2026-08-03 — ROADMAP.md + REQUIREMENTS.md traceability written for v4.0 (23/23 requirements mapped, no orphans)
 progress:
   total_phases: 6
   completed_phases: 0
@@ -146,9 +147,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-03T09:15:00.000Z
-Stopped at: v4.0 roadmap created — ROADMAP.md (Phases 24–29) + REQUIREMENTS.md traceability written, 23/23 requirements mapped
-Resume file: None
+Last session: 2026-08-03T09:13:33.837Z
+Stopped at: Phase 24 context gathered
+Resume file: .planning/phases/24-backend-read-layer-for-detail/24-CONTEXT.md
 
 ## Operator Next Steps
 
