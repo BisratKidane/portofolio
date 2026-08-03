@@ -96,7 +96,12 @@ Full detail archived in [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
   3. A GraphQL query returns name-search matches against both Latin (partial, case-insensitive) and Ge'ez name fields.
   4. A GraphQL query returns a person's direct children only (not the full descendant tree), each annotated with its own child count and spouse(s), proven by an integration test that the query issues a bounded/flat set of SQL statements regardless of child count (no N+1).
   5. A GraphQL field/query exposes whether the current caller may edit/add relatives, reusing the existing admin check.
-**Plans**: TBD
+**Plans**: 3 plans (2 waves)
+
+Plans:
+- [ ] 24-01-PLAN.md — Bounded `familyHead` query (SC-1) + `searchFamilyMembers` query (SC-3)
+- [ ] 24-02-PLAN.md — SC-4/PERF-02 bounded-SQL N+1 proof for direct-children + spouses
+- [ ] 24-03-PLAN.md — `canEdit` field (SC-5) + SC-2 person-by-id field-coverage verification
 
 ### Phase 25: Reusable PersonCard
 **Goal**: A single reusable `PersonCard` component renders any person (head, child, or grandchild) with all supported fields, correct gender + child-count/expand affordances, and their spouse(s) alongside them.
