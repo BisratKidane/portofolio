@@ -124,7 +124,17 @@ Plans:
   4. Child count shows only when a person has ≥1 child (correct `1 child`/`N children` singular/plural) and the expand control appears only when a person has ≥1 child.
   5. Every displayed person's spouse(s) render alongside them using the existing partnered/dashed-connector convention from `/family`, without counting toward the generation cap.
 
-**Plans**: TBD
+**Plans**: 2 plans (2 waves)
+
+Plans:
+**Wave 1**
+
+- [ ] 25-01-PLAN.md — genderTheme extraction + PersonCard core (CARD-01, CARD-02, CARD-03, CARD-04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 25-02-PLAN.md — Spouse pairing composition + phase-close regression gate (SPOUSE-01)
+
 **UI hint**: yes
 
 ### Phase 26: /detail Page, Search & Initial Load
