@@ -58,6 +58,13 @@ export default function AppLayout() {
                 </Button>
                 <Button
                   component={RouterLink}
+                  to="/detail"
+                  sx={{ color: colors.slate, fontWeight: 600, display: { xs: 'none', sm: 'inline-flex' } }}
+                >
+                  Detail
+                </Button>
+                <Button
+                  component={RouterLink}
                   to="/manage"
                   sx={{ color: colors.slate, fontWeight: 600, display: { xs: 'none', sm: 'inline-flex' } }}
                 >
