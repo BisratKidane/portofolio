@@ -1,0 +1,107 @@
+# Requirements: v4.0 Family Detail & Descendant Navigation
+
+**Milestone goal:** A new `/detail` page (all authenticated users) that opens on the family head in a reusable person card, supports Latin + Ge'ez name search to reset the main person, and lets users expand children → grandchildren on demand — capped at three generations with forward-shift navigation — showing each displayed person's spouse(s) alongside them, with admin-only add-child/add-spouse and edit (backend-enforced, reusing existing flows), loaded lazily.
+
+**Branch:** `port_details`
+
+---
+
+## v4.0 Requirements
+
+### Page & States (DETAIL)
+
+- [ ] **DETAIL-01**: The `/detail` page is reachable by any authenticated user; unauthenticated users are redirected to login like every other protected route.
+- [ ] **DETAIL-02**: On first load the page shows only the family head (the tree's top ancestor) in a person card, with no descendants expanded.
+- [ ] **DETAIL-03**: The page handles loading, no-search-results, no-children, failed-request, missing-family-head, and missing-person-info states using the app's existing loading/notification/error components — never rendering empty cards or broken placeholders.
+
+### Person Card (CARD)
+
+- [ ] **CARD-01**: A person card renders the person's avatar, Latin first/last name, Ge'ez name (when present), gender, birth info, death info, relationship info (when relevant), and any other already-supported person info — displaying only fields that have a value (no empty fields or labels).
+- [ ] **CARD-02**: The same reusable person-card component is used for the head, children, and grandchildren.
+- [ ] **CARD-03**: A person's gender is shown using the app's existing gender conventions with a non-color cue (icon/label) in addition to color, never by color alone, and degrades gracefully for unknown/undefined gender without breaking the layout.
+- [ ] **CARD-04**: The card shows a child count only when the person has ≥1 child, using correct singular/plural (`1 child` / `N children`), and shows the expand control only when the person has ≥1 child (never `0 children`, never a disabled/empty expand icon).
+
+### Search (SEARCH)
+
+- [ ] **SEARCH-01**: The search bar finds people by partial or full first/last name in both Latin (case-insensitive) and Ge'ez.
+- [ ] **SEARCH-02**: Matches appear as inline suggestions below the bar (no separate results page), each showing enough to disambiguate similar names — avatar, full Latin name, full Ge'ez name (when present), birth year, and parent/family context where available.
+- [ ] **SEARCH-03**: Selecting a suggestion clears the current family-tree view, sets that person as the new main person, and displays only their card initially (descendants expandable from there).
+
+### Descendant Navigation (NAV)
+
+- [ ] **NAV-01**: Expanding a person loads and shows their direct children in a responsive grid grouped by generation (≤3 cards/row on desktop, fewer on tablet, 1 on mobile) with a subtle connector/visual hierarchy that makes parent→child grouping clear.
+- [ ] **NAV-02**: Re-clicking the expand control collapses a person's children and hides all descendants beneath them; the control's state visibly communicates expanded vs collapsed.
+- [ ] **NAV-03**: At most three generations are shown at once (main person → children → grandchildren); a fourth generation is never displayed alongside the first three.
+- [ ] **NAV-04**: Expanding a grandchild who has children shifts the view forward one generation without a full page reload — the grandparent and the selected grandchild's parent's siblings are removed, the parent becomes the new top person, the grandchild remains as that parent's child, and the grandchild's children become the third generation.
+
+### Spouse Visualization (SPOUSE)
+
+- [ ] **SPOUSE-01**: For every person displayed on the page (head, children, grandchildren), their spouse(s) are surfaced alongside them using the app's existing partnered/spouse-connector convention; spouses are lateral and never count toward the three-generation cap.
+
+### Permissions & Admin Actions (PERM)
+
+- [ ] **PERM-01**: Admin users see an edit button on each person card that opens the existing edit dialog/flow (no duplicated edit UI); non-admin users never see it.
+- [ ] **PERM-02**: Admin users see a control to add a **child** or a **spouse** to a displayed person, reusing the existing add-relative dialog; after a successful add, the affected person's children/spouses refresh in place. Non-admin users never see it.
+- [ ] **PERM-03**: The backend enforces admin-only editing and adding — unauthorized edit/add requests are rejected server-side, not merely hidden in the UI.
+
+### Performance (PERF)
+
+- [ ] **PERF-01**: Opening the page does not load the whole family tree — it loads only the main person plus the data the card needs (including child count); a person's children load only when that person is expanded.
+- [ ] **PERF-02**: Child counts and person/children data are retrieved without N+1 queries.
+- [ ] **PERF-03**: Descendants already loaded during the current session are not re-fetched unless the data changed; the implementation avoids duplicate API requests and unnecessary React re-renders.
+
+### Backend / API (API)
+
+- [ ] **API-01**: The GraphQL API exposes the reads the page needs — the family head, a person by id, name search (Latin + Ge'ez first/last), a person's direct children (not all descendants) with child counts, spouse data for displayed persons, and the current user's edit-permission signal — reusing existing models and relationships, with no DB schema change unless a query genuinely requires one.
+
+### Accessibility (A11Y)
+
+- [ ] **A11Y-01**: Expand/collapse controls and search suggestions are fully keyboard-operable with accessible labels and visible focus states; text/background contrast meets WCAG AA and the layout stays readable on mobile.
+
+---
+
+## Future Requirements (deferred)
+
+- Ancestor navigation on `/detail` (upward, not just descendants).
+- A dedicated shareable/deep-linkable URL per person on `/detail` (e.g. `/detail/:id`).
+- Fuller genealogy relationships in the card/nav (multiple marriages, half-siblings, adoptions).
+- Latin↔Ge'ez display toggle and Ge'ez search on `/detail` suggestions beyond name fields.
+
+## Out of Scope (this milestone)
+
+- Building any NEW edit or add UI — v4.0 only reuses the existing `EditMemberDialog` / `AddRelativeDialog`.
+- A separate search-results page — suggestions are inline only.
+- Rendering a 4th generation simultaneously with the first three.
+- DB schema changes, unless a required query genuinely cannot be served by the existing schema.
+- Ancestor/sideways navigation beyond showing spouses (no uncles/aunts/cousins browsing on `/detail`).
+- Browser E2E (Playwright/Cypress) — still deferred; component + integration tests cover the safety net.
+
+## Traceability
+
+| REQ-ID | Phase | Status |
+|--------|-------|--------|
+| DETAIL-01 | TBD | Not started |
+| DETAIL-02 | TBD | Not started |
+| DETAIL-03 | TBD | Not started |
+| CARD-01 | TBD | Not started |
+| CARD-02 | TBD | Not started |
+| CARD-03 | TBD | Not started |
+| CARD-04 | TBD | Not started |
+| SEARCH-01 | TBD | Not started |
+| SEARCH-02 | TBD | Not started |
+| SEARCH-03 | TBD | Not started |
+| NAV-01 | TBD | Not started |
+| NAV-02 | TBD | Not started |
+| NAV-03 | TBD | Not started |
+| NAV-04 | TBD | Not started |
+| SPOUSE-01 | TBD | Not started |
+| PERM-01 | TBD | Not started |
+| PERM-02 | TBD | Not started |
+| PERM-03 | TBD | Not started |
+| PERF-01 | TBD | Not started |
+| PERF-02 | TBD | Not started |
+| PERF-03 | TBD | Not started |
+| API-01 | TBD | Not started |
+| A11Y-01 | TBD | Not started |
+
+*Traceability filled in by the roadmapper — every REQ-ID maps to exactly one phase.*
