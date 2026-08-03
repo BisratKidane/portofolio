@@ -16,10 +16,10 @@
 
 ### Person Card (CARD)
 
-- [ ] **CARD-01**: A person card renders the person's avatar, Latin first/last name, Ge'ez name (when present), gender, birth info, death info, relationship info (when relevant), and any other already-supported person info — displaying only fields that have a value (no empty fields or labels).
-- [ ] **CARD-02**: The same reusable person-card component is used for the head, children, and grandchildren.
-- [ ] **CARD-03**: A person's gender is shown using the app's existing gender conventions with a non-color cue (icon/label) in addition to color, never by color alone, and degrades gracefully for unknown/undefined gender without breaking the layout.
-- [ ] **CARD-04**: The card shows a child count only when the person has ≥1 child, using correct singular/plural (`1 child` / `N children`), and shows the expand control only when the person has ≥1 child (never `0 children`, never a disabled/empty expand icon).
+- [x] **CARD-01**: A person card renders the person's avatar, Latin first/last name, Ge'ez name (when present), gender, birth info, death info, relationship info (when relevant), and any other already-supported person info — displaying only fields that have a value (no empty fields or labels).
+- [x] **CARD-02**: The same reusable person-card component is used for the head, children, and grandchildren.
+- [x] **CARD-03**: A person's gender is shown using the app's existing gender conventions with a non-color cue (icon/label) in addition to color, never by color alone, and degrades gracefully for unknown/undefined gender without breaking the layout.
+- [x] **CARD-04**: The card shows a child count only when the person has ≥1 child, using correct singular/plural (`1 child` / `N children`), and shows the expand control only when the person has ≥1 child (never `0 children`, never a disabled/empty expand icon).
 
 ### Search (SEARCH)
 
