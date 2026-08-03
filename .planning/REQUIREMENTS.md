@@ -80,28 +80,28 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| DETAIL-01 | TBD | Not started |
-| DETAIL-02 | TBD | Not started |
-| DETAIL-03 | TBD | Not started |
-| CARD-01 | TBD | Not started |
-| CARD-02 | TBD | Not started |
-| CARD-03 | TBD | Not started |
-| CARD-04 | TBD | Not started |
-| SEARCH-01 | TBD | Not started |
-| SEARCH-02 | TBD | Not started |
-| SEARCH-03 | TBD | Not started |
-| NAV-01 | TBD | Not started |
-| NAV-02 | TBD | Not started |
-| NAV-03 | TBD | Not started |
-| NAV-04 | TBD | Not started |
-| SPOUSE-01 | TBD | Not started |
-| PERM-01 | TBD | Not started |
-| PERM-02 | TBD | Not started |
-| PERM-03 | TBD | Not started |
-| PERF-01 | TBD | Not started |
-| PERF-02 | TBD | Not started |
-| PERF-03 | TBD | Not started |
-| API-01 | TBD | Not started |
-| A11Y-01 | TBD | Not started |
+| DETAIL-01 | Phase 26 | Not started |
+| DETAIL-02 | Phase 26 | Not started |
+| DETAIL-03 | Phase 26 | Not started |
+| CARD-01 | Phase 25 | Not started |
+| CARD-02 | Phase 25 | Not started |
+| CARD-03 | Phase 25 | Not started |
+| CARD-04 | Phase 25 | Not started |
+| SEARCH-01 | Phase 26 | Not started |
+| SEARCH-02 | Phase 26 | Not started |
+| SEARCH-03 | Phase 26 | Not started |
+| NAV-01 | Phase 27 | Not started |
+| NAV-02 | Phase 27 | Not started |
+| NAV-03 | Phase 27 | Not started |
+| NAV-04 | Phase 27 | Not started |
+| SPOUSE-01 | Phase 25 | Not started |
+| PERM-01 | Phase 28 | Not started |
+| PERM-02 | Phase 28 | Not started |
+| PERM-03 | Phase 28 | Not started |
+| PERF-01 | Phase 27 | Not started |
+| PERF-02 | Phase 24 | Not started |
+| PERF-03 | Phase 27 | Not started |
+| API-01 | Phase 24 | Not started |
+| A11Y-01 | Phase 29 | Not started |
 
-*Traceability filled in by the roadmapper — every REQ-ID maps to exactly one phase.*
+*Coverage: 23/23 v4.0 requirements mapped to phases 24–29. No orphans.*

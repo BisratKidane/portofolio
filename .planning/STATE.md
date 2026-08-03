@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
-status: planning
-last_updated: "2026-08-03T08:34:30.790Z"
+status: roadmapped
+last_updated: "2026-08-03T09:15:00.000Z"
 last_activity: 2026-08-03
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** v4.0 Family Detail & Descendant Navigation — defining requirements (branch `port_details`)
+**Current focus:** v4.0 Family Detail & Descendant Navigation — roadmap complete (Phases 24–29), ready to plan Phase 24 (branch `port_details`)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-08-03 — Milestone v4.0 started
+Phase: 24 of 29 (Backend Read Layer for /detail)
+Plan: — (not yet planned)
+Status: Roadmap created — ready to run `/gsd:plan-phase 24`
+Last activity: 2026-08-03 — ROADMAP.md + REQUIREMENTS.md traceability written for v4.0 (23/23 requirements mapped, no orphans)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Deferred Items
 
@@ -55,9 +57,9 @@ The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "a
 
 **Velocity:**
 
-- Total plans completed: 61 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0
+- Total plans completed: 61 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
 - Average duration: - min
-- Total execution time: 0 hours (v3.0)
+- Total execution time: 0 hours (v4.0)
 
 **By Phase:**
 
@@ -66,16 +68,12 @@ The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "a
 | 01–06 (v1.0) | 13 | - | - |
 | 07–11 (v1.1) | 19 | - | - |
 | 12–17 (v2.0) | 31 | - | - |
-| 18–23 (v3.0) | TBD | - | - |
-| 18 | 2 | - | - |
-| 20 | 1 | - | - |
-| 21 | 1 | - | - |
-| 22 | 3 | - | - |
-| 23 | 3 | - | - |
+| 18–23 (v3.0) | 11 | - | - |
+| 24–29 (v4.0) | TBD | - | - |
 
 **Recent Trend:**
 
-- Last 5 plans: - (v2.0 closed 2026-07-25; v3.0 not yet started)
+- Last 5 plans: - (v3.0 closed 2026-07-31; v4.0 roadmap just created, execution not yet started)
 - Trend: -
 
 *Updated after each plan completion*
@@ -86,14 +84,13 @@ The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "a
 
 Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecting current work:
 
+- v4.0 roadmap: 6 phases (24–29), continuing numbering from v3.0's Phase 23 close (no reset to 1). Backend read layer (24) is sequenced first so the frontend phases consume real GraphQL reads instead of mocks, matching this project's established build-order convention (v2.0/v3.0 backend-before-frontend sequencing).
+- v4.0 roadmap: the reusable `PersonCard` (25) is built and tested before the `/detail` page (26) composes it, and before descendant navigation (27) reuses it per generation — one card component renders head/children/grandchildren with no duplicate card UI.
+- v4.0 roadmap: admin actions (28) are sequenced after navigation (27) so add-child/add-spouse can refresh an already-expanded person's children/spouses in place, and depend on Phase 24's edit-permission signal + the already-admin-guarded `AddRelativeDialog`/`EditMemberDialog` mutations (no new backend enforcement to build, PERM-03 is a reuse+adversarial-test concern).
+- v4.0 roadmap: a milestone-closing Phase 29 (a11y + responsive + full-suite gate) mirrors this project's established close-out pattern (cf. v3.0 Phase 23's QUAL-01 gate).
+- v4.0 roadmap: PERF-02 (N+1-free child counts/reads) is anchored to Phase 24 (backend) and PERF-01/PERF-03 (lazy loading + session caching, which are inherently frontend-behavior concerns) are anchored to Phase 27 (navigation), even though performance is a cross-cutting concern woven through both.
 - v3.0 roadmap: Phase order is data model + migration (18) → GraphQL layer (19) → self-hosted font/theme (20) → shared displayName helper (21) → read-path render surfaces (22) → write-path forms/Autocomplete (23), per RESEARCH.md SUMMARY.md's dependency-ordered build order.
-- v3.0 roadmap: Phase 20 (font/theme) is deliberately independent of Phases 18–19 (no data dependency) and may be executed in parallel — it carries the highest number of distinct "looks done but isn't" pitfalls per research (subsetting/glyph coverage, FOUT/FOIT, CDN-vs-self-host).
 - v3.0 roadmap: Phase 21 (shared `displayName` helper) is sequenced as a standalone prerequisite before Phase 22's render surfaces, to prevent each component from re-deriving the Latin/Ge'ez precedence rule slightly differently (the drift risk PITFALLS.md/ARCHITECTURE.md both flag).
-- v3.0 roadmap: Phase 22 (render, read path) is sequenced before Phase 23 (write path/forms) matching this app's established test-first convention — prove rendering against seeded/direct-mutation data before wiring end-user input, avoiding conflating "renders wrong" bugs with "form submits wrong" bugs.
-- v3.0 roadmap: QUAL-01 (cross-cutting TDD/CI constraint) is anchored to Phase 23 (milestone-closing phase) for traceability, though its constituent unit tests (`geezFullname`, `displayName`) are substantively written in Phases 18 and 21 respectively — Phase 23's criteria explicitly re-confirm both stay green plus the full-suite/CI gate and the manual glyph sign-off.
-- v3.0 roadmap: manual glyph/visual verification (font rendering, tree-card truncation, Tigrinya labialized-consonant coverage) is treated as a human sign-off gate, not an automated assertion — jsdom cannot assert real glyph rendering, per RESEARCH.md.
-- [Phase 17]: familyMembers query guard relaxed from requireAdmin to requireFamilyAccess (D-13); linkedUser field-level gate (Phase 14 CR-01) verified untouched via new D-14 regression test
-- [Phase 17]: D-12 locked with an implementation amendment: production spouse-pairing uses the union-node midpoint mechanism, not RESEARCH.md's minlen:0 dagre edge (crashes @dagrejs/dagre)
 - Post-Phase 17 (2026-07-25): `/family` edge model replaced union-node "spouses-paired" rendering with a pure parent→child hierarchy at the user's request (real data had 0 spouse rows, 0 two-parent children — the union model rendered zero edges). `UnionNode.jsx` and the union assembly/layout machinery were removed.
 
 ### Pending Todos
@@ -102,11 +99,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- Carry-forward from v1.1: `sequelize.sync()` does not alter existing tables — v3.0's Ge'ez columns need a manual `.sql` migration (`018-*.sql`), same as every prior schema change to an existing table (009/011/013/014/016/017).
-- ✅ RESOLVED (Phase 20): font subsetting/glyph-coverage risk — the Ethiopic-subset `@fontsource/noto-sans-ethiopic` import (`ethiopic-400/700.css`) covers Tigrinya labialized forms (ቨ, ቐ); confirmed via UAT against real Tigrinya fixtures across ≥2 browsers.
-- New for v3.0: the fixed 252×120px `/family` tree card is already tight for Latin `noWrap` text; Ge'ez glyphs are visually wider at the same character count. Phase 22 needs a mandatory manual visual pass against the longest real Ge'ez name in the actual dataset.
-- New for v3.0: MUI Autocomplete's default filter only matches `getOptionLabel` (kept Latin-only per the no-toggle decision) — Phase 23 needs a custom `filterOptions` via `createFilterOptions`, decoupled from the visible option label.
-- Phase 20 scope note (2026-07-30): ROADMAP SC4's "manual pass on `/family` tree cards shows no FOUT-driven layout shift" is intentionally split — Phase 20 proves font *resolution* (paste arbitrary Ge'ez sample text into a `Typography`) since no `/family` surface renders real Ge'ez data yet; the tree-card truncation/layout-shift check against real Ge'ez names is Phase 22's job (RESEARCH.md Pitfall 4). Do not flag the deferred `/family`-specific check as an unmet Phase 20 criterion at `/gsd:verify-work 20`.
+- Carry-forward from v1.1: `sequelize.sync()` does not alter existing tables — any v4.0 schema change (not expected per API-01/D-scope, but if a query genuinely requires one) needs a manual `.sql` migration, same as every prior schema change to an existing table.
+- v4.0 Phase 24 needs to confirm the DataLoader/batching pattern used for `/family` and `/manage` extends cleanly to per-parent direct-child + child-count queries without introducing a new N+1 shape (PERF-02).
+- v4.0 Phase 27's forward-shift state machine (NAV-04) is the milestone's trickiest UI logic — grandparent + parent's-siblings drop, parent promotes to top, grandchild's children become gen-3 — worth a design pass before implementation to keep the 3-generation invariant provably correct.
+- Carry-forward from v3.0: CR-01 (non-admin uncle/aunt Edit path data-loss risk, `ManagePage.jsx:35-36`) remains open; `/detail`'s admin edit path (Phase 28) reuses `EditMemberDialog` and should confirm it doesn't inherit the same card-only-projection gap when opened from `/detail`'s person card.
 
 ## Deferred Items
 
@@ -115,7 +111,7 @@ Items acknowledged and carried forward from previous milestone close:
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
 | Quality | Coverage reporting/thresholds, linter/formatter + CI gate | Deferred to v2+ | v1.1 milestone init |
-| Testing | Full browser E2E tests (Playwright/Cypress) | Deferred (v2.0 REQUIREMENTS.md Out of Scope) | v2.0 requirements |
+| Testing | Full browser E2E tests (Playwright/Cypress) | Deferred (v4.0 REQUIREMENTS.md Out of Scope) | v4.0 requirements |
 | Rate limiting | Coarse whole-`/graphql` `express-rate-limit` guard, operation-aware graduated limits | Deferred to v2+ | v1.1 requirements |
 | Admin bootstrap | Env-seeded initial admin `ADMIN_EMAIL` as belt-and-suspenders | Deferred to v2+ | v1.1 requirements |
 | UX | Frontend-specific 429 message, password-strength meter | Deferred to v2+ | v1.1 requirements |
@@ -126,7 +122,11 @@ Items acknowledged and carried forward from previous milestone close:
 | Ge'ez toggle | Latin ↔ Ge'ez display toggle for viewers | Deferred (v3.0 REQUIREMENTS.md Out of Scope) | v3.0 requirements |
 | Ge'ez surfaces | Detail panel / dashboard Ge'ez rendering, LinkAccounts picker Ge'ez search | Deferred | v3.0 requirements |
 | i18n | Broader Amharic/Tigrinya UI localization (labels/buttons) | Deferred | v3.0 requirements |
-| uat | Phase 22 — visual sign-off of Ge'ez name rendering/truncation on the fixed 252×120px `/family` card + both `/manage` surfaces against the LONGEST real Ge'ez name. Deferred because no member has a Ge'ez name yet (write-path forms are Phase 23); rendering logic is proven by 289 automated tests. Close during/after Phase 23 once real data can be entered. | pending | Phase 22 execution (2026-07-31) |
+| uat | Phase 22 — visual sign-off of Ge'ez name rendering/truncation on the fixed 252×120px `/family` card + both `/manage` surfaces against the LONGEST real Ge'ez name. | CLOSED in Phase 23 | Phase 22 execution (2026-07-31) |
+| Navigation | Ancestor navigation on `/detail` (upward) | Deferred (v4.0 REQUIREMENTS.md Future Requirements) | v4.0 requirements |
+| Navigation | Shareable/deep-linkable per-person URL on `/detail` (e.g. `/detail/:id`) | Deferred (v4.0 REQUIREMENTS.md Future Requirements) | v4.0 requirements |
+| Genealogy | Fuller genealogy relationships in the `/detail` card/nav (multiple marriages, half-siblings, adoptions) | Deferred (v4.0 REQUIREMENTS.md Future Requirements) | v4.0 requirements |
+| Ge'ez toggle | Latin↔Ge'ez display toggle + Ge'ez search on `/detail` suggestions beyond name fields | Deferred (v4.0 REQUIREMENTS.md Future Requirements) | v4.0 requirements |
 
 ## Quick Tasks Completed
 
@@ -146,10 +146,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-31T07:06:33.292Z
-Stopped at: Phase 23 context gathered
-Resume file: .planning/phases/23-write-path-quality-gate/23-CONTEXT.md
+Last session: 2026-08-03T09:15:00.000Z
+Stopped at: v4.0 roadmap created — ROADMAP.md (Phases 24–29) + REQUIREMENTS.md traceability written, 23/23 requirements mapped
+Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Run `/gsd:plan-phase 24` to plan the first v4.0 phase (Backend Read Layer for /detail).
