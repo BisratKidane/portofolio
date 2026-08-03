@@ -19,6 +19,8 @@ const BASE_MEMBER = {
   canEdit: false
 };
 
+const SPOUSE = { ...BASE_MEMBER, id: '2', fullname: 'Bob Lovelace' };
+
 function renderCard(overrides = {}) {
   const props = {
     member: BASE_MEMBER,
@@ -159,5 +161,50 @@ describe('PersonCard', () => {
     renderCard({ member, onEdit });
     await userEvent.click(screen.getByRole('button', { name: 'Edit Ada Lovelace' }));
     expect(onEdit).toHaveBeenCalledWith(member);
+  });
+
+  // SPOUSE-01: spouse pairing + dashed connector (D-12/D-13/D-14)
+  describe('spouse pairing', () => {
+    it('renders no dashed connector or second card when spouse is absent', () => {
+      const { container } = renderCard({});
+      expect(container.querySelectorAll('[data-testid^="person-card-"]').length).toBe(1);
+    });
+
+    it('renders both the anchor and spouse cards when spouse is supplied', () => {
+      renderCard({ spouse: SPOUSE });
+      expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+      expect(screen.getByText('Bob Lovelace')).toBeInTheDocument();
+    });
+
+    it('renders an aria-hidden dashed connector between the anchor and spouse cards', () => {
+      const { container } = renderCard({ spouse: SPOUSE });
+      const connector = container.querySelector('[aria-hidden="true"]');
+      expect(connector).not.toBeNull();
+      expect(connector).toHaveStyle({ borderTopStyle: 'dashed' });
+    });
+
+    it('never shows an expand control on the spouse card, even when the spouse has children', () => {
+      const spouseWithChildren = { ...SPOUSE, children: [{ id: '3' }, { id: '4' }] };
+      const member = { ...BASE_MEMBER, children: [{ id: '5' }] };
+      renderCard({ member, spouse: spouseWithChildren, expanded: false });
+      const spouseCard = screen.getByTestId('person-card-2');
+      expect(
+        Array.from(spouseCard.querySelectorAll('button')).find((btn) => /children of/i.test(btn.textContent || ''))
+      ).toBeUndefined();
+      // Anchor's own expand control is unaffected.
+      expect(screen.getByRole('button', { name: 'Show children of Ada Lovelace' })).toBeInTheDocument();
+    });
+
+    it('renders exactly 2 person cards for a spouse pair, never recursing into the spouse\'s own spouse', () => {
+      const member = { ...BASE_MEMBER, spouses: [{ id: '2' }] };
+      const spouse = { ...SPOUSE, spouses: [{ id: '1' }] };
+      const { container } = renderCard({ member, spouse });
+      expect(container.querySelectorAll('[data-testid^="person-card-"]').length).toBe(2);
+    });
+
+    it('ignores its own spouse prop when isSpouse is true (defense in depth, no recursion)', () => {
+      const { container } = renderCard({ isSpouse: true, spouse: SPOUSE });
+      expect(container.querySelectorAll('[data-testid^="person-card-"]').length).toBe(1);
+    });
   });
 });
