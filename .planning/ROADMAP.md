@@ -228,7 +228,7 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 22. Render Surfaces (Read Path) | v3.0 | 3/3 | Complete    | 2026-07-31 |
 | 23. Write Path & Quality Gate | v3.0 | 3/3 | Complete    | 2026-07-31 |
 | 24. Backend Read Layer for /detail | v4.0 | 3/3 | Complete    | 2026-08-03 |
-| 25. Reusable PersonCard | v4.0 | 2/2 | Complete   | 2026-08-03 |
+| 25. Reusable PersonCard | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 26. /detail Page, Search & Initial Load | v4.0 | 0/TBD | Not started | - |
 | 27. Descendant Navigation & Performance | v4.0 | 0/TBD | Not started | - |
 | 28. Admin Actions on /detail | v4.0 | 0/TBD | Not started | - |
