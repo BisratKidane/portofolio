@@ -47,12 +47,12 @@
 ### Performance (PERF)
 
 - [ ] **PERF-01**: Opening the page does not load the whole family tree — it loads only the main person plus the data the card needs (including child count); a person's children load only when that person is expanded.
-- [ ] **PERF-02**: Child counts and person/children data are retrieved without N+1 queries.
+- [x] **PERF-02**: Child counts and person/children data are retrieved without N+1 queries.
 - [ ] **PERF-03**: Descendants already loaded during the current session are not re-fetched unless the data changed; the implementation avoids duplicate API requests and unnecessary React re-renders.
 
 ### Backend / API (API)
 
-- [ ] **API-01**: The GraphQL API exposes the reads the page needs — the family head, a person by id, name search (Latin + Ge'ez first/last), a person's direct children (not all descendants) with child counts, spouse data for displayed persons, and the current user's edit-permission signal — reusing existing models and relationships, with no DB schema change unless a query genuinely requires one.
+- [x] **API-01**: The GraphQL API exposes the reads the page needs — the family head, a person by id, name search (Latin + Ge'ez first/last), a person's direct children (not all descendants) with child counts, spouse data for displayed persons, and the current user's edit-permission signal — reusing existing models and relationships, with no DB schema change unless a query genuinely requires one.
 
 ### Accessibility (A11Y)
 
