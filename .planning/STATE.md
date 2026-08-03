@@ -1,34 +1,33 @@
 ---
 gsd_state_version: 1.0
-milestone: v3.0
-milestone_name: Ge'ez Native-Script Names
-status: Awaiting next milestone
-stopped_at: Phase 23 context gathered
-last_updated: "2026-07-31T09:18:45.527Z"
-last_activity: 2026-07-31 — Milestone v3.0 completed and archived
+milestone: v4.0
+milestone_name: Family Detail & Descendant Navigation
+status: planning
+last_updated: "2026-08-03T08:34:30.790Z"
+last_activity: 2026-08-03
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-31 after v3.0 milestone)
+See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Planning next milestone — run `/gsd:new-milestone`
+**Current focus:** v4.0 Family Detail & Descendant Navigation — defining requirements (branch `port_details`)
 
 ## Current Position
 
-Phase: Milestone v3.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-08-01 — Completed quick task 260801-fsa (Ge'ez font → Abyssinica SIL + tree-card gender color)
+Status: Defining requirements
+Last activity: 2026-08-03 — Milestone v4.0 started
 
 ## Deferred Items
 

@@ -8,6 +8,23 @@ A full-stack authentication application built as a portfolio piece: a React + MU
 
 Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
 
+## Current Milestone: v4.0 Family Detail & Descendant Navigation
+
+**Goal:** A new `/detail` page (for all authenticated users) that opens on the family head in a reusable person card, lets you search by Latin **and** Ge'ez first/last name to reset the main person, and expand children → grandchildren on demand — capped at three generations with a forward-shift as you navigate deeper — showing each displayed person's spouse(s) alongside them, with admin-only add-child/add-spouse and edit (all backend-enforced, reusing existing flows), loaded lazily.
+
+**Target features:**
+- **`/detail` route** — authenticated-only page; opens showing only the family head (the tree's top ancestor).
+- **Reusable `PersonCard`** — avatar, Latin + Ge'ez names, gender (with a non-color-only cue), birth/death/relationship when present, child count (`1 child` / `N children`, hidden at 0), an expand control (only when children exist), and an admin-only edit button. Renders only fields that have values.
+- **Inline search** — Latin + Ge'ez first/last name, partial + case-insensitive (Latin), suggestions rendered below the bar (avatar, full Latin + Ge'ez name, birth year, family context); selecting a result clears the view and makes that person the new main person.
+- **Expand / collapse + 3-generation navigation** — a responsive children grid (≤3 cards per row) grouped by generation with a subtle connector; a maximum of three generations shown at once; expanding a grandchild shifts the view forward one generation (drop the grandparent and the selected grandchild's parent's siblings; promote the parent to top). Collapsing hides all descendants beneath.
+- **Spouse visualization** — for every displayed person, surface their spouse(s) alongside them (creative but on-brand, reusing the `/family` partnered/dashed-connector convention); spouses are lateral and never count toward the generation cap.
+- **Admin actions** — an admin-only control to add a **child** or a **spouse** to a shown person, reusing the existing `AddRelativeDialog`; edits reuse the existing edit flow. All admin actions are **backend-enforced**, not just hidden in the UI.
+- **Performance** — lazy per-generation loading (never the whole tree at once), N+1-free child counts, session-scoped caching of already-loaded descendants, and no duplicate requests or needless re-renders.
+- **Backend/API** — reuse existing models & relationships; add read queries for the family head, a person by id, name search (Latin + Ge'ez), direct-children (not all descendants) with child counts, and the edit-permission signal; no DB schema change unless genuinely necessary.
+- **States & accessibility** — loading / searching / no-results / no-children / error / missing-head / missing-info states via existing components; keyboard-navigable expand & search suggestions, visible focus, adequate contrast, mobile-readable layout.
+
+**Explicitly out of scope this milestone:** editing/adding from any surface other than the reused existing dialogs; a separate search-results page; DB schema changes (unless a query genuinely requires one); rendering a 4th generation simultaneously; non-descendant navigation (ancestors) on `/detail`.
+
 ## Shipped Milestone: v3.0 Ge'ez Native-Script Names (2026-07-31)
 
 **Goal (met):** Family members can carry their name in Ge'ez script (ግዕዝ) alongside the existing Latin name, rendered with a self-hosted Ge'ez-capable webfont so it displays correctly on every device — deepening the app's fit for the Tigrinya/Eritrean family it serves. All 6 phases (18–23) verified; 12/12 requirements delivered. Shipped as 11 plans across 2 days (+7,903/−133 LOC).
@@ -87,9 +104,9 @@ Changes to the app can be made with confidence — auth and core flows are prote
 
 ### Active
 
-<!-- v3.0 Ge'ez Native-Script Names shipped and archived (2026-07-31). No active milestone — next milestone's requirements will be defined via /gsd:new-milestone. v1.0/v1.1/v2.0/v3.0 shipped (see Shipped Milestone sections + milestones/ archive). -->
+<!-- v4.0 Family Detail & Descendant Navigation scoped and confirmed (2026-08-03). REQ-IDs defined in .planning/REQUIREMENTS.md; see "Current Milestone: v4.0" above for target features. v1.0/v1.1/v2.0/v3.0 shipped (see Shipped Milestone sections + milestones/ archive). -->
 
-- (none) — v3.0 complete. Run `/gsd:new-milestone` to scope the next milestone's requirements.
+- v4.0 Family Detail & Descendant Navigation requirements defined in `.planning/REQUIREMENTS.md` (see Current Milestone section above). Built on branch `port_details`.
 
 ### Out of Scope
 
@@ -195,4 +212,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-31 after v3.0 Ge'ez Native-Script Names milestone — all 6 phases (18–23) shipped, 12/12 requirements validated, tagged v3.0. Next: `/gsd:new-milestone`.*
+*Last updated: 2026-08-03 — started milestone v4.0 Family Detail & Descendant Navigation (branch `port_details`). v3.0 shipped/tagged. Next: define requirements → roadmap → plan-phase.*
