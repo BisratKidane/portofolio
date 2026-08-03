@@ -4,8 +4,8 @@ milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
 status: executing
 stopped_at: Phase 24 context gathered
-last_updated: "2026-08-03T09:42:08.803Z"
-last_activity: 2026-08-03 -- Phase 24 planning complete
+last_updated: "2026-08-03T09:47:19.846Z"
+last_activity: 2026-08-03 -- Phase 24 execution started
 progress:
   total_phases: 6
   completed_phases: 0
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** v4.0 Family Detail & Descendant Navigation — roadmap complete (Phases 24–29), ready to plan Phase 24 (branch `port_details`)
+**Current focus:** Phase 24 — backend-read-layer-for-detail
 
 ## Current Position
 
-Phase: 24 of 29 (Backend Read Layer for /detail)
-Plan: — (not yet planned)
-Status: Ready to execute
-Last activity: 2026-08-03 -- Phase 24 planning complete
+Phase: 24 (backend-read-layer-for-detail) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 24
+Last activity: 2026-08-03 -- Phase 24 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
