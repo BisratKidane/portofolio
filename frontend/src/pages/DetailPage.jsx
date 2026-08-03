@@ -1,12 +1,16 @@
-// Route component for /detail (Phase 26, Plan 26-01). Opens on the family
-// head via the uniform head-id -> person-by-id load path (D-04), rendering
-// a single Phase-25 PersonCard with no descendants expanded. Also owns every
-// page-level D-08 edge/empty state. Phase 26-02 drops the inline search into
-// the top-region placeholder Box below and reuses loadPersonById.
+// Route component for /detail (Phase 26). Opens on the family head via the
+// uniform head-id -> person-by-id load path (D-04), rendering a single
+// Phase-25 PersonCard with no descendants expanded. Also owns every
+// page-level D-08 edge/empty state. Plan 26-02 mounts the persistent
+// PersonSearch bar (D-07) above the card, wiring its onSelect straight to
+// loadPersonById -- the same uniform person-by-id path the head load uses,
+// so selecting a suggestion clears the current view and shows only the new
+// person's card with descendants collapsed (SEARCH-03/D-05).
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material';
 import { graphqlRequest } from '../api/graphqlClient.js';
 import PersonCard from '../components/person/PersonCard.jsx';
+import PersonSearch from '../components/person/PersonSearch.jsx';
 
 const FAMILY_HEAD_QUERY = `
   query FamilyHead {
@@ -109,8 +113,10 @@ export default function DetailPage() {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-      {/* Top region placeholder -- Phase 26-02 mounts the inline search here. */}
-      <Box sx={{ width: '100%' }} />
+      {/* D-07: persistent search bar, stays visible above the centered card. */}
+      <Box sx={{ width: '100%', maxWidth: 420 }}>
+        <PersonSearch onSelect={(id) => loadPersonById(id)} />
+      </Box>
       <Box sx={{ width: '100%', maxWidth: 420 }}>
         <PersonCard
           member={mainPerson}
