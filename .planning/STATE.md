@@ -4,8 +4,8 @@ milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
 status: executing
 stopped_at: Phase 25 UI-SPEC approved
-last_updated: "2026-08-03T17:26:15.250Z"
-last_activity: 2026-08-03 -- Phase 25 planning complete
+last_updated: "2026-08-03T17:32:05.046Z"
+last_activity: 2026-08-03 -- Phase 25 execution started
 progress:
   total_phases: 6
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 25 — reusable personcard
+**Current focus:** Phase 25 — reusable-personcard
 
 ## Current Position
 
-Phase: 25
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-08-03 -- Phase 25 planning complete
+Phase: 25 (reusable-personcard) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 25
+Last activity: 2026-08-03 -- Phase 25 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
