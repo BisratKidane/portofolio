@@ -1,10 +1,11 @@
 ---
 phase: 25
 slug: reusable-personcard
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-08-03
+reviewed_at: 2026-08-03
 ---
 
 # Phase 25 — UI Design Contract
