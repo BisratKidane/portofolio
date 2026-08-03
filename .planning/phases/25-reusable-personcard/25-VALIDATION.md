@@ -1,8 +1,8 @@
 ---
 phase: 25
 slug: reusable-personcard
-status: draft
-nyquist_compliant: false
+status: approved
+nyquist_compliant: true
 wave_0_complete: false
 created: 2026-08-03
 ---
@@ -38,38 +38,46 @@ created: 2026-08-03
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| {N}-01-01 | 01 | 1 | CARD-XX | — | N/A | unit | `npm test --workspace frontend -- PersonCard` | ❌ W0 | ⬜ pending |
+| 25-01-01 | 01 | 1 | CARD-01..04 (foundation) | T-25-02 | genderMeta extraction is behavior-preserving; MemberNode.test.jsx stays green with zero edits | unit (existing, regression) | `cd frontend && npx vitest run src/components/family/MemberNode.test.jsx` | ✅ existing file | ⬜ pending |
+| 25-01-02 | 01 | 1 | CARD-01, CARD-02, CARD-03, CARD-04 | T-25-01, T-25-02, T-25-03 | Field omission, role-agnostic rendering, gender cue (data-gender/aria-label + deterministic `data-ring-style` ring border-style), child-count/expand gate, canEdit gate | component (new) | `cd frontend && npx vitest run src/components/person/PersonCard.test.jsx` | ❌ W0 (new file) | ⬜ pending |
+| 25-02-01 | 02 | 2 | SPOUSE-01 | T-25-04 | Spouse pairing + dashed connector render; spouse card has no expand control; no spouse-of-spouse recursion (exactly 2 person-card DOM roots) | component (extends 25-01-02's file) | `cd frontend && npx vitest run src/components/person/PersonCard.test.jsx -t spouse` | ❌ W0 (extends new file) | ⬜ pending |
+| 25-02-02 | 02 | 2 | CARD-01..04, SPOUSE-01 (phase close) | T-25-05 | Full workspace regression gate; MemberNode.test.jsx confirmed unmodified across the whole phase; 44px touch targets + stable data-testid audited | full suite (existing + new) | `cd frontend && npx vitest run` | ✅ existing + new files | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
-
-*(Planner fills concrete rows per task; every rendering/a11y/conditional-visibility behavior maps to a Vitest + RTL assertion in `PersonCard.test.jsx`.)*
 
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `frontend/src/components/detail/PersonCard.test.jsx` — colocated test stub for CARD-01..04, SPOUSE-01
+- [ ] `frontend/src/components/person/PersonCard.test.jsx` — colocated test file for CARD-01..04, SPOUSE-01 (created in 25-01 Task 2, extended in 25-02 Task 1)
 - [ ] Existing Vitest + RTL + jsdom infrastructure covers all phase requirements (no framework install needed)
 
 ---
 
 ## Manual-Only Verifications
 
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|-------------------|
-| Gender ring shape is genuinely *visible* (solid/dashed/dotted) | CARD-03 | Visual perception of border-style not asserted by RTL DOM queries | Render each gender; confirm distinct ring style over both photo and fallback avatar |
+*None.* Every CARD-01..04 and SPOUSE-01 behavior — including the D-09 gender
+ring's non-color cue — is covered by an automated Vitest + RTL assertion:
 
-*Automated tests cover data-gender, field omission, count pluralization, expand-gate, canEdit gate, and spouse no-expand; the visible-cue perception is the one manual check.*
+- The ring border-style cue (solid/dashed/dotted per gender) is asserted via
+  a stable `data-ring-style` attribute on the ring wrapper (25-01 Task 2
+  acceptance criteria), not left to visual/manual inspection, because
+  asserting Emotion-generated border shorthand directly via `toHaveStyle` is
+  unreliable in jsdom.
+
+*Automated tests cover data-gender, aria-label, ring border-style (via
+`data-ring-style`), field omission, count pluralization, expand-gate,
+canEdit gate, and spouse pairing/no-expand/no-recursion.*
 
 ---
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved

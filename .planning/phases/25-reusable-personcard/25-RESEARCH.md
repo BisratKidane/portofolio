@@ -311,13 +311,15 @@ ring is a sibling-level wrapper, never touches `MemberAvatarImage`'s internals).
 const RING_STYLE = { Male: 'solid', Female: 'dashed', Other: 'dotted' };
 
 function GenderRing({ gender, tint, size = 96, children }) {
+  const ringStyle = RING_STYLE[gender] ?? RING_STYLE.Other;
   return (
     <Box
+      data-ring-style={ringStyle}
       sx={{
         width: size,
         height: size,
         borderRadius: '50%',
-        border: `3px ${RING_STYLE[gender] ?? RING_STYLE.Other} ${tint}`,
+        border: `3px ${ringStyle} ${tint}`,
         padding: '3px',   // gap between ring and avatar so the style (dashed/dotted) is legible
         boxSizing: 'border-box'
       }}
@@ -338,6 +340,11 @@ function GenderRing({ gender, tint, size = 96, children }) {
 must have a definite height" (its own doc comment) — the inner `Box` here provides exactly
 that (`100%`/`100%` of the ring's padded interior), so no internal layout or fallback logic
 inside `MemberAvatarImage`/`MemberFallbackAvatar` needs to change.
+
+**Testability note (added during plan revision):** asserting border-style directly via RTL's
+`toHaveStyle` against Emotion-generated classes is unreliable in jsdom, so the ring wrapper
+also carries a plain `data-ring-style={ringStyle}` attribute — a stable, deterministic hook
+for `PersonCard.test.jsx` to assert against instead of parsing CSS.
 
 ### Pattern 3: Dashed Spouse Connector Off-Canvas (supports D-12)
 
@@ -505,7 +512,9 @@ key the ring-style lookup off `genderMeta`'s normalized `label`, never off the r
 
 **Warning signs:** A test with `gender: undefined` or `gender: 'Unknown'` should still show
 a visible (dotted, slate) ring — if the border disappears entirely, this pitfall has been
-hit.
+hit. Since the ring's `data-ring-style` attribute (Pattern 2) is asserted directly in
+`PersonCard.test.jsx`, this pitfall is now caught by an automated test, not just visual
+inspection.
 
 ### Pitfall 3: Female Ge'ez-name-line contrast borderline on AA (flagged in UI-SPEC.md)
 
@@ -637,7 +646,7 @@ import source.
 cosmetic/organizational choices explicitly left to discretion by CONTEXT.md, not
 compliance-sensitive or hard-to-reverse decisions.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact avatar/card pixel sizing (diameter, card min/max width) for the fluid D-03
    layout**
@@ -650,6 +659,11 @@ compliance-sensitive or hard-to-reverse decisions.
      or 96px avatar) and treat them as adjustable CSS constants, not hardcoded magic numbers
      scattered through JSX — this keeps Phase 27's grid integration free to tune spacing
      without touching `PersonCard.jsx`'s internals.
+   - **RESOLVED:** 25-01 Task 2 fixes the avatar ring at `~96px` diameter (3px ring border +
+     3px padding gap, per Pattern 2's `GenderRing` size default), implemented as an
+     adjustable constant inside `PersonCard.jsx`, not scattered magic numbers. The card
+     itself remains fluid-width per D-03 — no additional fixed pixel value beyond the
+     avatar was needed.
 
 2. **Whether `PersonCard` needs a `data-testid` convention beyond `data-gender`**
    - What we know: `MemberNode.jsx` uses `data-testid={`member-node-${member.id}`}` for
@@ -662,6 +676,12 @@ compliance-sensitive or hard-to-reverse decisions.
    - Recommendation: Add `data-testid={`person-card-${member.id}`}` proactively (cheap,
      matches `MemberNode`'s precedent, and de-risks Phase 26/27's grid-level tests) even
      though Phase 25's own colocated tests may not strictly need it.
+   - **RESOLVED:** 25-01 Task 2 adopts `data-testid={`person-card-${member.id}`}` on the
+     card root, confirmed by 25-02 Task 2's phase-close audit
+     (`grep -c "data-testid={\`person-card-"`). During plan revision, a second stable hook —
+     `data-ring-style` on the avatar ring wrapper (Pattern 2) — was added for the same
+     reason: to make the D-09 gender-ring border-style deterministically assertable in
+     jsdom without relying on `toHaveStyle` against Emotion-generated classes.
 
 ## Environment Availability
 
@@ -695,7 +715,7 @@ compliance-sensitive or hard-to-reverse decisions.
 |--------|----------|-----------|-------------------|-------------|
 | CARD-01 | Renders fullname, Ge'ez name (when present), gender cue, status chip, role label — each omitted when absent | component | `npx vitest run src/components/person/PersonCard.test.jsx -t "field"` | ❌ Wave 0 (new file) |
 | CARD-02 | Same component renders correctly regardless of `role` prop value (Head/Child/Grandchild) — no branching by role beyond the label text | component | `npx vitest run src/components/person/PersonCard.test.jsx -t "role"` | ❌ Wave 0 |
-| CARD-03 | `data-gender` attribute + `aria-label` include gender for Male/Female/Other/undefined; ring is visually present (border style asserted via `toHaveStyle`) for all four cases | component | `npx vitest run src/components/person/PersonCard.test.jsx -t "gender"` | ❌ Wave 0 |
+| CARD-03 | `data-gender` attribute + `aria-label` include gender for Male/Female/Other/undefined; ring is deterministically present (`data-ring-style` attribute) for all four cases | component | `npx vitest run src/components/person/PersonCard.test.jsx -t "gender"` | ❌ Wave 0 |
 | CARD-04 | Expand control + count text render only when `children.length >= 1`; singular `1 child` vs plural `N children`; hidden entirely at 0; chevron/aria-name flips with `expanded` | component | `npx vitest run src/components/person/PersonCard.test.jsx -t "expand"` | ❌ Wave 0 |
 | SPOUSE-01 | `spouse` prop renders a second `PersonCard` with `isSpouse`; spouse card has no expand control even if it has children; dashed connector element present between the two | component | `npx vitest run src/components/person/PersonCard.test.jsx -t "spouse"` | ❌ Wave 0 |
 | D-08 (canEdit gate) | Edit `IconButton` renders only when `member.canEdit === true`; calls `onEdit(member)` on click | component | `npx vitest run src/components/person/PersonCard.test.jsx -t "edit"` | ❌ Wave 0 |
