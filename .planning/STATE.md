@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
-status: ready_to_plan
-stopped_at: Phase 27 complete (4/4) — ready to discuss Phase 28
-last_updated: 2026-08-04T06:40:25.966Z
+status: planning
+stopped_at: Phase 28 context gathered
+last_updated: "2026-08-04T10:22:44.894Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 6
@@ -159,9 +159,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T06:11:44.947Z
-Stopped at: Completed 27-04-PLAN.md
-Resume file: None
+Last session: 2026-08-04T10:22:44.888Z
+Stopped at: Phase 28 context gathered
+Resume file: .planning/phases/28-admin-actions-on-detail/28-CONTEXT.md
 
 ## Operator Next Steps
 
