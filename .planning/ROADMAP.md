@@ -185,7 +185,7 @@ Plans:
 
 **Wave 2** *(blocked on 27-01)*
 
-- [ ] 27-03-PLAN.md — useDescendantNav hook: session cache + expand-only lazy fetch (PERF-01/PERF-03)
+- [x] 27-03-PLAN.md — useDescendantNav hook: session cache + expand-only lazy fetch (PERF-01/PERF-03)
 
 **Wave 3** *(blocked on 27-02, 27-03)*
 
@@ -255,6 +255,6 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 24. Backend Read Layer for /detail | v4.0 | 3/3 | Complete    | 2026-08-03 |
 | 25. Reusable PersonCard | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 26. /detail Page, Search & Initial Load | v4.0 | 2/2 | Complete    | 2026-08-03 |
-| 27. Descendant Navigation & Performance | v4.0 | 2/4 | In Progress|  |
+| 27. Descendant Navigation & Performance | v4.0 | 3/4 | In Progress|  |
 | 28. Admin Actions on /detail | v4.0 | 0/TBD | Not started | - |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 0/TBD | Not started | - |

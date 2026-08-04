@@ -4,13 +4,13 @@ milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
 status: executing
 stopped_at: Completed 27-01-PLAN.md
-last_updated: "2026-08-04T04:52:08.775Z"
+last_updated: "2026-08-04T05:53:53.894Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 50
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 ## Current Position
 
 Phase: 27 (descendant-navigation-performance) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-08-04
 
-Progress: [████████░░] 82%
+Progress: [█████████░] 91%
 
 ## Deferred Items
 
@@ -83,6 +83,7 @@ The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "a
 *Updated after each plan completion*
 | Phase 27 P01 | 10min | 2 tasks | 2 files |
 | Phase 27 P02 | 2min | 2 tasks | 2 files |
+| Phase 27 P03 | 15min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - v3.0 roadmap: Phase 21 (shared `displayName` helper) is sequenced as a standalone prerequisite before Phase 22's render surfaces, to prevent each component from re-deriving the Latin/Ge'ez precedence rule slightly differently (the drift risk PITFALLS.md/ARCHITECTURE.md both flag).
 - Post-Phase 17 (2026-07-25): `/family` edge model replaced union-node "spouses-paired" rendering with a pure parent→child hierarchy at the user's request (real data had 0 spouse rows, 0 two-parent children — the union model rendered zero edges). `UnionNode.jsx` and the union assembly/layout machinery were removed.
 - [Phase 27]: colors.line used for the GenerationGrid apex cue (D-06) -- lighter/more restrained than colors.slate (/family edges) and colors.primary (spouse connector)
+- [Phase 27]: Plan 27-03: RTL's global cleanup() unmounts renderHook's host component after every it() -- restructured the useDescendantNav test suite so each it() renders its own fresh instance instead of sharing one across a describe block.
 
 ### Pending Todos
 
@@ -153,7 +155,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T04:51:12.348Z
+Last session: 2026-08-04T05:52:47.773Z
 Stopped at: Completed 27-01-PLAN.md
 Resume file: None
 
