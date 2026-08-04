@@ -36,6 +36,9 @@ export function navReducer(state, action) {
         history: [...state.history, state]
       };
 
+    case 'REFRESH':
+      return { ...state };
+
     default:
       return state;
   }
