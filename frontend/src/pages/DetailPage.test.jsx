@@ -3,6 +3,7 @@
 // PersonCard.test.jsx's card assertions (getByTestId, Living/Deceased chip).
 // Search-select tests adapt AddRelativeDialog.test.jsx's Autocomplete
 // typing/select pattern (26-02).
+import { Profiler } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -60,6 +61,22 @@ const SELECTED_MAIN_PERSON = {
   spouses: [],
   children: []
 };
+
+// Minimal card-ready person fixture for descendant-navigation tests (Task
+// 2) — `children` here is only ever used by PersonCard for its count/expand
+// affordance, never dereferenced beyond `.length`.
+function person(overrides) {
+  return {
+    geezFullname: null,
+    gender: 'Female',
+    isAlive: true,
+    photoUrl: null,
+    canEdit: false,
+    spouses: [],
+    children: [],
+    ...overrides
+  };
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -188,5 +205,222 @@ describe('DetailPage', () => {
     await userEvent.type(input, 'ባይሮን');
 
     await waitFor(() => expect(graphqlRequest).toHaveBeenCalledWith(expect.stringMatching(/searchFamilyMembers/), { term: 'ባይሮን' }));
+  });
+
+  // Descendant navigation (Plan 27-04): end-to-end coverage of the
+  // useDescendantNav (27-03) + GenerationGrid (27-02) wiring added in
+  // Task 1, through the real rendered component tree.
+
+  it('PERF-01: opening /detail fires exactly 2 initial-load calls and zero children-fetch calls before any expand', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { ...HEAD, children: [{ id: '2' }] }
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+    expect(graphqlRequest).toHaveBeenCalledTimes(2);
+  });
+
+  it('NAV-01: expanding the head shows its direct children in a GenerationGrid with a visible connector', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { ...HEAD, children: [{ id: '2' }] }
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '2', fullname: 'Child Two', gender: 'Male' })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+    expect(screen.getByTestId('generation-apex')).toBeInTheDocument();
+  });
+
+  it('NAV-02: collapsing an expanded child hides its grandchildren, control reflects state', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { ...HEAD, children: [{ id: '2' }] }
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [person({ id: '2', fullname: 'Child Two', gender: 'Male', children: [{ id: '3' }] })]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '3', fullname: 'Grandchild Three' })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Child Two' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-3')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide children of Child Two' }));
+    await waitFor(() => expect(screen.queryByTestId('person-card-3')).not.toBeInTheDocument());
+  });
+
+  it('D-01: expanding a second child auto-collapses the first, only one branch is ever open', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { ...HEAD, children: [{ id: '2' }, { id: '5' }] }
+    });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [
+          person({ id: '2', fullname: 'Child A', gender: 'Male', children: [{ id: '3' }] }),
+          person({ id: '5', fullname: 'Child B', gender: 'Male', children: [{ id: '6' }] })
+        ]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+    expect(screen.getByTestId('person-card-5')).toBeInTheDocument();
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '3', fullname: 'Grandchild A' })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Child A' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-3')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '6', fullname: 'Grandchild B' })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Child B' }));
+
+    await waitFor(() => expect(screen.getByTestId('person-card-6')).toBeInTheDocument());
+    expect(screen.queryByTestId('person-card-3')).not.toBeInTheDocument();
+  });
+
+  it('NAV-03/NAV-04/D-04: expanding a childful grandchild forward-shifts the view (capped at 3 generations) and collapsing the promoted top restores the exact pre-shift view with no new fetches', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { ...HEAD, children: [{ id: '2' }, { id: '7' }] }
+    });
+    const { container } = renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    // Expand head: reveal Child Two (has its own children) and its childless
+    // sibling Sibling Seven.
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [
+          person({ id: '2', fullname: 'Child Two', gender: 'Male', children: [{ id: '3' }] }),
+          person({ id: '7', fullname: 'Sibling Seven', children: [] })
+        ]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+    expect(screen.getByTestId('person-card-7')).toBeInTheDocument();
+
+    // Expand Child Two: reveal Grandchild Three (itself childful).
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [person({ id: '3', fullname: 'Grandchild Three', children: [{ id: '4' }] })]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Child Two' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-3')).toBeInTheDocument());
+
+    // Expand Grandchild Three: triggers the forward shift (NAV-04).
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [person({ id: '4', fullname: 'Great Grandchild Four', gender: 'Male' })]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Grandchild Three' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-4')).toBeInTheDocument());
+
+    // Child Two is now promoted to the view's top slot (role "Head").
+    expect(screen.getByTestId('person-card-2')).toBeInTheDocument();
+    expect(screen.getByText('Head')).toBeInTheDocument();
+    // Original head and Child Two's sibling (the dropped grandparent's other
+    // children) are gone (NAV-03).
+    expect(screen.queryByTestId('person-card-1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('person-card-7')).not.toBeInTheDocument();
+    // Never more than 3 generations' worth of cards mounted at once.
+    const cardsAtPeak = container.querySelectorAll('[data-testid^="person-card-"]');
+    expect(cardsAtPeak).toHaveLength(3);
+
+    // Collapse the promoted top: undo walks back up exactly (D-04), with no
+    // additional graphqlRequest calls (the popped frame's data was cached).
+    const callCountBeforeUndo = graphqlRequest.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Hide children of Child Two' }));
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+    expect(screen.getByTestId('person-card-2')).toBeInTheDocument();
+    expect(screen.getByTestId('person-card-7')).toBeInTheDocument();
+    expect(screen.getByTestId('person-card-3')).toBeInTheDocument();
+    expect(screen.queryByTestId('person-card-4')).not.toBeInTheDocument();
+    expect(graphqlRequest).toHaveBeenCalledTimes(callCountBeforeUndo);
+  });
+
+  it('PERF-03: re-expanding a cached child fires zero new graphqlRequest calls and an exact, bounded render-commit count', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { ...HEAD, children: [{ id: '2' }] }
+    });
+
+    const onRenderSpy = vi.fn();
+    render(
+      <MemoryRouter initialEntries={['/detail']}>
+        <Profiler id="nav" onRender={onRenderSpy}>
+          <DetailPage />
+        </Profiler>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [person({ id: '2', fullname: 'Child Two', gender: 'Male', children: [{ id: '3' }] })]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '3', fullname: 'Grandchild Three' })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Child Two' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-3')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide children of Child Two' }));
+    await waitFor(() => expect(screen.queryByTestId('person-card-3')).not.toBeInTheDocument());
+
+    const callCountBeforeReExpand = graphqlRequest.mock.calls.length;
+    onRenderSpy.mockClear();
+
+    // Re-expand: the grandchild's cache entry already holds `children`, so
+    // ensureEntry short-circuits to Promise.resolve() with zero setLoadingId
+    // calls -- a single EXPAND_CHILD dispatch is the only state update this
+    // click can possibly cause. The collapsed GenerationGrid/PersonCard
+    // subtree unmounted on collapse, so this click also freshly re-mounts a
+    // new MemberAvatarImage instance for the grandchild card, whose own
+    // (member-photoUrl-driven, no-photo-here) mount effect settles in a
+    // second, tiny, no-DOM-visible-change commit right after the dispatch's
+    // commit -- traced/isolated in isolation (each commit's actualDuration
+    // and the DetailPage-level render count) to rule out a hidden refetch:
+    // exactly 2 commits, not the 3+ a cache-miss expand produces (which adds
+    // a distinct setLoadingId(true)/setLoadingId(false) pair of commits).
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Child Two' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-3')).toBeInTheDocument());
+
+    expect(graphqlRequest).toHaveBeenCalledTimes(callCountBeforeReExpand);
+    expect(onRenderSpy).toHaveBeenCalledTimes(2);
   });
 });
