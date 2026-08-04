@@ -659,4 +659,346 @@ describe('DetailPage', () => {
     expect(graphqlRequest).toHaveBeenCalledTimes(callCountBeforeReExpand);
     expect(onRenderSpy).toHaveBeenCalledTimes(2);
   });
+
+  // Add wiring + auto-expand (Plan 28-05, PERM-02/SC-2): the Add-menu
+  // control (Plan 28-02) wired to the existing AddRelativeDialog at all 3
+  // /detail render sites, refreshed in place via refreshAfterMutation
+  // (Plan 28-04, revised to route every target -- head included -- through
+  // nav.refreshEntry unconditionally).
+
+  it('non-admin sees no Add control at any of the 3 render sites (head/gen1/gen2)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, children: [{ id: '2' }] } });
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [person({ id: '2', fullname: 'Child Two', gender: 'Male', children: [{ id: '3' }] })]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '3', fullname: 'Grandchild Three' })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Child Two' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-3')).toBeInTheDocument());
+
+    expect(screen.queryAllByLabelText(/^Add relative to/)).toHaveLength(0);
+  });
+
+  it('admin: clicking the Add control on the head then "Add child" opens AddRelativeDialog pre-targeted at the head, with an empty inScopeMembers co-parent picker', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, canEdit: true } });
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add relative to Ada Lovelace' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Add child' }));
+
+    expect(screen.getByText(/Add child/i)).toBeInTheDocument();
+
+    // inScopeMembers={[]}: the co-parent Autocomplete never surfaces options.
+    await userEvent.click(screen.getByRole('button', { name: 'or pick someone already in your family' }));
+    const picker = screen.getByLabelText('Other parent (optional)', { exact: false });
+    await userEvent.click(picker);
+    await userEvent.type(picker, 'Anyone');
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+  });
+
+  it('admin: successful add-child to the HEAD when children are collapsed auto-expands to reveal the new child (D-05)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, canEdit: true, children: [{ id: '2' }] } });
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+    expect(screen.queryByTestId('person-card-2')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add relative to Ada Lovelace' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Add child' }));
+    await screen.findByText(/Add child/i);
+
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'New');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Kid');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
+
+    graphqlRequest.mockResolvedValueOnce({ addChild: { id: '20', fullname: 'New Kid' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        id: '1',
+        fullname: 'Ada Lovelace',
+        geezFullname: null,
+        gender: 'Female',
+        isAlive: true,
+        photoUrl: null,
+        canEdit: true,
+        spouses: [],
+        children: [
+          person({ id: '2', fullname: 'Existing Child', gender: 'Male' }),
+          person({ id: '20', fullname: 'New Kid', gender: 'Male' })
+        ]
+      }
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => expect(screen.getByTestId('person-card-20')).toBeInTheDocument());
+    expect(screen.getByText('New Kid')).toBeInTheDocument();
+  });
+
+  it("WARNING 2a: successful add-child to the HEAD when children are ALREADY expanded shows the new child with no extra click", async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, canEdit: true, children: [{ id: '2' }] } });
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '2', fullname: 'Existing Child', gender: 'Male', canEdit: true })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add relative to Ada Lovelace' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Add child' }));
+    await screen.findByText(/Add child/i);
+
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'New');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Kid');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
+
+    graphqlRequest.mockResolvedValueOnce({ addChild: { id: '21', fullname: 'New Kid' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        id: '1',
+        fullname: 'Ada Lovelace',
+        geezFullname: null,
+        gender: 'Female',
+        isAlive: true,
+        photoUrl: null,
+        canEdit: true,
+        spouses: [],
+        children: [
+          person({ id: '2', fullname: 'Existing Child', gender: 'Male', canEdit: true }),
+          person({ id: '21', fullname: 'New Kid', gender: 'Male' })
+        ]
+      }
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => expect(screen.getByTestId('person-card-21')).toBeInTheDocument());
+    expect(screen.getByTestId('person-card-2')).toBeInTheDocument();
+  });
+
+  it('admin: successful add-child to a collapsed gen1 person auto-expands it to reveal the new grandchild', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, children: [{ id: '2' }] } });
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '2', fullname: 'Child Two', gender: 'Male', canEdit: true })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add relative to Child Two' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Add child' }));
+    await screen.findByText(/Add child/i);
+
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'New');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Grandkid');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
+
+    graphqlRequest.mockResolvedValueOnce({ addChild: { id: '30', fullname: 'New Grandkid' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        id: '2',
+        fullname: 'Child Two',
+        geezFullname: null,
+        gender: 'Male',
+        isAlive: true,
+        photoUrl: null,
+        canEdit: true,
+        spouses: [],
+        children: [person({ id: '30', fullname: 'New Grandkid', gender: 'Male' })]
+      }
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => expect(screen.getByTestId('person-card-30')).toBeInTheDocument());
+  });
+
+  it('WARNING 2b: successful add-spouse to the HEAD refreshes the rendered head card spouse via DOM, with no repeated familyHead call', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { ...HEAD, canEdit: true, spouses: [person({ id: '15', fullname: 'Old Spouse', gender: 'Male' })] }
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+    expect(screen.getByText('Old Spouse')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add relative to Ada Lovelace' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Add spouse' }));
+    await screen.findByText(/Add spouse/i);
+
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'New');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Spouse');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
+
+    const callCountBeforeSubmit = graphqlRequest.mock.calls.length;
+    graphqlRequest.mockResolvedValueOnce({ addSpouse: { id: '21', fullname: 'New Spouse' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        id: '1',
+        fullname: 'Ada Lovelace',
+        geezFullname: null,
+        gender: 'Female',
+        isAlive: true,
+        photoUrl: null,
+        canEdit: true,
+        spouses: [person({ id: '21', fullname: 'New Spouse', gender: 'Male' })],
+        children: []
+      }
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => expect(screen.getByText('New Spouse')).toBeInTheDocument());
+    expect(screen.queryByText('Old Spouse')).not.toBeInTheDocument();
+
+    expect(graphqlRequest.mock.calls.length).toBe(callCountBeforeSubmit + 2);
+    const callsAfterSubmit = graphqlRequest.mock.calls.slice(callCountBeforeSubmit);
+    expect(callsAfterSubmit.every((call) => !/familyHead/.test(call[0]))).toBe(true);
+  });
+
+  // NOTE: refreshEntry (Plan 28-03/28-04) writes only the exact-id cache
+  // slot -- it does not propagate into an ancestor's already-cached
+  // `children` array (see 28-04-SUMMARY.md "Next Phase Readiness"). A gen1
+  // or gen2 person still rendered as a nested GenerationGrid list item (not
+  // currently promoted to state.topId) therefore refreshes silently in the
+  // cache but does not visibly update until that grid itself re-fetches --
+  // the exact same limitation 28-04 documented for its own edit-refresh
+  // test. This test targets a forward-shifted PROMOTED-TOP descendant
+  // (mirroring 28-04's own corrected test) so the assertion is provably
+  // true against real component behavior.
+  it('admin: successful add-spouse to a forward-shifted promoted-top descendant (originally gen1) refreshes its rendered spouse via DOM', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { ...HEAD, children: [{ id: '2' }, { id: '7' }] }
+    });
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [
+          person({ id: '2', fullname: 'Child Two', gender: 'Male', canEdit: true, children: [{ id: '3' }] }),
+          person({ id: '7', fullname: 'Sibling Seven', children: [] })
+        ]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '3', fullname: 'Grandchild Three', children: [{ id: '4' }] })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Child Two' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-3')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '4', fullname: 'Great Grandchild Four', gender: 'Male' })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Grandchild Three' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-4')).toBeInTheDocument());
+
+    // Child Two is now the promoted top (role "Head").
+    expect(screen.getByText('Head')).toBeInTheDocument();
+    expect(screen.getByText('Child Two')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add relative to Child Two' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Add spouse' }));
+    await screen.findByText(/Add spouse/i);
+
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Two');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Spouse');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Female' }));
+
+    graphqlRequest.mockResolvedValueOnce({ addSpouse: { id: '22', fullname: 'Two Spouse' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        id: '2',
+        fullname: 'Child Two',
+        geezFullname: null,
+        gender: 'Male',
+        isAlive: true,
+        photoUrl: null,
+        canEdit: true,
+        spouses: [person({ id: '22', fullname: 'Two Spouse', gender: 'Female' })],
+        children: [person({ id: '3', fullname: 'Grandchild Three' })]
+      }
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => expect(screen.getByText('Two Spouse')).toBeInTheDocument());
+  });
+
+  it('admin: successful add-child to a gen2 (grandchild) person triggers the forward-shift path (former top card no longer present)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, children: [{ id: '2' }] } });
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [person({ id: '2', fullname: 'Child Two', gender: 'Male', children: [{ id: '3' }] })]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [
+          person({ id: '3', fullname: 'Grandchild Three', gender: 'Female', canEdit: true, children: [] })
+        ]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Child Two' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-3')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add relative to Grandchild Three' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Add child' }));
+    await screen.findByText(/Add child/i);
+
+    await userEvent.type(screen.getByLabelText(/^First name/i), 'Great');
+    await userEvent.type(screen.getByLabelText(/^Last name/i), 'Grandkid');
+    await userEvent.click(screen.getByLabelText('Gender', { exact: false }));
+    await userEvent.click(await screen.findByRole('option', { name: 'Male' }));
+
+    graphqlRequest.mockResolvedValueOnce({ addChild: { id: '40', fullname: 'Great Grandkid' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        id: '3',
+        fullname: 'Grandchild Three',
+        geezFullname: null,
+        gender: 'Female',
+        isAlive: true,
+        photoUrl: null,
+        canEdit: true,
+        spouses: [],
+        children: [person({ id: '40', fullname: 'Great Grandkid', gender: 'Male' })]
+      }
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Add member' }));
+
+    await waitFor(() => expect(screen.getByTestId('person-card-40')).toBeInTheDocument());
+    expect(screen.queryByTestId('person-card-1')).not.toBeInTheDocument();
+    expect(screen.getByText('Head')).toBeInTheDocument();
+    expect(screen.getByText('Child Two')).toBeInTheDocument();
+  });
 });
