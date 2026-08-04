@@ -40,9 +40,9 @@
 
 ### Permissions & Admin Actions (PERM)
 
-- [ ] **PERM-01**: Admin users see an edit button on each person card that opens the existing edit dialog/flow (no duplicated edit UI); non-admin users never see it.
-- [ ] **PERM-02**: Admin users see a control to add a **child** or a **spouse** to a displayed person, reusing the existing add-relative dialog; after a successful add, the affected person's children/spouses refresh in place. Non-admin users never see it.
-- [ ] **PERM-03**: The backend enforces admin-only editing and adding — unauthorized edit/add requests are rejected server-side, not merely hidden in the UI.
+- [x] **PERM-01**: Admin users see an edit button on each person card that opens the existing edit dialog/flow (no duplicated edit UI); non-admin users never see it.
+- [x] **PERM-02**: Admin users see a control to add a **child** or a **spouse** to a displayed person, reusing the existing add-relative dialog; after a successful add, the affected person's children/spouses refresh in place. Non-admin users never see it.
+- [x] **PERM-03**: The backend enforces admin-only editing and adding — unauthorized edit/add requests are rejected server-side, not merely hidden in the UI.
 
 ### Performance (PERF)
 

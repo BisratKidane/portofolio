@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
-status: executing
-stopped_at: Phase 28 context gathered
-last_updated: "2026-08-04T13:20:02.002Z"
+status: ready_to_plan
+stopped_at: Phase 28 complete (5/5) — ready to discuss Phase 29
+last_updated: 2026-08-04T14:34:56.609Z
 last_activity: 2026-08-04 -- Phase 28 execution started
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 16
-  completed_plans: 11
+  completed_plans: 16
   percent: 67
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 28 — admin-actions-on-detail
+**Current focus:** Phase 29 — accessibility, responsive & quality gate
 
 ## Current Position
 
-Phase: 28 (admin-actions-on-detail) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 28
-Last activity: 2026-08-04 -- Phase 28 execution started
+Phase: 29
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-04
 
 Progress: [██████████] 100%
 
@@ -58,7 +58,7 @@ The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "a
 
 **Velocity:**
 
-- Total plans completed: 72 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
+- Total plans completed: 77 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
 - Average duration: - min
 - Total execution time: 0 hours (v4.0)
 
@@ -75,6 +75,7 @@ The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "a
 | 25 | 2 | - | - |
 | 26 | 2 | - | - |
 | 27 | 4 | - | - |
+| 28 | 5 | - | - |
 
 **Recent Trend:**
 
