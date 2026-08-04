@@ -13,7 +13,14 @@ import PersonCard from '../components/person/PersonCard.jsx';
 import PersonSearch from '../components/person/PersonSearch.jsx';
 import GenerationGrid from '../components/person/GenerationGrid.jsx';
 import EditMemberDialog from '../components/manage/EditMemberDialog.jsx';
+import AddRelativeDialog from '../components/manage/AddRelativeDialog.jsx';
 import { useDescendantNav } from '../hooks/useDescendantNav.js';
+
+// PERM-02: /detail has no ready in-scope co-parent list to feed
+// AddRelativeDialog's optional Autocomplete, so the picker always shows no
+// options (submission still works with otherParentId: null) -- CONTEXT.md
+// Claude's Discretion.
+const EMPTY_ADD_STATE = { open: false, relationType: '', targetId: null, targetName: '', targetGender: '', level: null };
 
 const FAMILY_HEAD_QUERY = `
   query FamilyHead {
@@ -71,6 +78,7 @@ export default function DetailPage() {
   const [missingHead, setMissingHead] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [editLoadingId, setEditLoadingId] = useState(null);
+  const [addState, setAddState] = useState(EMPTY_ADD_STATE);
 
   // D-04/D-05: the one uniform person-by-id path, reused later by 26-02's
   // suggestion-select as well as the initial head load below.
@@ -142,6 +150,42 @@ export default function DetailPage() {
     [mainPerson, nav.refreshEntry]
   );
 
+  // PERM-02: opens AddRelativeDialog pre-targeted at the clicked person,
+  // recording which render site (top/gen1/gen2) triggered it so
+  // autoExpandIfCollapsed below knows which nav handler to call on success.
+  const handleAddRelative = useCallback(
+    (relationType, member, level) =>
+      setAddState({ open: true, relationType, targetId: member.id, targetName: member.fullname, targetGender: member.gender, level }),
+    []
+  );
+
+  // D-05: after a successful add-child, auto-expand the target if its
+  // children were previously collapsed so the new child is immediately
+  // visible -- respecting the existing one-branch/forward-shift/3-generation
+  // rules (nav.onExpandTop/onExpandChild/onExpandGrandchild, unchanged).
+  const autoExpandIfCollapsed = useCallback(
+    (fresh, level) => {
+      if (level === 'top' && !nav.topExpanded) return nav.onExpandTop(fresh);
+      if (level === 'gen1' && nav.expandedChildId !== fresh.id) return nav.onExpandChild(fresh);
+      if (level === 'gen2') return nav.onExpandGrandchild(fresh);
+      return Promise.resolve();
+    },
+    [nav]
+  );
+
+  // PERM-02: refreshAfterMutation (Plan 28-04, revised) already writes the
+  // target's fresh self+children into the cache and dispatches REFRESH for
+  // EVERY target -- head included -- before this runs, so no special-casing
+  // is needed here for an already-expanded target or an add-spouse (the
+  // fresh spouses/children are already visible via the cache).
+  const handleAddCreated = useCallback(() => {
+    const { targetId, relationType, level } = addState;
+    return refreshAfterMutation({ id: targetId }).then((fresh) => {
+      if (fresh && relationType === 'child') return autoExpandIfCollapsed(fresh, level);
+      return null;
+    });
+  }, [addState, refreshAfterMutation, autoExpandIfCollapsed]);
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 10 }}>
@@ -192,6 +236,7 @@ export default function DetailPage() {
           expanded={nav.topExpanded}
           onExpand={nav.onExpandTop}
           onEdit={handleEditClick}
+          onAddRelative={(relationType, member) => handleAddRelative(relationType, member, 'top')}
         />
         {nav.loadingId === nav.topPerson.id && (
           <CircularProgress
@@ -209,6 +254,7 @@ export default function DetailPage() {
           expandedId={nav.expandedChildId}
           onExpand={nav.onExpandChild}
           onEdit={handleEditClick}
+          onAddRelative={(relationType, member) => handleAddRelative(relationType, member, 'gen1')}
           loadingId={nav.loadingId}
         />
       )}
@@ -219,6 +265,7 @@ export default function DetailPage() {
           expandedId={null}
           onExpand={nav.onExpandGrandchild}
           onEdit={handleEditClick}
+          onAddRelative={(relationType, member) => handleAddRelative(relationType, member, 'gen2')}
           loadingId={nav.loadingId}
         />
       )}
@@ -227,6 +274,16 @@ export default function DetailPage() {
         member={editTarget}
         onClose={() => setEditTarget(null)}
         onSaved={() => refreshAfterMutation(editTarget)}
+      />
+      <AddRelativeDialog
+        open={addState.open}
+        relationType={addState.relationType}
+        targetId={addState.targetId}
+        targetName={addState.targetName}
+        targetGender={addState.targetGender}
+        inScopeMembers={[]}
+        onClose={() => setAddState(EMPTY_ADD_STATE)}
+        onCreated={handleAddCreated}
       />
     </Box>
   );
