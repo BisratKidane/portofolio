@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
-status: verifying
-stopped_at: Completed 27-04-PLAN.md
-last_updated: "2026-08-04T06:11:44.953Z"
+status: ready_to_plan
+stopped_at: Phase 27 complete (4/4) — ready to discuss Phase 28
+last_updated: 2026-08-04T06:40:25.966Z
 last_activity: 2026-08-04
 progress:
   total_phases: 6
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 27 — descendant-navigation-performance
+**Current focus:** Phase 28 — admin actions on /detail
 
 ## Current Position
 
-Phase: 27 (descendant-navigation-performance) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
+Phase: 28
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-08-04
 
 Progress: [██████████] 100%
@@ -58,7 +58,7 @@ The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "a
 
 **Velocity:**
 
-- Total plans completed: 68 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
+- Total plans completed: 72 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
 - Average duration: - min
 - Total execution time: 0 hours (v4.0)
 
@@ -74,6 +74,7 @@ The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "a
 | 24 | 3 | - | - |
 | 25 | 2 | - | - |
 | 26 | 2 | - | - |
+| 27 | 4 | - | - |
 
 **Recent Trend:**
 
