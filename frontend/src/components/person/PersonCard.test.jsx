@@ -207,4 +207,63 @@ describe('PersonCard', () => {
       expect(container.querySelectorAll('[data-testid^="person-card-"]').length).toBe(1);
     });
   });
+
+  // PERM-02 (D-01/D-02/D-07): admin-only Add-relative menu
+  describe('Add-menu control', () => {
+    it('renders no Add control when canEdit is false', () => {
+      renderCard({ member: { ...BASE_MEMBER, canEdit: false }, onAddRelative: vi.fn() });
+      expect(screen.queryByLabelText(/add relative/i)).not.toBeInTheDocument();
+    });
+
+    it('renders an Add IconButton when canEdit is true and onAddRelative is supplied', () => {
+      renderCard({ member: { ...BASE_MEMBER, canEdit: true }, onAddRelative: vi.fn() });
+      expect(screen.getByLabelText(/add relative to ada lovelace/i)).toBeInTheDocument();
+    });
+
+    it('renders no Add control on a spouse card, even when canEdit is true (D-07)', () => {
+      renderCard({ isSpouse: true, member: { ...BASE_MEMBER, canEdit: true }, onAddRelative: vi.fn() });
+      expect(screen.queryByLabelText(/add relative/i)).not.toBeInTheDocument();
+    });
+
+    it('renders the Add control on the anchor card only, never on the composed spouse leaf', () => {
+      const { container } = renderCard({
+        member: { ...BASE_MEMBER, canEdit: true },
+        spouse: { ...SPOUSE, canEdit: true },
+        onAddRelative: vi.fn()
+      });
+      expect(container.querySelectorAll('[aria-label^="Add relative to"]').length).toBe(1);
+    });
+
+    it('opens a menu with exactly two items ("Add child", "Add spouse") when clicked', async () => {
+      renderCard({ member: { ...BASE_MEMBER, canEdit: true }, onAddRelative: vi.fn() });
+      await userEvent.click(screen.getByLabelText(/add relative to ada lovelace/i));
+      expect(screen.getByRole('menuitem', { name: 'Add child' })).toBeInTheDocument();
+      expect(screen.getByRole('menuitem', { name: 'Add spouse' })).toBeInTheDocument();
+      expect(screen.getAllByRole('menuitem').length).toBe(2);
+    });
+
+    it('calls onAddRelative(\'child\', member) and closes the menu when "Add child" is clicked', async () => {
+      const onAddRelative = vi.fn();
+      const member = { ...BASE_MEMBER, canEdit: true };
+      renderCard({ member, onAddRelative });
+      await userEvent.click(screen.getByLabelText(/add relative to ada lovelace/i));
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Add child' }));
+      expect(onAddRelative).toHaveBeenCalledWith('child', member);
+      expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+    });
+
+    it('calls onAddRelative(\'spouse\', member) when "Add spouse" is clicked', async () => {
+      const onAddRelative = vi.fn();
+      const member = { ...BASE_MEMBER, canEdit: true };
+      renderCard({ member, onAddRelative });
+      await userEvent.click(screen.getByLabelText(/add relative to ada lovelace/i));
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Add spouse' }));
+      expect(onAddRelative).toHaveBeenCalledWith('spouse', member);
+    });
+
+    it('does not throw and renders no Add control when onAddRelative is not supplied', () => {
+      expect(() => renderCard({ member: { ...BASE_MEMBER, canEdit: true } })).not.toThrow();
+      expect(screen.queryByLabelText(/add relative/i)).not.toBeInTheDocument();
+    });
+  });
 });
