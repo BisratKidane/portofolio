@@ -99,3 +99,12 @@ None - no external service configuration required.
 ---
 *Phase: 28-admin-actions-on-detail*
 *Completed: 2026-08-04*
+
+## Self-Check: PASSED
+
+- FOUND: frontend/src/components/person/PersonCard.jsx
+- FOUND: frontend/src/components/person/GenerationGrid.jsx
+- FOUND: .planning/phases/28-admin-actions-on-detail/28-02-SUMMARY.md
+- FOUND: commit 165d90f (RED)
+- FOUND: commit c7d852e (GREEN)
+- FOUND: commit 75f485a (docs)
