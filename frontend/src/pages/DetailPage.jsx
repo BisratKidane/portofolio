@@ -12,6 +12,7 @@ import { graphqlRequest } from '../api/graphqlClient.js';
 import PersonCard from '../components/person/PersonCard.jsx';
 import PersonSearch from '../components/person/PersonSearch.jsx';
 import GenerationGrid from '../components/person/GenerationGrid.jsx';
+import EditMemberDialog from '../components/manage/EditMemberDialog.jsx';
 import { useDescendantNav } from '../hooks/useDescendantNav.js';
 
 const FAMILY_HEAD_QUERY = `
@@ -36,11 +37,40 @@ const FAMILY_MEMBER_QUERY = `
   }
 `;
 
+// PERM-01: the /detail read queries above only carry card-display fields --
+// none of EditMemberDialog's editable set (firstname/lastname/geez*/
+// mothersname/email/birthdate/phone/address). Fetched fresh, on demand, when
+// Edit is clicked, rather than widening the two read queries above (Phase
+// 27's established "separate narrower query per use case" convention).
+const FAMILY_MEMBER_EDIT_QUERY = `
+  query FamilyMemberEdit($id: ID!) {
+    familyMember(id: $id) {
+      id
+      firstname
+      lastname
+      geezFirstname
+      geezLastname
+      geezMothersname
+      gender
+      mothersname
+      email
+      birthdate
+      isAlive
+      phone
+      address
+      photoUrl
+      canEdit
+    }
+  }
+`;
+
 export default function DetailPage() {
   const [mainPerson, setMainPerson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [missingHead, setMissingHead] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [editLoadingId, setEditLoadingId] = useState(null);
 
   // D-04/D-05: the one uniform person-by-id path, reused later by 26-02's
   // suggestion-select as well as the initial head load below.
@@ -77,10 +107,40 @@ export default function DetailPage() {
     loadInitial();
   }, [loadInitial]);
 
+  // PERM-01: fetches the full editable field set for whatever member was
+  // clicked (head, gen1, or gen2), then opens EditMemberDialog pre-filled.
+  const handleEditClick = useCallback((member) => {
+    setEditLoadingId(member.id);
+    return graphqlRequest(FAMILY_MEMBER_EDIT_QUERY, { id: member.id })
+      .then((data) => setEditTarget(data.familyMember))
+      .catch((err) => setError(err.message))
+      .finally(() => setEditLoadingId((current) => (current === member.id ? null : current)));
+  }, []);
+
   // Plan 27-03's hook must be called unconditionally on every render (Rules
   // of Hooks), so it lives above the loading/error/missing early returns
   // below even though its output is only consumed by the final JSX.
   const nav = useDescendantNav(mainPerson);
+
+  // PERM-01 (revision): UNCONDITIONAL for every target -- head, gen1, gen2,
+  // or a forward-shifted promoted top -- all route through the exact same
+  // nav.refreshEntry(id) call. nav.topPerson/gen1/gen2 all derive from the
+  // per-id cache refreshEntry writes to, never from the mainPerson state
+  // variable directly, so a head-only loadPersonById branch would silently
+  // never reach the rendered card (the blocker this plan fixes). The
+  // setMainPerson(fresh) call below is a secondary consistency sync only --
+  // it does not retrigger useDescendantNav's cache-seed effect (that
+  // effect's deps are [mainPerson?.id], and the id is unchanged here).
+  const refreshAfterMutation = useCallback(
+    (member) =>
+      nav.refreshEntry(member.id).then((fresh) => {
+        if (fresh && mainPerson && String(fresh.id) === String(mainPerson.id)) {
+          setMainPerson(fresh);
+        }
+        return fresh;
+      }),
+    [mainPerson, nav.refreshEntry]
+  );
 
   if (loading) {
     return (
@@ -131,7 +191,7 @@ export default function DetailPage() {
           spouse={nav.topPerson.spouses?.[0]}
           expanded={nav.topExpanded}
           onExpand={nav.onExpandTop}
-          onEdit={() => {}}
+          onEdit={handleEditClick}
         />
         {nav.loadingId === nav.topPerson.id && (
           <CircularProgress
@@ -148,7 +208,7 @@ export default function DetailPage() {
           role="Child"
           expandedId={nav.expandedChildId}
           onExpand={nav.onExpandChild}
-          onEdit={() => {}}
+          onEdit={handleEditClick}
           loadingId={nav.loadingId}
         />
       )}
@@ -158,10 +218,16 @@ export default function DetailPage() {
           role="Grandchild"
           expandedId={null}
           onExpand={nav.onExpandGrandchild}
-          onEdit={() => {}}
+          onEdit={handleEditClick}
           loadingId={nav.loadingId}
         />
       )}
+      <EditMemberDialog
+        open={Boolean(editTarget)}
+        member={editTarget}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => refreshAfterMutation(editTarget)}
+      />
     </Box>
   );
 }
