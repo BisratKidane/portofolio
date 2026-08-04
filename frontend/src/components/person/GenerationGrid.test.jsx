@@ -128,4 +128,14 @@ describe('GenerationGrid', () => {
     const { container } = renderGrid({ people, loadingId: 'nonexistent' });
     expect(container.querySelectorAll('[data-testid^="generation-loading-"]').length).toBe(0);
   });
+
+  // PERM-02: onAddRelative forwarded straight through to PersonCard
+  it('forwards onAddRelative so clicking "Add child" invokes the same mock with (\'child\', person)', async () => {
+    const onAddRelative = vi.fn();
+    const member = makePerson('1', { canEdit: true });
+    renderGrid({ people: [member], onAddRelative });
+    await userEvent.click(screen.getByLabelText(/add relative to person 1/i));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Add child' }));
+    expect(onAddRelative).toHaveBeenCalledWith('child', member);
+  });
 });

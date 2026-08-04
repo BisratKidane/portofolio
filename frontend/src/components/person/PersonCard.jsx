@@ -14,9 +14,11 @@
 // dashed connector + a second PersonCard for the spouse (leaf-only, never
 // recursing into the spouse's own spouse). `isSpouse` gates both the footer
 // expand control (D-13) and the spouse-composition recursion guard (D-14).
-import { Box, Chip, IconButton, Paper, Typography } from '@mui/material';
+import { useState } from 'react';
+import { Box, Chip, IconButton, Menu, MenuItem, Paper, Typography } from '@mui/material';
 import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import { colors } from '../../theme.js';
 import { getGeezDisplay } from '../../utils/displayName.js';
 import { genderMeta } from '../../utils/genderTheme.js';
@@ -43,7 +45,7 @@ function childCountLabel(count) {
 // RESEARCH.md Pitfall 4; the page/nav layer in Phase 26/27 is responsible
 // for only ever passing `spouse` to non-spouse anchor cards, but PersonCard
 // must not trust that alone).
-export default function PersonCard({ member, role, spouse, isSpouse = false, expanded, onExpand, onEdit }) {
+export default function PersonCard({ member, role, spouse, isSpouse = false, expanded, onExpand, onEdit, onAddRelative }) {
   const card = (
     <PersonCardSingle
       member={member}
@@ -52,6 +54,7 @@ export default function PersonCard({ member, role, spouse, isSpouse = false, exp
       expanded={expanded}
       onExpand={onExpand}
       onEdit={onEdit}
+      onAddRelative={onAddRelative}
     />
   );
 
@@ -72,13 +75,15 @@ export default function PersonCard({ member, role, spouse, isSpouse = false, exp
   );
 }
 
-function PersonCardSingle({ member, role, isSpouse = false, expanded, onExpand, onEdit }) {
+function PersonCardSingle({ member, role, isSpouse = false, expanded, onExpand, onEdit, onAddRelative }) {
   const { label: genderLabel, tint: genderTint } = genderMeta(member.gender);
   const ringStyle = RING_STYLE[genderLabel] ?? RING_STYLE.Other;
   const geez = getGeezDisplay(member);
   const isAlive = member.isAlive !== false; // MemberDetailPanel.jsx convention
   const childCount = member.children?.length ?? 0;
   const showExpand = !isSpouse && childCount >= 1;
+  const [addMenuAnchor, setAddMenuAnchor] = useState(null);
+  const showAddMenu = !isSpouse && member.canEdit === true && typeof onAddRelative === 'function';
 
   return (
     <Paper
@@ -109,6 +114,36 @@ function PersonCardSingle({ member, role, isSpouse = false, expanded, onExpand, 
         >
           <EditRoundedIcon />
         </IconButton>
+      )}
+
+      {showAddMenu && (
+        <>
+          <IconButton
+            aria-label={`Add relative to ${member.fullname}`}
+            onClick={(e) => setAddMenuAnchor(e.currentTarget)}
+            sx={{ position: 'absolute', top: 8, right: 56, minWidth: 44, minHeight: 44 }}
+          >
+            <AddRoundedIcon />
+          </IconButton>
+          <Menu anchorEl={addMenuAnchor} open={Boolean(addMenuAnchor)} onClose={() => setAddMenuAnchor(null)}>
+            <MenuItem
+              onClick={() => {
+                setAddMenuAnchor(null);
+                onAddRelative('child', member);
+              }}
+            >
+              Add child
+            </MenuItem>
+            <MenuItem
+              onClick={() => {
+                setAddMenuAnchor(null);
+                onAddRelative('spouse', member);
+              }}
+            >
+              Add spouse
+            </MenuItem>
+          </Menu>
+        </>
       )}
 
       <Box
