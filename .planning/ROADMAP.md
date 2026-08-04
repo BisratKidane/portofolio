@@ -215,7 +215,7 @@ Plans:
 
 **Wave 2** *(blocked on 28-03)*
 
-- [ ] 28-04-PLAN.md — DetailPage Edit wiring: full-field fetch, EditMemberDialog mount, refreshAfterMutation (PERM-01, SC-1)
+- [x] 28-04-PLAN.md — DetailPage Edit wiring: full-field fetch, EditMemberDialog mount, refreshAfterMutation (PERM-01, SC-1)
 
 **Wave 3** *(blocked on 28-02, 28-04)*
 
@@ -272,5 +272,5 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 25. Reusable PersonCard | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 26. /detail Page, Search & Initial Load | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete    | 2026-08-04 |
-| 28. Admin Actions on /detail | v4.0 | 3/5 | In Progress|  |
+| 28. Admin Actions on /detail | v4.0 | 4/5 | In Progress|  |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 0/TBD | Not started | - |
