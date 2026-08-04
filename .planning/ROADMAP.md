@@ -204,7 +204,23 @@ Plans:
   2. An admin sees a control to add a child or spouse to a displayed person, opening the existing `AddRelativeDialog`; after a successful add, that person's children/spouses refresh in place. A non-admin never sees it.
   3. Sending an edit/add mutation as a non-admin (bypassing the UI) is rejected server-side by the existing guards, proven by an adversarial test exercised from this new surface.
 
-**Plans**: TBD
+**Plans**: 5 plans (3 waves)
+
+Plans:
+**Wave 1**
+
+- [ ] 28-01-PLAN.md — Backend adversarial rejection test for editMember/addChild/addSpouse (PERM-03, SC-3)
+- [ ] 28-02-PLAN.md — PersonCard Add-menu control + GenerationGrid prop threading (PERM-02 UI, D-01/D-02/D-07)
+- [ ] 28-03-PLAN.md — useDescendantNav.refreshEntry + reducer REFRESH case (D-04 cache-invalidation foundation)
+
+**Wave 2** *(blocked on 28-03)*
+
+- [ ] 28-04-PLAN.md — DetailPage Edit wiring: full-field fetch, EditMemberDialog mount, refreshAfterMutation (PERM-01, SC-1)
+
+**Wave 3** *(blocked on 28-02, 28-04)*
+
+- [ ] 28-05-PLAN.md — DetailPage Add wiring: AddRelativeDialog mount, refresh-in-place, auto-expand-if-collapsed (PERM-02, SC-2)
+
 **UI hint**: yes
 
 ### Phase 29: Accessibility, Responsive & Quality Gate
@@ -256,5 +272,5 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 25. Reusable PersonCard | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 26. /detail Page, Search & Initial Load | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete    | 2026-08-04 |
-| 28. Admin Actions on /detail | v4.0 | 0/TBD | Not started | - |
+| 28. Admin Actions on /detail | v4.0 | 0/5 | Not started | - |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 0/TBD | Not started | - |
