@@ -4,8 +4,8 @@ milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
 status: executing
 stopped_at: Phase 28 context gathered
-last_updated: "2026-08-04T12:52:08.926Z"
-last_activity: 2026-08-04 -- Phase 28 planning complete
+last_updated: "2026-08-04T13:20:02.002Z"
+last_activity: 2026-08-04 -- Phase 28 execution started
 progress:
   total_phases: 6
   completed_phases: 4
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 28 — admin actions on /detail
+**Current focus:** Phase 28 — admin-actions-on-detail
 
 ## Current Position
 
-Phase: 28
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-08-04 -- Phase 28 planning complete
+Phase: 28 (admin-actions-on-detail) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 28
+Last activity: 2026-08-04 -- Phase 28 execution started
 
 Progress: [██████████] 100%
 
