@@ -113,6 +113,15 @@ None - no external service configuration required.
 - `refreshAfterMutation` is now available in `DetailPage.jsx` for Plan 28-05 to reuse unchanged for its add-child/add-spouse wiring (per the objective's stated intent: "the shared refresh router that Plan 28-05's add-relative wiring reuses unchanged").
 - Flag for Plan 28-05 or a later follow-up: the gen1/gen2-nested-list-item refresh limitation documented above (Issues Encountered) may also affect add-child/add-spouse's D-05 auto-expand-to-confirm behavior if that lands on a non-topId member -- worth a quick check during 28-05's implementation.
 
+## Self-Check: PASSED
+
+- FOUND: frontend/src/pages/DetailPage.jsx
+- FOUND: frontend/src/pages/DetailPage.test.jsx
+- FOUND: .planning/phases/28-admin-actions-on-detail/28-04-SUMMARY.md
+- FOUND commit: 4cf6382 (test)
+- FOUND commit: 67d978e (feat)
+- FOUND commit: a55026a (docs, this summary)
+
 ---
 *Phase: 28-admin-actions-on-detail*
 *Completed: 2026-08-04*
