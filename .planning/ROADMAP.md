@@ -81,7 +81,7 @@ Full detail archived in [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 - [x] **Phase 25: Reusable PersonCard** - one card component renders head/children/grandchildren with all supported fields, gender cues, child count, and spouse(s) (completed 2026-08-03)
 - [x] **Phase 26: /detail Page, Search & Initial Load** - authenticated route opening on the family head, with Latin+Ge'ez inline search to reset the main person, and full state coverage (completed 2026-08-03)
 - [x] **Phase 27: Descendant Navigation & Performance** - expand/collapse grid grouped by generation, 3-generation cap with forward-shift, lazy loading + session cache (completed 2026-08-04)
-- [ ] **Phase 28: Admin Actions on /detail** - admin-only edit/add-child/add-spouse reusing existing dialogs, backend-enforced
+- [x] **Phase 28: Admin Actions on /detail** - admin-only edit/add-child/add-spouse reusing existing dialogs, backend-enforced (completed 2026-08-04)
 - [ ] **Phase 29: Accessibility, Responsive & Quality Gate** - keyboard operability, WCAG AA contrast, mobile layout, full-suite green at close
 
 ## Phase Details
@@ -219,7 +219,7 @@ Plans:
 
 **Wave 3** *(blocked on 28-02, 28-04)*
 
-- [ ] 28-05-PLAN.md — DetailPage Add wiring: AddRelativeDialog mount, refresh-in-place, auto-expand-if-collapsed (PERM-02, SC-2)
+- [x] 28-05-PLAN.md — DetailPage Add wiring: AddRelativeDialog mount, refresh-in-place, auto-expand-if-collapsed (PERM-02, SC-2)
 
 **UI hint**: yes
 
@@ -272,5 +272,5 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 25. Reusable PersonCard | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 26. /detail Page, Search & Initial Load | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete    | 2026-08-04 |
-| 28. Admin Actions on /detail | v4.0 | 4/5 | In Progress|  |
+| 28. Admin Actions on /detail | v4.0 | 5/5 | Complete   | 2026-08-04 |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 0/TBD | Not started | - |
