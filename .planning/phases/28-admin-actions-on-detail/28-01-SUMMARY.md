@@ -79,3 +79,10 @@ SC-3/PERM-03 proof is in place before `/detail`'s admin-action UI (editMember/ad
 ---
 *Phase: 28-admin-actions-on-detail*
 *Completed: 2026-08-04*
+
+## Self-Check: PASSED
+
+- FOUND: backend/src/resolvers/familyMember.detailAdminActions.test.js
+- FOUND: .planning/phases/28-admin-actions-on-detail/28-01-SUMMARY.md
+- FOUND commit: 00a12f2 (test)
+- FOUND commit: f4c5ed3 (docs: summary)
