@@ -119,7 +119,7 @@ describe('DetailPage', () => {
     expect(screen.queryByTestId(/^person-card-/)).not.toBeInTheDocument();
   });
 
-  it('passes no-op onExpand/onEdit to PersonCard so the head card never crashes when clicked', async () => {
+  it('passes a no-op onEdit but a live onExpand to PersonCard, rendering fetched children on click', async () => {
     graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
     graphqlRequest.mockResolvedValueOnce({
       familyMember: { ...HEAD, canEdit: true, children: [{ id: '2' }] }
@@ -128,9 +128,27 @@ describe('DetailPage', () => {
 
     await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
     expect(() => fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Lovelace' }))).not.toThrow();
-    expect(() =>
-      fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }))
-    ).not.toThrow();
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [
+          {
+            id: '2',
+            fullname: 'Child Two',
+            geezFullname: null,
+            gender: 'Male',
+            isAlive: true,
+            photoUrl: null,
+            canEdit: false,
+            spouses: [],
+            children: []
+          }
+        ]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
   });
 
   it('selecting a search suggestion re-fetches familyMember by the selected id and swaps the rendered card (SEARCH-03/D-05)', async () => {

@@ -11,6 +11,8 @@ import { Alert, Box, Button, CircularProgress, Typography } from '@mui/material'
 import { graphqlRequest } from '../api/graphqlClient.js';
 import PersonCard from '../components/person/PersonCard.jsx';
 import PersonSearch from '../components/person/PersonSearch.jsx';
+import GenerationGrid from '../components/person/GenerationGrid.jsx';
+import { useDescendantNav } from '../hooks/useDescendantNav.js';
 
 const FAMILY_HEAD_QUERY = `
   query FamilyHead {
@@ -75,6 +77,11 @@ export default function DetailPage() {
     loadInitial();
   }, [loadInitial]);
 
+  // Plan 27-03's hook must be called unconditionally on every render (Rules
+  // of Hooks), so it lives above the loading/error/missing early returns
+  // below even though its output is only consumed by the final JSX.
+  const nav = useDescendantNav(mainPerson);
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 10 }}>
@@ -117,16 +124,44 @@ export default function DetailPage() {
       <Box sx={{ width: '100%', maxWidth: 420 }}>
         <PersonSearch onSelect={(id) => loadPersonById(id)} />
       </Box>
-      <Box sx={{ width: '100%', maxWidth: 420 }}>
+      <Box sx={{ width: '100%', maxWidth: 420, position: 'relative' }}>
         <PersonCard
-          member={mainPerson}
+          member={nav.topPerson}
           role="Head"
-          spouse={mainPerson.spouses?.[0]}
-          expanded={false}
-          onExpand={() => {}}
+          spouse={nav.topPerson.spouses?.[0]}
+          expanded={nav.topExpanded}
+          onExpand={nav.onExpandTop}
           onEdit={() => {}}
         />
+        {nav.loadingId === nav.topPerson.id && (
+          <CircularProgress
+            size={16}
+            aria-hidden="true"
+            data-testid="top-loading"
+            sx={{ position: 'absolute', top: 8, right: 8 }}
+          />
+        )}
       </Box>
+      {nav.topExpanded && nav.gen1.length > 0 && (
+        <GenerationGrid
+          people={nav.gen1}
+          role="Child"
+          expandedId={nav.expandedChildId}
+          onExpand={nav.onExpandChild}
+          onEdit={() => {}}
+          loadingId={nav.loadingId}
+        />
+      )}
+      {nav.expandedChildId && nav.gen2.length > 0 && (
+        <GenerationGrid
+          people={nav.gen2}
+          role="Grandchild"
+          expandedId={null}
+          onExpand={nav.onExpandGrandchild}
+          onEdit={() => {}}
+          loadingId={nav.loadingId}
+        />
+      )}
     </Box>
   );
 }
