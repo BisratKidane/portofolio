@@ -49,7 +49,7 @@ function ApexCue() {
   );
 }
 
-export default function GenerationGrid({ people, role, expandedId, onExpand, onEdit, loadingId }) {
+export default function GenerationGrid({ people, role, expandedId, onExpand, onEdit, onAddRelative, loadingId }) {
   return (
     <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
       <ApexCue />
@@ -64,6 +64,7 @@ export default function GenerationGrid({ people, role, expandedId, onExpand, onE
                 expanded={person.id === expandedId}
                 onExpand={onExpand}
                 onEdit={onEdit}
+                onAddRelative={onAddRelative}
               />
               {loadingId === person.id && (
                 <CircularProgress
