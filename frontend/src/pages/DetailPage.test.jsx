@@ -136,36 +136,233 @@ describe('DetailPage', () => {
     expect(screen.queryByTestId(/^person-card-/)).not.toBeInTheDocument();
   });
 
-  it('passes a no-op onEdit but a live onExpand to PersonCard, rendering fetched children on click', async () => {
+  // Edit wiring (Plan 28-04, PERM-01): the head-save DOM assertions below are
+  // the actual regression test for the plan-checker blocker -- a
+  // graphqlRequest-call-only assertion is NOT sufficient (see plan revision
+  // note), since nav.topPerson renders from useDescendantNav's per-id cache,
+  // not from the mainPerson React state variable, once a cache entry exists.
+  const HEAD_EDIT_FIELDS = {
+    id: '1',
+    firstname: 'Ada',
+    lastname: 'Lovelace',
+    geezFirstname: null,
+    geezLastname: null,
+    geezMothersname: null,
+    gender: 'Female',
+    mothersname: null,
+    email: null,
+    birthdate: null,
+    isAlive: true,
+    phone: '555-0000',
+    address: null,
+    photoUrl: null,
+    canEdit: true
+  };
+
+  it('clicking Edit on the head fetches full editable fields BEFORE the dialog opens', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, canEdit: true } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    let resolveEditFetch;
+    graphqlRequest.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveEditFetch = resolve;
+      })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Lovelace' }));
+
+    const editFetchCall = graphqlRequest.mock.calls[graphqlRequest.mock.calls.length - 1];
+    expect(editFetchCall[0]).toMatch(/phone/);
+    expect(editFetchCall[1]).toEqual({ id: '1' });
+    expect(screen.queryByText('Edit member')).not.toBeInTheDocument();
+
+    resolveEditFetch({ familyMember: HEAD_EDIT_FIELDS });
+    await waitFor(() => expect(screen.getByText('Edit member')).toBeInTheDocument());
+  });
+
+  it('opens the dialog pre-filled with the fetched full editable field set (e.g. phone)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, canEdit: true } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({ familyMember: HEAD_EDIT_FIELDS });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Lovelace' }));
+
+    await waitFor(() => expect(screen.getByText('Edit member')).toBeInTheDocument());
+    expect(screen.getByLabelText('Phone').value).toBe('555-0000');
+  });
+
+  it('BLOCKER REGRESSION: saving an edit to the HEAD updates the rendered PersonCard text, not just fires a fetch', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, canEdit: true } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+
+    graphqlRequest.mockResolvedValueOnce({ familyMember: HEAD_EDIT_FIELDS });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByText('Edit member')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({ editMember: { ...HEAD_EDIT_FIELDS, fullname: 'Ada Lovelace Updated' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        id: '1',
+        fullname: 'Ada Lovelace Updated',
+        geezFullname: null,
+        gender: 'Female',
+        isAlive: true,
+        photoUrl: null,
+        canEdit: true,
+        spouses: [],
+        children: []
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(screen.getByText('Ada Lovelace Updated')).toBeInTheDocument());
+    expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
+  });
+
+  it('head-save refresh call matches the REFRESH_PERSON_QUERY shape (children carry full fields incl. nested canEdit), never loadPersonById', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, canEdit: true } });
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({ familyMember: HEAD_EDIT_FIELDS });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByText('Edit member')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({ editMember: { ...HEAD_EDIT_FIELDS, fullname: 'Ada Lovelace Updated' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        id: '1',
+        fullname: 'Ada Lovelace Updated',
+        geezFullname: null,
+        gender: 'Female',
+        isAlive: true,
+        photoUrl: null,
+        canEdit: true,
+        spouses: [],
+        children: []
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(screen.getByText('Ada Lovelace Updated')).toBeInTheDocument());
+
+    const refreshCall = graphqlRequest.mock.calls[graphqlRequest.mock.calls.length - 1];
+    expect(refreshCall[0]).toMatch(/familyMember/);
+    expect(refreshCall[0]).toMatch(/children/);
+    // REFRESH_PERSON_QUERY nests canEdit inside `children` too (2 occurrences);
+    // loadPersonById's FAMILY_MEMBER_QUERY only selects `children { id }`
+    // (1 occurrence, top-level only) -- this is the shape-level proof that
+    // the refresh never falls back to loadPersonById.
+    expect(refreshCall[0].match(/canEdit/g)).toHaveLength(2);
+    expect(refreshCall[1]).toEqual({ id: '1' });
+  });
+
+  it('saving an edit to the head with gen1 already expanded leaves gen1 expanded after the refresh (no accidental collapse)', async () => {
     graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
     graphqlRequest.mockResolvedValueOnce({
       familyMember: { ...HEAD, canEdit: true, children: [{ id: '2' }] }
     });
     renderPage();
-
     await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
-    expect(() => fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Lovelace' }))).not.toThrow();
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '2', fullname: 'Child Two', gender: 'Male' })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({ familyMember: HEAD_EDIT_FIELDS });
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByText('Edit member')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({ editMember: { ...HEAD_EDIT_FIELDS, fullname: 'Ada Lovelace Updated' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        id: '1',
+        fullname: 'Ada Lovelace Updated',
+        geezFullname: null,
+        gender: 'Female',
+        isAlive: true,
+        photoUrl: null,
+        canEdit: true,
+        spouses: [],
+        children: [person({ id: '2', fullname: 'Child Two', gender: 'Male' })]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(screen.getByText('Ada Lovelace Updated')).toBeInTheDocument());
+    expect(screen.getByTestId('person-card-2')).toBeInTheDocument();
+  });
+
+  it('saving an edit for an already-expanded, DIFFERENT descendant refreshes that card via refreshEntry, proven via updated DOM text', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, children: [{ id: '2' }] } });
+    renderPage();
+    await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '2', fullname: 'Child Two', gender: 'Male', canEdit: true })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+    expect(screen.getByText('Child Two')).toBeInTheDocument();
 
     graphqlRequest.mockResolvedValueOnce({
       familyMember: {
-        children: [
-          {
-            id: '2',
-            fullname: 'Child Two',
-            geezFullname: null,
-            gender: 'Male',
-            isAlive: true,
-            photoUrl: null,
-            canEdit: false,
-            spouses: [],
-            children: []
-          }
-        ]
+        id: '2',
+        firstname: 'Child',
+        lastname: 'Two',
+        geezFirstname: null,
+        geezLastname: null,
+        geezMothersname: null,
+        gender: 'Male',
+        mothersname: null,
+        email: null,
+        birthdate: null,
+        isAlive: true,
+        phone: '555-1111',
+        address: null,
+        photoUrl: null,
+        canEdit: true
       }
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Child Two' }));
+    await waitFor(() => expect(screen.getByText('Edit member')).toBeInTheDocument());
 
-    await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+    graphqlRequest.mockResolvedValueOnce({ editMember: { id: '2', fullname: 'Child Two Updated' } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        id: '2',
+        fullname: 'Child Two Updated',
+        geezFullname: null,
+        gender: 'Male',
+        isAlive: true,
+        photoUrl: null,
+        canEdit: true,
+        spouses: [],
+        children: []
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(screen.getByText('Child Two Updated')).toBeInTheDocument());
+    expect(screen.queryByText('Child Two')).not.toBeInTheDocument();
+
+    const refreshCall = graphqlRequest.mock.calls[graphqlRequest.mock.calls.length - 1];
+    expect(refreshCall[0]).toMatch(/children/);
+    expect(refreshCall[1]).toEqual({ id: '2' });
   });
 
   it('selecting a search suggestion re-fetches familyMember by the selected id and swaps the rendered card (SEARCH-03/D-05)', async () => {
