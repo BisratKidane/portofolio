@@ -180,7 +180,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 27-01-PLAN.md — Descendant-nav reducer: expand/collapse, sibling auto-collapse, forward-shift + symmetric undo (NAV-02/03/04)
+- [x] 27-01-PLAN.md — Descendant-nav reducer: expand/collapse, sibling auto-collapse, forward-shift + symmetric undo (NAV-02/03/04)
 - [ ] 27-02-PLAN.md — GenerationGrid: responsive per-generation grid + group-level inverted-V connector (NAV-01)
 
 **Wave 2** *(blocked on 27-01)*
@@ -255,6 +255,6 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 24. Backend Read Layer for /detail | v4.0 | 3/3 | Complete    | 2026-08-03 |
 | 25. Reusable PersonCard | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 26. /detail Page, Search & Initial Load | v4.0 | 2/2 | Complete    | 2026-08-03 |
-| 27. Descendant Navigation & Performance | v4.0 | 0/TBD | Not started | - |
+| 27. Descendant Navigation & Performance | v4.0 | 1/4 | In Progress|  |
 | 28. Admin Actions on /detail | v4.0 | 0/TBD | Not started | - |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 0/TBD | Not started | - |
