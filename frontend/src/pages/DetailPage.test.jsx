@@ -8,6 +8,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import DetailPage from './DetailPage.jsx';
 
 vi.mock('../api/graphqlClient.js', () => ({
@@ -20,11 +22,16 @@ vi.mock('../api/photoClient.js', () => ({
 
 import { graphqlRequest } from '../api/graphqlClient.js';
 
+// EditMemberDialog (mounted unconditionally as of Plan 28-04) renders a
+// MUI X DatePicker via MemberFields when open, which requires a
+// LocalizationProvider ancestor -- mirrors ManagePage.test.jsx's wrapping.
 function renderPage() {
   return render(
-    <MemoryRouter initialEntries={['/detail']}>
-      <DetailPage />
-    </MemoryRouter>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <MemoryRouter initialEntries={['/detail']}>
+        <DetailPage />
+      </MemoryRouter>
+    </LocalizationProvider>
   );
 }
 
@@ -306,17 +313,48 @@ describe('DetailPage', () => {
     expect(screen.getByTestId('person-card-2')).toBeInTheDocument();
   });
 
-  it('saving an edit for an already-expanded, DIFFERENT descendant refreshes that card via refreshEntry, proven via updated DOM text', async () => {
+  it('saving an edit for a forward-shifted promoted-top descendant (id !== original head) refreshes that card via refreshEntry, proven via updated DOM text', async () => {
+    // Mirrors 27-04's NAV-03/NAV-04 forward-shift setup: head -> expand
+    // Child Two -> expand its child Grandchild Three (childful) -> Child
+    // Two is promoted to state.topId. nav.topPerson then derives from
+    // cache.current.get(state.topId)?.self -- the SAME per-id cache slot
+    // refreshEntry writes to for any id, proving the "uniform for every
+    // target, including a forward-shifted promoted top" claim in the plan's
+    // revision note.
     graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
-    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...HEAD, children: [{ id: '2' }] } });
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { ...HEAD, children: [{ id: '2' }, { id: '7' }] }
+    });
     renderPage();
     await waitFor(() => expect(screen.getByTestId('person-card-1')).toBeInTheDocument());
 
     graphqlRequest.mockResolvedValueOnce({
-      familyMember: { children: [person({ id: '2', fullname: 'Child Two', gender: 'Male', canEdit: true })] }
+      familyMember: {
+        children: [
+          person({ id: '2', fullname: 'Child Two', gender: 'Male', canEdit: true, children: [{ id: '3' }] }),
+          person({ id: '7', fullname: 'Sibling Seven', children: [] })
+        ]
+      }
     });
     fireEvent.click(screen.getByRole('button', { name: 'Show children of Ada Lovelace' }));
     await waitFor(() => expect(screen.getByTestId('person-card-2')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: {
+        children: [person({ id: '3', fullname: 'Grandchild Three', children: [{ id: '4' }] })]
+      }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Child Two' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-3')).toBeInTheDocument());
+
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { children: [person({ id: '4', fullname: 'Great Grandchild Four', gender: 'Male' })] }
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Show children of Grandchild Three' }));
+    await waitFor(() => expect(screen.getByTestId('person-card-4')).toBeInTheDocument());
+
+    // Child Two is now the promoted top (role "Head").
+    expect(screen.getByText('Head')).toBeInTheDocument();
     expect(screen.getByText('Child Two')).toBeInTheDocument();
 
     graphqlRequest.mockResolvedValueOnce({
@@ -352,7 +390,7 @@ describe('DetailPage', () => {
         photoUrl: null,
         canEdit: true,
         spouses: [],
-        children: []
+        children: [person({ id: '3', fullname: 'Grandchild Three' })]
       }
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -361,6 +399,7 @@ describe('DetailPage', () => {
     expect(screen.queryByText('Child Two')).not.toBeInTheDocument();
 
     const refreshCall = graphqlRequest.mock.calls[graphqlRequest.mock.calls.length - 1];
+    expect(refreshCall[0]).toMatch(/familyMember/);
     expect(refreshCall[0]).toMatch(/children/);
     expect(refreshCall[1]).toEqual({ id: '2' });
   });
