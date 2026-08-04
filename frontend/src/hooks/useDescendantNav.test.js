@@ -2,6 +2,10 @@
 // implementation exists (TDD RED). Mirrors DetailPage.test.jsx's
 // graphqlRequest mock idiom (lines 12-20) and mock-chaining pattern, but uses
 // renderHook (not a full component mount) since this is a hook-level unit.
+// Each `it` renders its own fresh hook instance and replays only the prior
+// steps it needs (frontend/test/setup.js runs RTL's global `cleanup()` after
+// every test, which unmounts renderHook's host component — so state cannot
+// be carried across `it` boundaries via a shared instance).
 // Fixture chain models a 3-generation expand/shift walk:
 //   MAIN_PERSON (id '1') -> CHILD (id '2') -> GRANDCHILD (id '3') -> GREAT_GRANDCHILD (id '4')
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -74,6 +78,24 @@ const GREAT_GRANDCHILD = {
   children: []
 };
 
+// Replays "mount -> onExpandTop(MAIN_PERSON) -> onExpandChild(CHILD)" so
+// tests needing the post-onExpandChild state don't repeat this boilerplate.
+// Consumes 2 queued mock resolutions.
+async function renderExpandedToChild() {
+  graphqlRequest.mockResolvedValueOnce({ familyMember: { children: [CHILD] } });
+  const { result } = renderHook(() => useDescendantNav(MAIN_PERSON));
+  await act(async () => {
+    await result.current.onExpandTop(MAIN_PERSON);
+  });
+
+  graphqlRequest.mockResolvedValueOnce({ familyMember: { children: [GRANDCHILD] } });
+  await act(async () => {
+    await result.current.onExpandChild(CHILD);
+  });
+
+  return result;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -88,78 +110,70 @@ describe('useDescendantNav', () => {
     expect(result.current.topExpanded).toBe(false);
   });
 
-  describe('sequential expand / cache / shift flow', () => {
-    let hook;
+  it('onExpandTop fires exactly one graphqlRequest for the top person and populates gen1 on resolve (PERF-01)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { children: [CHILD] } });
+    const { result } = renderHook(() => useDescendantNav(MAIN_PERSON));
 
-    it('mounts with zero fetches showing only the top person', () => {
-      hook = renderHook(() => useDescendantNav(MAIN_PERSON));
-
-      expect(graphqlRequest).not.toHaveBeenCalled();
-      expect(hook.result.current.topPerson).toEqual(MAIN_PERSON);
-      expect(hook.result.current.gen1).toEqual([]);
-      expect(hook.result.current.topExpanded).toBe(false);
+    await act(async () => {
+      await result.current.onExpandTop(MAIN_PERSON);
     });
 
-    it('onExpandTop fires exactly one graphqlRequest for the top person and populates gen1 on resolve (PERF-01)', async () => {
-      graphqlRequest.mockResolvedValueOnce({ familyMember: { children: [CHILD] } });
+    expect(graphqlRequest).toHaveBeenCalledTimes(1);
+    expect(graphqlRequest.mock.calls[0][0]).toMatch(/children/i);
+    expect(graphqlRequest.mock.calls[0][1]).toEqual({ id: '1' });
+    expect(result.current.topExpanded).toBe(true);
+    expect(result.current.gen1).toEqual([CHILD]);
+  });
 
-      await act(async () => {
-        hook.result.current.onExpandTop(MAIN_PERSON);
-      });
+  it('repeat collapse/re-expand of an already-cached id serves from cache with zero additional graphqlRequest calls (PERF-03/D-09)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { children: [CHILD] } });
+    const { result } = renderHook(() => useDescendantNav(MAIN_PERSON));
 
-      expect(graphqlRequest).toHaveBeenCalledTimes(1);
-      expect(graphqlRequest.mock.calls[0][0]).toMatch(/children/i);
-      expect(graphqlRequest.mock.calls[0][1]).toEqual({ id: '1' });
+    await act(async () => {
+      await result.current.onExpandTop(MAIN_PERSON); // initial expand — 1 fetch
+    });
+    expect(graphqlRequest).toHaveBeenCalledTimes(1);
 
-      await waitFor(() => expect(hook.result.current.topExpanded).toBe(true));
-      expect(hook.result.current.gen1).toEqual([CHILD]);
+    await act(async () => {
+      await result.current.onExpandTop(MAIN_PERSON); // collapse — cache hit
+    });
+    expect(result.current.topExpanded).toBe(false);
+
+    await act(async () => {
+      await result.current.onExpandTop(MAIN_PERSON); // re-expand — cache hit
+    });
+    expect(result.current.topExpanded).toBe(true);
+
+    expect(graphqlRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('onExpandChild fetches exactly once more and populates gen2', async () => {
+    const result = await renderExpandedToChild();
+
+    expect(graphqlRequest).toHaveBeenCalledTimes(2);
+    expect(graphqlRequest.mock.calls[1][1]).toEqual({ id: CHILD.id });
+    expect(result.current.expandedChildId).toBe(CHILD.id);
+    expect(result.current.gen2).toEqual([GRANDCHILD]);
+  });
+
+  it('onExpandGrandchild shifts the view forward with exactly one new fetch, resolving the promoted parent from cache (D-03/D-09)', async () => {
+    const result = await renderExpandedToChild();
+    const previousGen2 = result.current.gen2;
+
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { children: [GREAT_GRANDCHILD] } });
+    await act(async () => {
+      await result.current.onExpandGrandchild(GRANDCHILD);
     });
 
-    it('repeat collapse/re-expand of an already-cached id serves from cache with zero additional graphqlRequest calls (PERF-03/D-09)', async () => {
-      await act(async () => {
-        hook.result.current.onExpandTop(MAIN_PERSON); // collapse
-      });
-      expect(hook.result.current.topExpanded).toBe(false);
+    // Exactly one new call — for the grandchild's own children. The
+    // promoted parent's (CHILD's) children were already cached by the
+    // earlier onExpandChild call; no second fetch for them.
+    expect(graphqlRequest).toHaveBeenCalledTimes(3);
+    expect(graphqlRequest.mock.calls[2][1]).toEqual({ id: GRANDCHILD.id });
 
-      await act(async () => {
-        hook.result.current.onExpandTop(MAIN_PERSON); // re-expand
-      });
-      expect(hook.result.current.topExpanded).toBe(true);
-
-      expect(graphqlRequest).toHaveBeenCalledTimes(1);
-    });
-
-    it('onExpandChild fetches exactly once more and populates gen2', async () => {
-      graphqlRequest.mockResolvedValueOnce({ familyMember: { children: [GRANDCHILD] } });
-
-      await act(async () => {
-        hook.result.current.onExpandChild(CHILD);
-      });
-
-      expect(graphqlRequest).toHaveBeenCalledTimes(2);
-      expect(graphqlRequest.mock.calls[1][1]).toEqual({ id: '2' });
-      expect(hook.result.current.expandedChildId).toBe(CHILD.id);
-      expect(hook.result.current.gen2).toEqual([GRANDCHILD]);
-    });
-
-    it('onExpandGrandchild shifts the view forward with exactly one new fetch, resolving the promoted parent from cache (D-03/D-09)', async () => {
-      graphqlRequest.mockResolvedValueOnce({ familyMember: { children: [GREAT_GRANDCHILD] } });
-      const previousGen2 = hook.result.current.gen2;
-
-      await act(async () => {
-        hook.result.current.onExpandGrandchild(GRANDCHILD);
-      });
-
-      // Exactly one new call — for the grandchild's own children. The
-      // promoted parent's (CHILD's) children were already cached by the
-      // earlier onExpandChild call above; no second fetch for them.
-      expect(graphqlRequest).toHaveBeenCalledTimes(3);
-      expect(graphqlRequest.mock.calls[2][1]).toEqual({ id: GRANDCHILD.id });
-
-      expect(hook.result.current.topPerson).toEqual(CHILD);
-      expect(hook.result.current.gen1).toBe(previousGen2);
-      expect(hook.result.current.gen2).toEqual([GREAT_GRANDCHILD]);
-    });
+    expect(result.current.topPerson).toEqual(CHILD);
+    expect(result.current.gen1).toBe(previousGen2);
+    expect(result.current.gen2).toEqual([GREAT_GRANDCHILD]);
   });
 
   it('a RESET (search-driven mainPerson swap) clears only the view frame — re-expanding a previously cached id fires no new fetch (D-09)', async () => {
@@ -169,7 +183,7 @@ describe('useDescendantNav', () => {
     });
 
     await act(async () => {
-      result.current.onExpandTop(MAIN_PERSON);
+      await result.current.onExpandTop(MAIN_PERSON);
     });
     expect(graphqlRequest).toHaveBeenCalledTimes(1);
     expect(result.current.gen1).toEqual([CHILD]);
@@ -181,7 +195,7 @@ describe('useDescendantNav', () => {
     const callCountAfterSwap = graphqlRequest.mock.calls.length;
 
     await act(async () => {
-      result.current.onExpandTop(MAIN_PERSON);
+      await result.current.onExpandTop(MAIN_PERSON);
     });
 
     // The original main person's entry is still cached — no new network call.
