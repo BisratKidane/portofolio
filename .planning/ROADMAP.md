@@ -80,7 +80,7 @@ Full detail archived in [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 - [x] **Phase 24: Backend Read Layer for /detail** - GraphQL reads (head, person-by-id, name search, direct-children+counts, spouses, edit-permission) with no schema change and no N+1 (completed 2026-08-03)
 - [x] **Phase 25: Reusable PersonCard** - one card component renders head/children/grandchildren with all supported fields, gender cues, child count, and spouse(s) (completed 2026-08-03)
 - [x] **Phase 26: /detail Page, Search & Initial Load** - authenticated route opening on the family head, with Latin+Ge'ez inline search to reset the main person, and full state coverage (completed 2026-08-03)
-- [ ] **Phase 27: Descendant Navigation & Performance** - expand/collapse grid grouped by generation, 3-generation cap with forward-shift, lazy loading + session cache
+- [x] **Phase 27: Descendant Navigation & Performance** - expand/collapse grid grouped by generation, 3-generation cap with forward-shift, lazy loading + session cache (completed 2026-08-04)
 - [ ] **Phase 28: Admin Actions on /detail** - admin-only edit/add-child/add-spouse reusing existing dialogs, backend-enforced
 - [ ] **Phase 29: Accessibility, Responsive & Quality Gate** - keyboard operability, WCAG AA contrast, mobile layout, full-suite green at close
 
@@ -189,7 +189,7 @@ Plans:
 
 **Wave 3** *(blocked on 27-02, 27-03)*
 
-- [ ] 27-04-PLAN.md — Wire useDescendantNav + GenerationGrid into DetailPage; end-to-end NAV/PERF proof
+- [x] 27-04-PLAN.md — Wire useDescendantNav + GenerationGrid into DetailPage; end-to-end NAV/PERF proof
 
 **UI hint**: yes
 
@@ -255,6 +255,6 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 24. Backend Read Layer for /detail | v4.0 | 3/3 | Complete    | 2026-08-03 |
 | 25. Reusable PersonCard | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 26. /detail Page, Search & Initial Load | v4.0 | 2/2 | Complete    | 2026-08-03 |
-| 27. Descendant Navigation & Performance | v4.0 | 3/4 | In Progress|  |
+| 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete   | 2026-08-04 |
 | 28. Admin Actions on /detail | v4.0 | 0/TBD | Not started | - |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 0/TBD | Not started | - |

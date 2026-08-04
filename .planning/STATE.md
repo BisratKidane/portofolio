@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
-status: executing
-stopped_at: Completed 27-01-PLAN.md
-last_updated: "2026-08-04T05:53:53.894Z"
+status: verifying
+stopped_at: Completed 27-04-PLAN.md
+last_updated: "2026-08-04T06:11:44.953Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
-  completed_plans: 10
-  percent: 50
+  completed_plans: 11
+  percent: 67
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 Phase: 27 (descendant-navigation-performance) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-04
 
-Progress: [█████████░] 91%
+Progress: [██████████] 100%
 
 ## Deferred Items
 
@@ -84,6 +84,7 @@ The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "a
 | Phase 27 P01 | 10min | 2 tasks | 2 files |
 | Phase 27 P02 | 2min | 2 tasks | 2 files |
 | Phase 27 P03 | 15min | 2 tasks | 2 files |
+| Phase 27 P04 | 25min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - Post-Phase 17 (2026-07-25): `/family` edge model replaced union-node "spouses-paired" rendering with a pure parent→child hierarchy at the user's request (real data had 0 spouse rows, 0 two-parent children — the union model rendered zero edges). `UnionNode.jsx` and the union assembly/layout machinery were removed.
 - [Phase 27]: colors.line used for the GenerationGrid apex cue (D-06) -- lighter/more restrained than colors.slate (/family edges) and colors.primary (spouse connector)
 - [Phase 27]: Plan 27-03: RTL's global cleanup() unmounts renderHook's host component after every it() -- restructured the useDescendantNav test suite so each it() renders its own fresh instance instead of sharing one across a describe block.
+- [Phase 27]: DetailPage wires useDescendantNav + GenerationGrid; onEdit stays a no-op on every card (head/gen1/gen2), Phase 28 scope untouched
+- [Phase 27]: PERF-03's exact cache-hit re-expand render count is 2 (not 1) -- traced to MemberAvatarImage's benign mount-effect settling commit on the freshly re-mounted card, distinct from a cache-miss expand's 3+ commit cost
 
 ### Pending Todos
 
@@ -155,8 +158,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T05:52:47.773Z
-Stopped at: Completed 27-01-PLAN.md
+Last session: 2026-08-04T06:11:44.947Z
+Stopped at: Completed 27-04-PLAN.md
 Resume file: None
 
 ## Operator Next Steps
