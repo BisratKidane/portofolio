@@ -226,3 +226,152 @@ describe('useDescendantNav', () => {
     await waitFor(() => expect(result.current.loadingId).toBeNull());
   });
 });
+
+// D-04 (Phase 27's deferred cache-invalidation gap) — refreshEntry(id) always
+// issues a fresh combined familyMember+children request, writes cache.current
+// unconditionally, and dispatches REFRESH so the write is actually visible.
+// Revision note (plan-checker blocker): refreshEntry must be provably
+// id-agnostic — the dedicated "refresh the current topId (head)" test below
+// is the exact regression proof for that requirement.
+describe('refreshEntry', () => {
+  it('is included as a function on the object returned by useDescendantNav', () => {
+    const { result } = renderHook(() => useDescendantNav(MAIN_PERSON));
+
+    expect(typeof result.current.refreshEntry).toBe('function');
+  });
+
+  it('for an already-cached, currently-EXPANDED gen1 descendant (CHILD) issues exactly ONE combined familyMember+children request, immediately refreshes gen2 with the new children, resolves with the fresh payload, and the refreshed self becomes visible as topPerson/gen1 once forward-shifted into (no separate fetch needed for CHILD itself, proving its self+children were both cached)', async () => {
+    const result = await renderExpandedToChild();
+    expect(graphqlRequest).toHaveBeenCalledTimes(2);
+
+    const UPDATED_CHILD_SELF = { ...CHILD, fullname: 'Child Person Updated' };
+    delete UPDATED_CHILD_SELF.children;
+    const UPDATED_GRANDCHILD = { ...GRANDCHILD, fullname: 'Grandchild Person Updated' };
+    graphqlRequest.mockResolvedValueOnce({
+      familyMember: { ...UPDATED_CHILD_SELF, children: [UPDATED_GRANDCHILD] }
+    });
+
+    let refreshResult;
+    await act(async () => {
+      refreshResult = await result.current.refreshEntry(CHILD.id);
+    });
+
+    expect(graphqlRequest).toHaveBeenCalledTimes(3);
+    const [refreshQuery, refreshVars] = graphqlRequest.mock.calls[2];
+    expect(refreshQuery).toMatch(/familyMember/i);
+    expect(refreshQuery).toMatch(/children/i);
+    expect(refreshVars).toEqual({ id: CHILD.id });
+
+    // Immediate effect: CHILD is already `expandedChildId`, so gen2 (its
+    // children) reflects the fresh array on the very next render.
+    expect(result.current.gen2).toEqual([UPDATED_GRANDCHILD]);
+    expect(refreshResult).toEqual({ ...UPDATED_CHILD_SELF, children: [UPDATED_GRANDCHILD] });
+
+    // Forward-shift promotes CHILD to topId. No new fetch for CHILD itself —
+    // refreshEntry already wrote its full { self, children } cache entry.
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { children: [] } });
+    await act(async () => {
+      await result.current.onExpandGrandchild(UPDATED_GRANDCHILD);
+    });
+
+    expect(graphqlRequest).toHaveBeenCalledTimes(4); // only the grandchild's own children fetch
+    expect(result.current.topPerson.fullname).toBe('Child Person Updated');
+    expect(result.current.gen1).toEqual([UPDATED_GRANDCHILD]);
+  });
+
+  it('(Revision — the head/topId case) refreshEntry(MAIN_PERSON.id), the id CURRENTLY at state.topId, with no forward-shift or descendant expansion, makes nav.topPerson.fullname reflect the new value WITHOUT ever re-rendering the hook with a new mainPerson argument', async () => {
+    const { result } = renderHook(() => useDescendantNav(MAIN_PERSON));
+    expect(result.current.topPerson).toEqual(MAIN_PERSON);
+
+    const UPDATED_MAIN = { ...MAIN_PERSON, fullname: 'Main Person Updated' };
+    delete UPDATED_MAIN.children;
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...UPDATED_MAIN, children: [CHILD] } });
+
+    let refreshResult;
+    await act(async () => {
+      refreshResult = await result.current.refreshEntry(MAIN_PERSON.id);
+    });
+
+    expect(graphqlRequest).toHaveBeenCalledTimes(1);
+    const [refreshQuery, refreshVars] = graphqlRequest.mock.calls[0];
+    expect(refreshQuery).toMatch(/familyMember/i);
+    expect(refreshQuery).toMatch(/children/i);
+    expect(refreshVars).toEqual({ id: MAIN_PERSON.id });
+
+    expect(result.current.topPerson.fullname).toBe('Main Person Updated');
+    expect(result.current.gen1).toEqual([CHILD]);
+    expect(refreshResult).toEqual({ ...UPDATED_MAIN, children: [CHILD] });
+  });
+
+  it('resolves null and makes NO cache write when the mocked response familyMember field is null (a later expand of the same id still fetches — proof nothing was cached)', async () => {
+    const { result } = renderHook(() => useDescendantNav(MAIN_PERSON));
+    graphqlRequest.mockResolvedValueOnce({ familyMember: null });
+
+    let refreshResult;
+    await act(async () => {
+      refreshResult = await result.current.refreshEntry(MAIN_PERSON.id);
+    });
+
+    expect(refreshResult).toBeNull();
+    expect(result.current.topPerson).toBe(MAIN_PERSON);
+
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { children: [CHILD] } });
+    await act(async () => {
+      await result.current.onExpandTop(MAIN_PERSON);
+    });
+
+    // A cache write from refreshEntry's null response would have marked
+    // `children` as populated (cache hit) and skipped this second fetch.
+    expect(graphqlRequest).toHaveBeenCalledTimes(2);
+    expect(result.current.gen1).toEqual([CHILD]);
+  });
+
+  it('sets loadingId to the refreshed id while the promise is pending, then clears it back to null after resolve', async () => {
+    let resolveFetch;
+    graphqlRequest.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      })
+    );
+    const { result } = renderHook(() => useDescendantNav(MAIN_PERSON));
+
+    expect(result.current.loadingId).toBeNull();
+
+    act(() => {
+      result.current.refreshEntry(MAIN_PERSON.id);
+    });
+
+    await waitFor(() => expect(result.current.loadingId).toBe(MAIN_PERSON.id));
+
+    await act(async () => {
+      resolveFetch({ familyMember: { ...MAIN_PERSON, children: [] } });
+    });
+
+    await waitFor(() => expect(result.current.loadingId).toBeNull());
+  });
+
+  it('for an id NOT previously in cache still performs the fetch and populates the cache from scratch (no crash on a cache-miss target)', async () => {
+    const { result } = renderHook(() => useDescendantNav(MAIN_PERSON));
+
+    const UNCACHED_PERSON = {
+      id: '55',
+      fullname: 'Fresh Person',
+      geezFullname: null,
+      gender: 'Male',
+      isAlive: true,
+      photoUrl: null,
+      canEdit: false,
+      spouses: []
+    };
+    graphqlRequest.mockResolvedValueOnce({ familyMember: { ...UNCACHED_PERSON, children: [CHILD] } });
+
+    let refreshResult;
+    await act(async () => {
+      refreshResult = await result.current.refreshEntry('55');
+    });
+
+    expect(graphqlRequest).toHaveBeenCalledTimes(1);
+    expect(refreshResult).toEqual({ ...UNCACHED_PERSON, children: [CHILD] });
+    expect(result.current.loadingId).toBeNull();
+  });
+});

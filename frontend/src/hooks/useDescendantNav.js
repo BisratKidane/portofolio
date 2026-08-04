@@ -28,6 +28,37 @@ const EXPAND_CHILDREN_QUERY = `
   }
 `;
 
+// D-04: refreshEntry's own query — combines the target's OWN display fields
+// (needed after an edit or add-spouse) with its full children set (needed
+// after an add-child), reusing the exact field shapes already proven
+// N+1-free by FAMILY_MEMBER_QUERY (DetailPage.jsx) and EXPAND_CHILDREN_QUERY
+// above. Always issued fresh — never a cache-hit short-circuit.
+const REFRESH_PERSON_QUERY = `
+  query RefreshPerson($id: ID!) {
+    familyMember(id: $id) {
+      id
+      fullname
+      geezFullname
+      gender
+      isAlive
+      photoUrl
+      canEdit
+      spouses { id fullname geezFullname gender isAlive photoUrl }
+      children {
+        id
+        fullname
+        geezFullname
+        gender
+        isAlive
+        photoUrl
+        canEdit
+        spouses { id fullname geezFullname gender isAlive photoUrl }
+        children { id }
+      }
+    }
+  }
+`;
+
 export function useDescendantNav(mainPerson) {
   // PERF-03: the cache is a ref, never React state — a cache write alone
   // must never trigger a re-render. Entry shape: { self, children }, where
@@ -81,6 +112,26 @@ export function useDescendantNav(mainPerson) {
     [ensureEntry]
   );
 
+  // D-04: closes the Phase-27-deferred cache-invalidation gap. Unlike
+  // ensureEntry, this ALWAYS issues a fresh request — never a cache-hit
+  // short-circuit — and is fully id-agnostic (no branching on whether `id`
+  // is state.topId, a gen1/gen2 descendant, or not yet cached at all).
+  const refreshEntry = useCallback((id) => {
+    setLoadingId(id);
+    return graphqlRequest(REFRESH_PERSON_QUERY, { id })
+      .then((data) => {
+        const fresh = data.familyMember;
+        if (!fresh) return null;
+        const { children, ...self } = fresh;
+        cache.current.set(id, { self, children: children ?? [] });
+        dispatch({ type: 'REFRESH' });
+        return fresh;
+      })
+      .finally(() => {
+        setLoadingId((current) => (current === id ? null : current));
+      });
+  }, []);
+
   const topPerson = cache.current.get(state.topId)?.self ?? mainPerson;
   const gen1 = cache.current.get(state.topId)?.children ?? [];
   const gen2 = state.expandedChildId ? cache.current.get(state.expandedChildId)?.children ?? [] : [];
@@ -94,6 +145,7 @@ export function useDescendantNav(mainPerson) {
     loadingId,
     onExpandTop,
     onExpandChild,
-    onExpandGrandchild
+    onExpandGrandchild,
+    refreshEntry
   };
 }

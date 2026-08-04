@@ -154,3 +154,28 @@ describe('navReducer', () => {
     expect(result).toBe(state);
   });
 });
+
+describe('REFRESH', () => {
+  it('returns a NEW state reference for a simple collapsed state (new-reference)', () => {
+    const state = initial('1');
+
+    const result = navReducer(state, { type: 'REFRESH' });
+
+    expect(result).not.toBe(state);
+    expect(result).toEqual(state);
+  });
+
+  it('preserves every field value unchanged, including a non-empty history (field-preservation-with-history)', () => {
+    const state = {
+      topId: '2',
+      topExpanded: true,
+      expandedChildId: '3',
+      history: [{ topId: '1', topExpanded: true, expandedChildId: '2', history: [] }]
+    };
+
+    const result = navReducer(state, { type: 'REFRESH' });
+
+    expect(result).not.toBe(state);
+    expect(result).toEqual(state);
+  });
+});
