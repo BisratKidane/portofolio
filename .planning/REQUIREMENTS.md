@@ -29,7 +29,7 @@
 
 ### Descendant Navigation (NAV)
 
-- [ ] **NAV-01**: Expanding a person loads and shows their direct children in a responsive grid grouped by generation (≤3 cards/row on desktop, fewer on tablet, 1 on mobile) with a subtle connector/visual hierarchy that makes parent→child grouping clear.
+- [x] **NAV-01**: Expanding a person loads and shows their direct children in a responsive grid grouped by generation (≤3 cards/row on desktop, fewer on tablet, 1 on mobile) with a subtle connector/visual hierarchy that makes parent→child grouping clear.
 - [ ] **NAV-02**: Re-clicking the expand control collapses a person's children and hides all descendants beneath them; the control's state visibly communicates expanded vs collapsed.
 - [ ] **NAV-03**: At most three generations are shown at once (main person → children → grandchildren); a fourth generation is never displayed alongside the first three.
 - [ ] **NAV-04**: Expanding a grandchild who has children shifts the view forward one generation without a full page reload — the grandparent and the selected grandchild's parent's siblings are removed, the parent becomes the new top person, the grandchild remains as that parent's child, and the grandchild's children become the third generation.

@@ -4,13 +4,13 @@ milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
 status: executing
 stopped_at: Completed 27-01-PLAN.md
-last_updated: "2026-08-04T04:45:50.169Z"
+last_updated: "2026-08-04T04:52:08.775Z"
 last_activity: 2026-08-04
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 9
   percent: 50
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 ## Current Position
 
 Phase: 27 (descendant-navigation-performance) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-08-04
 
-Progress: [███████░░░] 73%
+Progress: [████████░░] 82%
 
 ## Deferred Items
 
@@ -82,6 +82,7 @@ The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "a
 
 *Updated after each plan completion*
 | Phase 27 P01 | 10min | 2 tasks | 2 files |
+| Phase 27 P02 | 2min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - v3.0 roadmap: Phase order is data model + migration (18) → GraphQL layer (19) → self-hosted font/theme (20) → shared displayName helper (21) → read-path render surfaces (22) → write-path forms/Autocomplete (23), per RESEARCH.md SUMMARY.md's dependency-ordered build order.
 - v3.0 roadmap: Phase 21 (shared `displayName` helper) is sequenced as a standalone prerequisite before Phase 22's render surfaces, to prevent each component from re-deriving the Latin/Ge'ez precedence rule slightly differently (the drift risk PITFALLS.md/ARCHITECTURE.md both flag).
 - Post-Phase 17 (2026-07-25): `/family` edge model replaced union-node "spouses-paired" rendering with a pure parent→child hierarchy at the user's request (real data had 0 spouse rows, 0 two-parent children — the union model rendered zero edges). `UnionNode.jsx` and the union assembly/layout machinery were removed.
+- [Phase 27]: colors.line used for the GenerationGrid apex cue (D-06) -- lighter/more restrained than colors.slate (/family edges) and colors.primary (spouse connector)
 
 ### Pending Todos
 
@@ -151,7 +153,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-04T04:45:50.163Z
+Last session: 2026-08-04T04:51:12.348Z
 Stopped at: Completed 27-01-PLAN.md
 Resume file: None
 
