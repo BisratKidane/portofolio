@@ -235,7 +235,22 @@ Plans:
   3. `/detail`'s layout stays readable and usable at mobile viewport widths.
   4. The full `npm test --workspaces` suite is green with no new regressions at milestone close, consistent with this project's TDD/CI convention.
 
-**Plans**: TBD
+**Plans**: 4 plans (3 waves)
+
+Plans:
+**Wave 1**
+
+- [ ] 29-01-PLAN.md — D-01 backend MariaDB-vs-MySQL engine-guard skip (shared `isMariaDB()` helper, VERIFY-04 + REL-06 documented skips, KNOWN-ISSUES.md update)
+- [ ] 29-02-PLAN.md — D-02/D-03 tooling: jest-axe + wcag-contrast install, deterministic WCAG contrast test (TDD), PersonCard.jsx contrast fixes + dead focus-visible CSS removal
+
+**Wave 2** *(blocked on 29-02)*
+
+- [ ] 29-03-PLAN.md — D-02/D-04 axe zero-violations + tab-order tests across PersonCard/GenerationGrid/PersonSearch/DetailPage, plus GenerationGrid breakpoint-CSS-presence assertion
+
+**Wave 3** *(blocked on 29-01, 29-02, 29-03)*
+
+- [ ] 29-04-PLAN.md — 29-HUMAN-UAT.md (mobile + keyboard-visible-focus checklist), full-suite SC-4 green gate, human sign-off
+
 **UI hint**: yes
 
 ## Progress
