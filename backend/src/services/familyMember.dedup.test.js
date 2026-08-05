@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { models, sequelize } from '../models/index.js';
 import { resetTables } from '../../test/helpers.js';
 import { addChild } from './familyMember.service.js';
+import { isMariaDB } from '../../test/dbEngine.js';
 
 beforeEach(resetTables);
 
@@ -110,7 +111,13 @@ describe('addChild REL-06 dedup guard (D-08/D-09/D-10/D-11)', () => {
     );
   });
 
-  it('(D-10 resolver-path TOCTOU, CR-01) detects a duplicate even when a plain read earlier in the SAME transaction froze the REPEATABLE READ snapshot — mirrors addChild/addSibling resolvers findByPk-ing the target before the guard runs', async () => {
+  it('(D-10 resolver-path TOCTOU, CR-01) detects a duplicate even when a plain read earlier in the SAME transaction froze the REPEATABLE READ snapshot — mirrors addChild/addSibling resolvers findByPk-ing the target before the guard runs', async (ctx) => {
+    ctx.skip(
+      await isMariaDB(),
+      'MariaDB does not implement the MySQL 8.4 SELECT ... FOR UPDATE lock-wait semantics this ' +
+        'test asserts (it raises a Sequelize optimistic-version error instead). This test runs ' +
+        'and must pass on CI (MySQL 8.4). See KNOWN-ISSUES.md.'
+    );
     const mother = await models.FamilyMember.create({ firstname: 'Almaz', lastname: 'Kidane', gender: 'Female' });
 
     const t1 = await sequelize.transaction();
