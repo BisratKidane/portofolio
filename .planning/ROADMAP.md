@@ -240,8 +240,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 29-01-PLAN.md — D-01 backend MariaDB-vs-MySQL engine-guard skip (shared `isMariaDB()` helper, VERIFY-04 + REL-06 documented skips, KNOWN-ISSUES.md update)
-- [ ] 29-02-PLAN.md — D-02/D-03 tooling: jest-axe + wcag-contrast install, deterministic WCAG contrast test (TDD), PersonCard.jsx contrast fixes + dead focus-visible CSS removal
+- [x] 29-01-PLAN.md — D-01 backend MariaDB-vs-MySQL engine-guard skip (shared `isMariaDB()` helper, VERIFY-04 + REL-06 documented skips, KNOWN-ISSUES.md update)
+- [x] 29-02-PLAN.md — D-02/D-03 tooling: jest-axe + wcag-contrast install, deterministic WCAG contrast test (TDD), PersonCard.jsx contrast fixes + dead focus-visible CSS removal
 
 **Wave 2** *(blocked on 29-02)*
 
@@ -288,4 +288,4 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 26. /detail Page, Search & Initial Load | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete    | 2026-08-04 |
 | 28. Admin Actions on /detail | v4.0 | 5/5 | Complete    | 2026-08-04 |
-| 29. Accessibility, Responsive & Quality Gate | v4.0 | 0/TBD | Not started | - |
+| 29. Accessibility, Responsive & Quality Gate | v4.0 | 2/4 | In Progress|  |
