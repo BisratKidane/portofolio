@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
-status: executing
-stopped_at: Phase 29 context gathered
-last_updated: "2026-08-05T09:58:48.693Z"
-last_activity: 2026-08-05 -- Phase 29 execution started
+status: verifying
+stopped_at: Completed 29-04-PLAN.md — Phase 29 complete, ready for verification
+last_updated: "2026-08-05T14:26:14.858Z"
+last_activity: 2026-08-05
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 20
-  completed_plans: 16
-  percent: 80
+  completed_plans: 20
+  percent: 100
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 ## Current Position
 
 Phase: 29 (accessibility-responsive-quality-gate) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 29
-Last activity: 2026-08-05 -- Phase 29 execution started
+Plan: 4 of 4
+Status: Phase complete — ready for verification
+Last activity: 2026-08-05
 
 Progress: [██████████] 100%
 
@@ -87,6 +87,7 @@ The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "a
 | Phase 27 P02 | 2min | 2 tasks | 2 files |
 | Phase 27 P03 | 15min | 2 tasks | 2 files |
 | Phase 27 P04 | 25min | 2 tasks | 2 files |
+| Phase 29 P04 | 20min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 27]: Plan 27-03: RTL's global cleanup() unmounts renderHook's host component after every it() -- restructured the useDescendantNav test suite so each it() renders its own fresh instance instead of sharing one across a describe block.
 - [Phase 27]: DetailPage wires useDescendantNav + GenerationGrid; onEdit stays a no-op on every card (head/gen1/gen2), Phase 28 scope untouched
 - [Phase 27]: PERF-03's exact cache-hit re-expand render count is 2 (not 1) -- traced to MemberAvatarImage's benign mount-effect settling commit on the freshly re-mounted card, distinct from a cache-miss expand's 3+ commit cost
+- [Phase 29]: Mirrored 20-UAT.md's (v3.0) completed-status convention for 29-HUMAN-UAT.md (status: complete, [testing complete], result: pass) since 26/27-HUMAN-UAT.md were never actually driven past their initial pending scaffold
+- [Phase 29]: Full-suite SC-4 gate reported with explicit D-01 MariaDB caveat: local run is FE 435/435 + BE 411/413 (2 engine-gated skips, documented in KNOWN-ISSUES.md), never an unqualified 100% claim -- CI (MySQL 8.4) runs VERIFY-04/REL-06 unconditionally
 
 ### Pending Todos
 
@@ -160,9 +163,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-05T06:57:16.276Z
-Stopped at: Phase 29 context gathered
-Resume file: .planning/phases/29-accessibility-responsive-quality-gate/29-CONTEXT.md
+Last session: 2026-08-05T14:26:14.852Z
+Stopped at: Completed 29-04-PLAN.md — Phase 29 complete, ready for verification
+Resume file: None
 
 ## Operator Next Steps
 

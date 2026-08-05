@@ -82,7 +82,7 @@ Full detail archived in [milestones/v3.0-ROADMAP.md](milestones/v3.0-ROADMAP.md)
 - [x] **Phase 26: /detail Page, Search & Initial Load** - authenticated route opening on the family head, with Latin+Ge'ez inline search to reset the main person, and full state coverage (completed 2026-08-03)
 - [x] **Phase 27: Descendant Navigation & Performance** - expand/collapse grid grouped by generation, 3-generation cap with forward-shift, lazy loading + session cache (completed 2026-08-04)
 - [x] **Phase 28: Admin Actions on /detail** - admin-only edit/add-child/add-spouse reusing existing dialogs, backend-enforced (completed 2026-08-04)
-- [ ] **Phase 29: Accessibility, Responsive & Quality Gate** - keyboard operability, WCAG AA contrast, mobile layout, full-suite green at close
+- [x] **Phase 29: Accessibility, Responsive & Quality Gate** - keyboard operability, WCAG AA contrast, mobile layout, full-suite green at close (completed 2026-08-05)
 
 ## Phase Details
 
@@ -249,7 +249,7 @@ Plans:
 
 **Wave 3** *(blocked on 29-01, 29-02, 29-03)*
 
-- [ ] 29-04-PLAN.md — 29-HUMAN-UAT.md (mobile + keyboard-visible-focus checklist), full-suite SC-4 green gate, human sign-off
+- [x] 29-04-PLAN.md — 29-HUMAN-UAT.md (mobile + keyboard-visible-focus checklist), full-suite SC-4 green gate, human sign-off
 
 **UI hint**: yes
 
@@ -288,4 +288,4 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 26. /detail Page, Search & Initial Load | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete    | 2026-08-04 |
 | 28. Admin Actions on /detail | v4.0 | 5/5 | Complete    | 2026-08-04 |
-| 29. Accessibility, Responsive & Quality Gate | v4.0 | 3/4 | In Progress|  |
+| 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete   | 2026-08-05 |
