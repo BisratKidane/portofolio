@@ -56,7 +56,7 @@
 
 ### Accessibility (A11Y)
 
-- [ ] **A11Y-01**: Expand/collapse controls and search suggestions are fully keyboard-operable with accessible labels and visible focus states; text/background contrast meets WCAG AA and the layout stays readable on mobile.
+- [x] **A11Y-01**: Expand/collapse controls and search suggestions are fully keyboard-operable with accessible labels and visible focus states; text/background contrast meets WCAG AA and the layout stays readable on mobile.
 
 ---
 
