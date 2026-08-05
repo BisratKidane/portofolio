@@ -7,6 +7,7 @@ import { Profiler } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'jest-axe';
 import { MemoryRouter } from 'react-router-dom';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -1001,4 +1002,27 @@ describe('DetailPage', () => {
     expect(screen.getByText('Head')).toBeInTheDocument();
     expect(screen.getByText('Child Two')).toBeInTheDocument();
   });
+
+  // A11Y-01: page-level axe zero-violations scan once the head card has
+  // loaded (Plan 29-03). D-06 audit-scope boundary: this covers DetailPage's
+  // own composition only -- EditMemberDialog/AddRelativeDialog are portaled,
+  // unconditionally-mounted (Plan 28-04), and out of this scan's fix-scope;
+  // any violation found strictly inside their markup would be noted as a
+  // deferred follow-up rather than fixed here.
+  it(
+    'has no axe accessibility violations once the head card has loaded',
+    async () => {
+      graphqlRequest.mockResolvedValueOnce({ familyHead: { id: '1' } });
+      graphqlRequest.mockResolvedValueOnce({ familyMember: HEAD });
+      const { baseElement } = renderPage();
+      await screen.findByTestId('person-card-1');
+
+      // 'region' disabled: known jest-axe false positive when mounting a
+      // single route component in isolation (no app-shell <main> landmark
+      // wraps it here) -- not a real DetailPage defect.
+      const results = await axe(baseElement, { rules: { region: { enabled: false } } });
+      expect(results).toHaveNoViolations();
+    },
+    10000
+  );
 });
