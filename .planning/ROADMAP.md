@@ -288,4 +288,4 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 26. /detail Page, Search & Initial Load | v4.0 | 2/2 | Complete    | 2026-08-03 |
 | 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete    | 2026-08-04 |
 | 28. Admin Actions on /detail | v4.0 | 5/5 | Complete    | 2026-08-04 |
-| 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete   | 2026-08-05 |
+| 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
