@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'jest-axe';
 import PersonCard from './PersonCard.jsx';
 
 vi.mock('../../api/photoClient.js', () => ({
@@ -35,6 +36,40 @@ function renderCard(overrides = {}) {
 }
 
 describe('PersonCard', () => {
+  // A11Y-01: axe-core zero-violations + keyboard tab order (Plan 29-03)
+  describe('accessibility', () => {
+    it(
+      'has no axe accessibility violations (canEdit + expandable + Add-menu state)',
+      async () => {
+        const { container } = renderCard({
+          member: { ...BASE_MEMBER, canEdit: true, children: [{ id: '2' }] },
+          onAddRelative: vi.fn()
+        });
+        const results = await axe(container);
+        expect(results).toHaveNoViolations();
+      },
+      10000
+    );
+
+    it('tabs from Edit to Add to the expand control in DOM order', async () => {
+      const user = userEvent.setup();
+      renderCard({ member: { ...BASE_MEMBER, canEdit: true, children: [{ id: '2' }] }, onAddRelative: vi.fn() });
+
+      await user.tab();
+      expect(screen.getByRole('button', { name: 'Edit Ada Lovelace' })).toHaveFocus();
+      await user.tab();
+      expect(screen.getByLabelText(/add relative to ada lovelace/i)).toHaveFocus();
+      await user.tab();
+      expect(screen.getByRole('button', { name: /children of Ada Lovelace/i })).toHaveFocus();
+    });
+
+    it('does not make the root card focusable (no stray tabindex on the Paper)', () => {
+      renderCard();
+      const card = screen.getByTestId('person-card-1');
+      expect(card).not.toHaveAttribute('tabindex');
+    });
+  });
+
   // CARD-01: identity fields, field omission
   it('renders the Latin fullname always', () => {
     renderCard();
