@@ -1,5 +1,33 @@
 # Milestones
 
+## v4.0 Family Detail & Descendant Navigation (Shipped: 2026-08-05)
+
+**Phases completed:** 6 phases, 20 plans, 40 tasks
+
+**Key accomplishments:**
+
+- Added a bounded recursive-CTE `familyHead` query mirroring the client's `resolveRootAncestorId` rule, and a partial/case-insensitive Latin+Ge'ez `searchFamilyMembers` query, both additive to the existing `familyMember.schema.js`/`familyMember.resolver.js` with zero existing-query changes.
+- Added a scaling bounded-SQL-statement-count test proving `familyMember(id) { children { id children { id } spouses { id } } }` stays flat from 3 to 10 direct children, reusing the existing unmodified DataLoaders -- zero production code changes.
+- Added a one-line `canEdit: Boolean!` GraphQL field mirroring the existing createdBy/updatedBy admin-check shape, and proved (without rebuilding) that `familyMember(id)` already returns every field the `/detail` person card needs.
+- Reusable `PersonCard` component (avatar, Latin/Ge'ez name, role label, Living/Deceased chip, gated edit button, gated child-count/expand control) built on a newly-extracted shared `genderTheme.js`, with gender signaled via color+tint, a deterministic `data-ring-style` avatar-ring border-style, and `data-gender`/`aria-label` — never color alone.
+- PersonCard now composes a lateral spouse card via a dashed connector (matching /family's convention) whenever `spouse` is passed to a non-spouse anchor, with a structural recursion guard ensuring a spouse card is always a rendering leaf.
+- Shipped the `/detail` page — a protected route that loads the family head first (head-id → person-by-id), renders every state (loading, no-results, no-children, failed+retry, missing-head/person) through existing components, with an inline debounced Latin/Ge'ez `PersonSearch` Autocomplete feeding the Phase 24 `searchFamilyMembers` query and resetting the main person on select.
+- Pure, exhaustively-unit-tested `navReducer`/`initial` view-frame state machine modeling expand/collapse, D-01 single-branch auto-collapse, and D-03/D-04 forward-shift with exact push/pop undo — zero React/DOM dependency.
+- New presentational `GenerationGrid` wraps one generation's people in a responsive MUI v6 `Grid` (`size` prop) with a single group-level inverted-V apex cue, reusing `PersonCard` unmodified.
+- `useDescendantNav(mainPerson)` — the first custom hook in this codebase, combining Plan 27-01's pure `navReducer` with a `useRef(Map)` session cache and an expand-only `EXPAND_CHILDREN_QUERY`, proving PERF-01 (lazy per-generation fetch) and PERF-03 (zero duplicate requests, cache lives outside React state) entirely via `renderHook` before any page wiring exists.
+- `DetailPage.jsx` now wires the already-tested `useDescendantNav` hook (27-03) and `GenerationGrid` (27-02) into a live expand/collapse/shift UI, proven end-to-end by 8 new tests (14/14 in the file) covering NAV-01..04, PERF-01, PERF-03, and D-01/D-04 against the real rendered component tree.
+- New adversarial integration test proving editMember/addChild/addSpouse are rejected server-side for a non-admin acting outside their editable scope, independent of /detail's client-side canEdit hiding.
+- Admin-only Add-relative icon button + 2-item MUI Menu ("Add child"/"Add spouse") added to PersonCard's non-spouse anchor instance, threaded through GenerationGrid, TDD RED-GREEN.
+- Added `refreshEntry(id)` to `useDescendantNav` — an always-fresh, single-request refetch that evicts and repopulates any one cached descendant OR the current head, proven id-agnostic via a dedicated no-forward-shift topId test.
+- DetailPage's three no-op `onEdit` stubs now open the real EditMemberDialog pre-filled via a fresh full-field fetch, with every save routed through `nav.refreshEntry` uniformly (head, gen1, gen2, or a forward-shifted promoted top).
+- All 3 `/detail` render sites (head/gen1/gen2) now open the existing `AddRelativeDialog` pre-targeted at the clicked person via PersonCard's Add-menu, with a successful add refreshing that person's children/spouses in place (head included) and auto-expanding a previously-collapsed target so the new child is immediately visible.
+- Two pre-existing MariaDB-incompatible concurrency tests (VERIFY-04, REL-06) now visibly self-skip via a shared `isMariaDB()` engine-detection helper, so `npm test --workspace backend` exits 0 on a developer's local MariaDB dev DB without weakening CI's MySQL 8.4 coverage.
+- Installed jest-axe/wcag-contrast, added a deterministic contrast unit test, and fixed 3 real WCAG AA contrast failures on PersonCard's Ge'ez name/role-label/Living-chip text via local component-scoped color constants — no shared gender token touched.
+- Added code-enforced axe-core scans and userEvent.tab() focus-order/reachability tests to all four /detail surfaces, and fixed a real production bug where GenerationGrid's responsive per-generation grid never actually applied its 600px/900px breakpoints because it imported the wrong (deprecated) MUI Grid component.
+- Human confirmed /detail's mobile layout (360px single-column, 768px 2-per-row) and painted keyboard focus visually pass in a real browser; full `npm test --workspaces` exits 0 locally on MariaDB with VERIFY-04/REL-06 visibly skipped (documented, CI-covered on MySQL 8.4) -- closing out A11Y-01 and the v4.0 milestone's quality gate.
+
+---
+
 ## v3.0 Ge'ez Native-Script Names (Shipped: 2026-07-31)
 
 **Phases completed:** 6 phases, 11 plans, 11 tasks

@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Family Detail & Descendant Navigation
-status: milestone_complete
-stopped_at: Milestone complete (Phase 29 was final phase)
-last_updated: 2026-08-05T14:39:22.156Z
-last_activity: 2026-08-05
+status: Awaiting next milestone
+stopped_at: Completed 29-04-PLAN.md — Phase 29 complete, ready for verification
+last_updated: "2026-08-05T15:16:56.846Z"
+last_activity: 2026-08-05 — Milestone v4.0 completed and archived
 progress:
   total_phases: 6
   completed_phases: 6
@@ -25,12 +25,10 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 ## Current Position
 
-Phase: 29
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-08-05
-
-Progress: [██████████] 100%
+Phase: Milestone v4.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-08-05 — Milestone v4.0 completed and archived
 
 ## Deferred Items
 
@@ -53,6 +51,16 @@ Items acknowledged and deferred at the v3.0 milestone close on 2026-07-31:
 | housekeeping | 6 completed v2.0 quick-tasks (`260726-*`, `260727-*`) flagged "missing" by pre-close audit — work is done (see Quick Tasks Completed below); tracking files were cleaned up. | acknowledged — no action |
 
 The Phase 22 deferred Ge'ez visual sign-off was **CLOSED** in Phase 23 (human "approved" against a real Tigrinya name) — no longer pending.
+
+Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 open artifacts from the pre-close audit):
+
+| Category | Item | Status |
+|----------|------|--------|
+| uat | Phase 26 (/detail Page & Search) — 3 open HUMAN-UAT scenarios (layout, live-search feel + Ge'ez glyph rendering, Alert/Retry). Human-approved to close the phase; code is verified + unit/component-tested. | pending — `/gsd:verify-work 26` when convenient |
+| uat | Phase 27 (Descendant Navigation) — 4 open HUMAN-UAT scenarios (expand-fetch error Alert, stale-frame flash, same-id re-select collapse, responsive/visual grid). Human-approved to close the phase; code is verified. | pending — `/gsd:verify-work 27` when convenient |
+| verification | Phase 26 & 27 VERIFICATION.md `human_needed` — same root as the two UAT items above (browser-only checks jsdom cannot make). | pending — resolves with the verify-work passes |
+| housekeeping | 9 completed quick-tasks (`260726-*`, `260727-*`, `260801-*`) flagged "missing" by the pre-close audit — work is done (see Quick Tasks Completed below); tracking stubs were cleaned up. | acknowledged — no action |
+| code-review | v4.0 advisory follow-ups: Phase 29 WR-01 (gender card **border**/avatar-ring non-text contrast, Female 2.97:1 vs WCAG 1.4.11 3:1 — invisible to jest-axe + the text-only gate); plus per-phase warnings in each `*-REVIEW.md`. | open — `/gsd:code-review <phase> --fix` candidates |
 
 ## Performance Metrics
 
@@ -170,4 +178,4 @@ Resume file: None
 
 ## Operator Next Steps
 
-- Run `/gsd:plan-phase 24` to plan the first v4.0 phase (Backend Read Layer for /detail).
+- Start the next milestone with /gsd-new-milestone
