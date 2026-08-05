@@ -153,6 +153,42 @@ Ge'ez (Ethiopic) native-script names end-to-end on the existing family-tree app:
 
 ---
 
+## Milestone: v4.0 — Family Detail & Descendant Navigation
+
+**Shipped:** 2026-08-05
+**Phases:** 6 (24–29) | **Plans:** 20 | **Tasks:** 40
+
+### What Was Built
+A new `/detail` page: a reusable `PersonCard` renders any person (head/child/grandchild) with gender cues, spouse pairing, and gated affordances; the page opens on the family head with Latin+Ge'ez inline search; descendants expand by generation (3-gen cap + forward-shift, lazy-loaded and session-cached via the codebase's first custom hook); admins edit/add-child/add-spouse in place, reusing the existing backend-enforced dialogs; all closed by an accessibility & quality gate — axe-core zero-violations, code-enforced WCAG AA text contrast, keyboard tab-order, human-verified mobile layout + painted focus, and an honest dual-engine full-suite green. Backend read layer was purely additive (no schema change, N+1-free); frontend grew to 435 tests.
+
+### What Worked
+- **Backend-first, then a reusable card, then compose**: proving the read layer N+1-free (24) and building one `PersonCard` (25) before `/detail` (26)/navigation (27)/admin (28) composed them meant every consumer used real reads and one card component — zero duplicate card UI.
+- **Parallel worktree waves** where files didn't overlap (29-01 backend + 29-02 frontend ran concurrently; 24/25 too), serializing only on genuine dependencies — the manifest-scoped cleanup helper merged them safely.
+- **Code review + verifier caught what green tests structurally cannot — again**: 29's WCAG gate was text-only, so the reviewer *and* the independent verifier both flagged the residual gender-**border** non-text contrast gap (WCAG 1.4.11, invisible to jest-axe under jsdom). The recurring v2.0/v3.0 pattern held.
+- **Honest close gate (D-05)**: a shared `isMariaDB()` helper made the two MySQL-8.4-specific concurrency tests visibly self-skip locally with documented reasons instead of faking "100% green" — CI still runs them unconditionally.
+- **Human-verify checkpoint for paint/layout** (29-04, `autonomous:false`): the two things jsdom can't do — mobile reflow and a *painted* focus ring — were an explicit blocking gate, not pretended.
+
+### What Was Inefficient
+- **A deprecated-component silent no-op survived two phases**: `GenerationGrid` imported MUI's legacy `Grid` (not `Grid2`), so its `size` breakpoint prop did nothing — the grid never actually reflowed. Built in Phase 27, only caught in Phase 29's a11y pass. The Phase 27 tests asserted the breakpoint *CSS rules existed in markup*, which passed even though the component ignored them.
+- **The contrast gate was scoped to text pairs only**, so it gave a green signal while a non-text border contrast failure (WR-01) sat right beside the text it did check — a gate that looks comprehensive but isn't.
+- **Milestone tooling papercuts**: two SUMMARY `one_liner` fields were a bare filepath / null, so the auto-generated MILESTONES.md entry had a junk accomplishment (hand-fixed); and the REQUIREMENTS.md traceability *table* stayed "Not started" even though every checkbox was `[x]` (a display-vs-checkbox desync the verifier flagged, fixed in the archive).
+
+### Patterns Established
+- **Cross-engine test honesty**: engine-detect (`isMariaDB()`) + visible `ctx.skip` with a documented reason, so a local dev DB that differs from CI never silently weakens or fakes the suite.
+- **Code-enforced a11y gates** (`jest-axe` zero-violations + a `wcag-contrast` unit test importing the *actual* component color constants, not re-derived copies) as regression guards.
+- **A responsive/visual test must prove the component *applies* the behavior**, not merely that the CSS rule is present — presence-only assertions pass through silent-no-op bugs.
+
+### Key Lessons
+- Deprecated components can accept props and silently ignore them; assert observable behavior (does it reflow?) over structural presence (is the rule in the markup?).
+- Scope a quality gate to a criterion and it will be blind right next to what it checks — a text-contrast gate says nothing about non-text contrast (WCAG 1.4.11); name the scope explicitly and track the rest.
+- Auto-generated milestone artifacts inherit upstream data-quality issues (a bad SUMMARY one-liner, a stale traceability column) — worth a quick review pass at close rather than trusting the CLI output verbatim.
+
+### Cost Observations
+- Model mix: Opus orchestration + Sonnet executors/verifier/reviewer; parallel worktree waves where safe, sequential main-tree for the interactive checkpoint plan.
+- Notable: the a11y phase paid for itself by surfacing a real production responsive bug (`Grid`→`Grid2`) that had shipped silently two phases earlier — the automated axe/contrast gates plus the adversarial code review are now the reliable "what did green miss" net across every milestone.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
