@@ -32,6 +32,16 @@ import MemberAvatarImage from '../manage/MemberAvatarImage.jsx';
 // `undefined` and drop the ring entirely).
 const RING_STYLE = { Male: 'solid', Female: 'dashed', Other: 'dotted' };
 
+// WCAG AA text-color fix (A11Y-01/D-03): the raw genderTint/colors.slate tokens fail 4.5:1
+// against the card's own translucent background (male 3.13:1, female 2.97:1, role label
+// 4.01-4.05:1) -- these darker, local-only constants replace them for text usage without
+// touching the shared MALE_TINT/FEMALE_TINT/colors.slate tokens /family also consumes.
+export const TEXT_TINT = { Male: '#1e40af', Female: '#9d174d', Other: '#334155' };
+// Living/Deceased chip text fix: MUI's outlined Chip renders `success.main` at full opacity
+// as text (only the border gets alpha) -- as low as 2.16:1 against the card background.
+// Used only for the isAlive===true branch; the Deceased/default branch is untouched.
+export const CHIP_TEXT_ALIVE = '#065f46';
+
 function childCountLabel(count) {
   return count === 1 ? '1 child' : `${count} children`;
 }
@@ -102,8 +112,7 @@ function PersonCardSingle({ member, role, isSpouse = false, expanded, onExpand, 
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 1.5,
-        '&:focus-visible': { outline: `2px solid ${colors.primary}`, outlineOffset: '2px' }
+        gap: 1.5
       }}
     >
       {member.canEdit === true && (
@@ -168,18 +177,36 @@ function PersonCardSingle({ member, role, isSpouse = false, expanded, onExpand, 
         </Typography>
 
         {geez && (
-          <Typography sx={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, color: genderTint }} lang={geez.lang} noWrap>
+          <Typography
+            sx={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, color: TEXT_TINT[genderLabel] ?? TEXT_TINT.Other }}
+            lang={geez.lang}
+            noWrap
+          >
             {geez.text}
           </Typography>
         )}
 
         {role && (
-          <Typography sx={{ fontSize: 12, fontWeight: 700, lineHeight: 1.4, letterSpacing: '0.04em', color: colors.slate }}>
+          <Typography
+            sx={{
+              fontSize: 12,
+              fontWeight: 700,
+              lineHeight: 1.4,
+              letterSpacing: '0.04em',
+              color: TEXT_TINT[genderLabel] ?? TEXT_TINT.Other
+            }}
+          >
             {role}
           </Typography>
         )}
 
-        <Chip size="small" label={isAlive ? 'Living' : 'Deceased'} color={isAlive ? 'success' : 'default'} variant="outlined" />
+        <Chip
+          size="small"
+          label={isAlive ? 'Living' : 'Deceased'}
+          color={isAlive ? 'success' : 'default'}
+          variant="outlined"
+          sx={isAlive ? { color: CHIP_TEXT_ALIVE, borderColor: CHIP_TEXT_ALIVE } : undefined}
+        />
       </Box>
 
       {showExpand && (
