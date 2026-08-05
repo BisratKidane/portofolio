@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'jest-axe';
 import PersonSearch from './PersonSearch.jsx';
 
 vi.mock('../../api/graphqlClient.js', () => ({
@@ -31,6 +32,38 @@ beforeEach(() => {
 });
 
 describe('PersonSearch', () => {
+  // A11Y-01: axe-core zero-violations (portal-aware) + tab-reachability (Plan 29-03)
+  describe('accessibility', () => {
+    it(
+      'has no axe accessibility violations with the suggestion popper open',
+      async () => {
+        graphqlRequest.mockResolvedValue({ searchFamilyMembers: [MEMBER] });
+        const { baseElement } = render(<PersonSearch onSelect={vi.fn()} />);
+        const input = screen.getByLabelText('Search by name');
+        await userEvent.click(input);
+        await userEvent.type(input, 'Byron');
+        await screen.findByText('Byron Lovelace');
+
+        // baseElement, not container -- the Autocomplete listbox popper is
+        // portaled to document.body while open. The 'region' rule is
+        // disabled: it fires because this test mounts PersonSearch in
+        // isolation (no surrounding <main>/app-shell landmark), which is a
+        // known jest-axe false positive for component/page-level testing,
+        // not a real accessibility defect in PersonSearch itself.
+        const results = await axe(baseElement, { rules: { region: { enabled: false } } });
+        expect(results).toHaveNoViolations();
+      },
+      10000
+    );
+
+    it('tabs into the search input as a normal focusable field', async () => {
+      const user = userEvent.setup();
+      render(<PersonSearch onSelect={vi.fn()} />);
+      await user.tab();
+      expect(screen.getByLabelText('Search by name')).toHaveFocus();
+    });
+  });
+
   it('does not fetch below the 2-char minimum threshold', async () => {
     render(<PersonSearch onSelect={vi.fn()} />);
     const input = screen.getByLabelText('Search by name');

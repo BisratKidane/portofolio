@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { axe } from 'jest-axe';
 import GenerationGrid from './GenerationGrid.jsx';
 
 vi.mock('../../api/photoClient.js', () => ({
@@ -37,6 +38,28 @@ function renderGrid(overrides = {}) {
 }
 
 describe('GenerationGrid', () => {
+  // A11Y-01: axe-core zero-violations + SC-3 responsive breakpoint proof (Plan 29-03)
+  describe('accessibility + responsive', () => {
+    it(
+      'has no axe accessibility violations for a 3-card generation row',
+      async () => {
+        const { container } = renderGrid({ people: [makePerson('1'), makePerson('2'), makePerson('3')] });
+        const results = await axe(container);
+        expect(results).toHaveNoViolations();
+      },
+      10000
+    );
+
+    it('generates real @media rules for the sm (600px) and md (900px) breakpoints used by the grid', () => {
+      renderGrid({ people: [makePerson('1'), makePerson('2'), makePerson('3')] });
+      const styleText = Array.from(document.querySelectorAll('style'))
+        .map((s) => s.textContent)
+        .join('\n');
+      expect(styleText).toMatch(/@media \(min-width:\s*600px\)/);
+      expect(styleText).toMatch(/@media \(min-width:\s*900px\)/);
+    });
+  });
+
   // Card count for people arrays of length 1, 2, 3
   it('renders exactly 1 PersonCard for 1 person', () => {
     const people = [makePerson('1')];

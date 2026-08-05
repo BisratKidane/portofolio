@@ -4,7 +4,14 @@
 // apex cue above it -- never one line per child card (D-06) -- communicating
 // "these children belong to the couple above." PersonCard (Phase 25) is
 // rendered unmodified; this file only composes it and forwards props.
-import { Box, CircularProgress, Grid } from '@mui/material';
+// D-06/SC-3 (A11Y-01): the legacy `Grid` export from '@mui/material' is
+// flexbox-only and silently ignores the `size={{ xs, sm, md }}` breakpoint
+// prop used below (it only reads top-level xs/sm/md props) -- discovered
+// via Plan 29-03's breakpoint-CSS-presence test, which proved zero @media
+// rules were ever generated. `Grid2` (aliased back to `Grid` to keep the
+// diff minimal) is the unified Grid that actually implements the `size`
+// API with real per-breakpoint @media rules.
+import { Box, CircularProgress, Grid2 as Grid } from '@mui/material';
 import { colors } from '../../theme.js';
 import PersonCard from './PersonCard.jsx';
 
