@@ -1,5 +1,6 @@
 // Custom xyflow node type rendering a FamilyMember card on the /family tree
-// (Phase 17, Plan 17-03; restyled by quick task 260726-sh4; card redesign 2026-08).
+// (Phase 17, Plan 17-03; restyled by quick task 260726-sh4; card redesign 2026-08;
+// depth pass by quick task 260826-k6r).
 // Two-column card: a 1/3-width avatar column + a text column holding an identity
 // pair (Latin name + native Ge'ez name) over a quieter metadata group (mother name
 // [Ge'ez-preferred] with a parent glyph, address-if-alive with a pin). The re-rooted
@@ -18,6 +19,78 @@ import { getGeezDisplay } from '../../utils/displayName.js';
 import { genderMeta } from '../../utils/genderTheme.js';
 import MemberAvatarImage from '../manage/MemberAvatarImage.jsx';
 
+// --- Depth system -----------------------------------------------------------
+// A card looks physical when its shadow has a real penumbra and its rim has
+// thickness. One blurry blob gives neither, so the elevation is composed from
+// cooperating layers:
+//   1. BEVEL      -- an inset lit top edge + shaded bottom edge, which is what
+//                    makes the 2px rim read as a machined edge rather than a
+//                    drawn outline. Listed first so it paints above the rest.
+//   2. *_ELEVATION -- a tight contact shadow (the card touching the canvas), a
+//                    mid ambient shadow, and a wide, heavily-offset falloff.
+//   3. a gender-tinted glow -- the light pooling under the card picks up the
+//                    card's own hue instead of being neutral grey.
+// Hover swaps the elevation for the raised set while the card translates up, so
+// the shadow grows and softens in step with the lift.
+const BEVEL = 'inset 0 1px 0 rgba(255,255,255,0.92), inset 0 -1px 0 rgba(15,23,42,0.07)';
+
+const REST_ELEVATION = [
+  '0 1px 1px rgba(15,23,42,0.05)',
+  '0 2px 4px -1px rgba(15,23,42,0.05)',
+  '0 8px 14px -6px rgba(15,23,42,0.10)',
+  '0 20px 32px -18px rgba(15,23,42,0.16)'
+].join(', ');
+
+const HOVER_ELEVATION = [
+  '0 2px 2px rgba(15,23,42,0.05)',
+  '0 6px 10px -2px rgba(15,23,42,0.07)',
+  '0 16px 26px -8px rgba(15,23,42,0.12)',
+  '0 34px 48px -22px rgba(15,23,42,0.22)'
+].join(', ');
+
+const LIFT_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
+// Composes the full box-shadow for a card. The focus-root ring goes first so it
+// sits on top of (rather than under) the elevation layers.
+function depthShadow(rimTint, { lifted = false, focusRoot = false } = {}) {
+  return [
+    focusRoot ? `0 0 0 3px ${colors.primary}59` : null,
+    BEVEL,
+    lifted ? HOVER_ELEVATION : REST_ELEVATION,
+    lifted ? `0 20px 30px -16px ${rimTint}59` : `0 12px 20px -14px ${rimTint}4d`
+  ]
+    .filter(Boolean)
+    .join(', ');
+}
+
+// Deepened gender hues, local to this card (the same local-override pattern
+// PersonCard.jsx uses for TEXT_TINT/CHIP_TEXT_ALIVE). genderMeta() keeps owning
+// the *soft* surface tint and the label; these darker variants are used only for
+// the rim and for gender-tinted text, where the raw MALE_TINT/FEMALE_TINT fail
+// contrast against the card's own pale background (v4.0 review item WR-01:
+// Female rim 2.97:1 vs the 3:1 non-text floor of WCAG 1.4.11; the Ge'ez name and
+// mother row sit under the 4.5:1 text floor of 1.4.3 for the same reason).
+// Shared tokens are deliberately untouched -- /manage and PersonCard read them.
+// Keyed off the normalized `genderLabel`, never the raw `member.gender`, so an
+// unrecognized value still resolves to a real colour instead of `undefined`.
+//
+// The rim is a three-stop gradient, not a flat line: it catches light along the
+// top edge and deepens toward the bottom, which is what makes a 2px border read
+// as a bevelled edge with thickness. Every stop stays at or above the 3:1
+// non-text floor on the card's own background, so the light end of the bevel is
+// still a valid gender cue -- and that light end is deliberately the familiar
+// MALE_TINT/FEMALE_TINT hue, so the card keeps the palette it always had while
+// gaining a defensible contrast floor.
+const RIM_GRADIENT = {
+  Male: ['#3b82f6', '#2563eb', '#1e40af'],
+  Female: ['#ec4899', '#db2777', '#9d174d'],
+  Other: ['#64748b', '#475569', '#334155']
+};
+// The mid stop, reused for the tinted glow under the card and the avatar-well
+// hairline so all three read as the same light source.
+const RIM_TINT = { Male: '#2563eb', Female: '#db2777', Other: '#475569' };
+const META_TINT = { Male: '#1d4ed8', Female: '#be185d', Other: '#475569' };
+
 const BADGE_SX = {
   position: 'absolute',
   left: '50%',
@@ -25,12 +98,43 @@ const BADGE_SX = {
   minWidth: 44,
   minHeight: 44,
   borderRadius: '50%',
-  bgcolor: colors.gradientSoft,
+  backgroundColor: colors.paper,
+  backgroundImage: colors.gradientSoft,
   color: colors.primaryDark,
   fontSize: 11,
   fontWeight: 700,
-  '&:hover': { bgcolor: colors.gradientSoft }
+  // The badges are raised pills in their own right -- they float above the card
+  // they hang off, so they get a lit top edge, a tinted hairline and their own
+  // contact + ambient shadows.
+  boxShadow: [
+    'inset 0 1px 0 rgba(255,255,255,0.95)',
+    `inset 0 0 0 1px ${colors.primary}33`,
+    '0 1px 1px rgba(15,23,42,0.06)',
+    '0 6px 12px -4px rgba(15,23,42,0.22)'
+  ].join(', '),
+  transition: `transform 160ms ${LIFT_EASING}, box-shadow 160ms ${LIFT_EASING}`,
+  '&:hover': {
+    backgroundImage: colors.gradientSoft,
+    // Must re-state the centring translate -- transform is not additive.
+    transform: 'translateX(-50%) translateY(-1px)',
+    boxShadow: [
+      'inset 0 1px 0 rgba(255,255,255,0.95)',
+      `inset 0 0 0 1px ${colors.primary}59`,
+      '0 1px 1px rgba(15,23,42,0.06)',
+      '0 10px 18px -6px rgba(15,23,42,0.28)'
+    ].join(', ')
+  },
+  '@media (prefers-reduced-motion: reduce)': {
+    transition: 'none',
+    '&:hover': { transform: 'translateX(-50%)' }
+  }
 };
+
+// The four edge attach points are geometry, not decoration: they are
+// `isConnectable={false}`, so the only thing their visible dot ever did was
+// interrupt the card's rim with four grey nubs. Keep the 6px box React Flow
+// measures edge endpoints from, drop the paint.
+const HANDLE_STYLE = { width: 6, height: 6, background: 'transparent', border: 'none' };
 
 // Tiny outline affordances that disambiguate the metadata rows: a parent glyph
 // on the mother's name (so a gender-tinted mother name can't be mistaken for the
@@ -79,6 +183,9 @@ export default function MemberNode({ data }) {
   const motherIsGeez = Boolean(member.mother?.geezFullname || member.geezMothersname);
   const showAddress = member.isAlive !== false && Boolean(member.address);
   const { label: genderLabel, tint: genderTint } = genderMeta(member.gender);
+  const rimTint = RIM_TINT[genderLabel] ?? RIM_TINT.Other;
+  const metaTint = META_TINT[genderLabel] ?? META_TINT.Other;
+  const [rimLit, , rimShaded] = RIM_GRADIENT[genderLabel] ?? RIM_GRADIENT.Other;
 
   return (
     <Paper
@@ -93,10 +200,24 @@ export default function MemberNode({ data }) {
         width: 252,
         height: 120,
         p: 0.75,
-        // Gender is colour-coded on the card itself (border + soft tint).
-        bgcolor: `${genderTint}14`,
-        border: `2px solid ${genderTint}`,
-        borderRadius: '11px',
+        cursor: 'pointer',
+        // Gender is colour-coded on the card itself (rim + soft tint). Both are
+        // now raking gradients rather than flat washes, sharing one light
+        // direction: the face is lit from the top-left and deepens toward the
+        // bottom-right, and the rim is lit and shaded to match. Three stacked
+        // background layers, painted first-on-top:
+        //   1. the gender tint, clipped to the padding box (the card face);
+        //   2. an opaque white base under it, so the card sits *on* the canvas
+        //      instead of dissolving into it;
+        //   3. the rim gradient, clipped to the border box -- which is what the
+        //      transparent 2px border reveals.
+        background: [
+          `linear-gradient(157deg, rgba(255,255,255,0) 0%, ${genderTint}12 46%, ${genderTint}2e 100%) padding-box`,
+          'linear-gradient(#ffffff, #ffffff) padding-box',
+          `linear-gradient(158deg, ${rimLit} 0%, ${rimTint} 52%, ${rimShaded} 100%) border-box`
+        ].join(', '),
+        border: '2px solid transparent',
+        borderRadius: '14px',
         position: 'relative',
         display: 'flex',
         alignItems: 'stretch',
@@ -104,13 +225,20 @@ export default function MemberNode({ data }) {
         boxSizing: 'border-box',
         outline: isViewer ? `2px solid ${colors.primary}` : 'none',
         outlineOffset: 2,
-        // The current tree "head" (re-rooted focus) gets a distinct glow so it's
-        // obvious which person the branch is rooted at; every other card gets a
-        // soft elevation shadow so the tree reads as a set of raised cards.
-        boxShadow: isFocusRoot
-          ? `0 0 0 3px ${colors.primary}66`
-          : '0 1px 2px rgba(15,23,42,0.05), 0 3px 12px rgba(15,23,42,0.05)',
-        '&:focus-visible': { outline: `2px solid ${colors.primary}`, outlineOffset: '2px' }
+        // The current tree "head" (re-rooted focus) gets a distinct ring on top
+        // of the shared elevation, so it reads as *the same kind of object,
+        // highlighted* rather than a differently-rendered card.
+        boxShadow: depthShadow(rimTint, { focusRoot: isFocusRoot }),
+        transition: `transform 180ms ${LIFT_EASING}, box-shadow 180ms ${LIFT_EASING}`,
+        '&:hover': {
+          transform: 'translateY(-3px)',
+          boxShadow: depthShadow(rimTint, { lifted: true, focusRoot: isFocusRoot })
+        },
+        '&:focus-visible': { outline: `2px solid ${colors.primary}`, outlineOffset: '2px' },
+        '@media (prefers-reduced-motion: reduce)': {
+          transition: 'none',
+          '&:hover': { transform: 'none' }
+        }
       }}
     >
       {/* Edge attach points. Parent->child edges leave a parent's bottom
@@ -125,28 +253,28 @@ export default function MemberNode({ data }) {
         type="target"
         position={Position.Top}
         isConnectable={false}
-        style={{ width: 6, height: 6, background: colors.line, border: 'none' }}
+        style={HANDLE_STYLE}
       />
       <Handle
         id="parent-source"
         type="source"
         position={Position.Bottom}
         isConnectable={false}
-        style={{ width: 6, height: 6, background: colors.line, border: 'none' }}
+        style={HANDLE_STYLE}
       />
       <Handle
         id="spouse-source"
         type="source"
         position={Position.Right}
         isConnectable={false}
-        style={{ width: 6, height: 6, background: colors.line, border: 'none' }}
+        style={HANDLE_STYLE}
       />
       <Handle
         id="spouse-target"
         type="target"
         position={Position.Left}
         isConnectable={false}
-        style={{ width: 6, height: 6, background: colors.line, border: 'none' }}
+        style={HANDLE_STYLE}
       />
 
       {ancestorHiddenCount > 0 && (
@@ -164,15 +292,34 @@ export default function MemberNode({ data }) {
       )}
 
       {/* Left column: the photo fills the whole 1/3-width column, full height,
-          cropping/zooming to cover (object-fit: cover via the Avatar). */}
+          cropping/zooming to cover (object-fit: cover via the Avatar). It reads
+          as a well *carved into* the raised card — the opposite depth direction
+          from the card itself, which is what sells both. The inner shadow and
+          hairline live on an ::after overlay because a plain `inset` box-shadow
+          on this Box would be painted underneath the <img>, which covers the
+          box edge to edge. */}
       <Box
         sx={{
           flex: '0 0 33%',
           alignSelf: 'stretch',
           minWidth: 0,
+          position: 'relative',
+          // Concentric with the card: 14px outer - 2px rim - 6px padding = 6px,
+          // rounded up a hair so the well reads soft rather than machined-sharp.
           borderRadius: '7px',
           overflow: 'hidden',
-          boxShadow: 'inset 0 0 0 1px rgba(15,23,42,0.08)'
+          bgcolor: `${genderTint}1a`,
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 'inherit',
+            pointerEvents: 'none',
+            // A faint top-left sheen (glass over the recess) plus the inner
+            // shadow and a gender hairline that ties the well to the rim.
+            background: 'linear-gradient(200deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0) 46%)',
+            boxShadow: `inset 0 2px 4px rgba(15,23,42,0.34), inset 0 0 0 1px ${rimTint}59`
+          }
         }}
       >
         <MemberAvatarImage member={member} variant="rounded" fill />
@@ -191,12 +338,12 @@ export default function MemberNode({ data }) {
       >
         {/* The viewer is identified by the card's double border (gender border +
             viewer outline ring), so no separate "You" chip is needed. */}
-        <Typography sx={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', lineHeight: 1.25, color: colors.ink }} noWrap>
+        <Typography sx={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.012em', lineHeight: 1.25, color: colors.ink }} noWrap>
           {member.fullname}
         </Typography>
 
         {geez && (
-          <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, color: genderTint }} lang={geez.lang} noWrap>
+          <Typography sx={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2, color: metaTint }} lang={geez.lang} noWrap>
             {geez.text}
           </Typography>
         )}
@@ -205,8 +352,8 @@ export default function MemberNode({ data }) {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1px', mt: 0.75, minWidth: 0 }}>
             {motherName && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
-                <MotherIcon color={genderTint} />
-                <Typography sx={{ fontSize: 12, fontWeight: 600, color: genderTint }} lang={motherIsGeez ? 'ti' : undefined} noWrap>
+                <MotherIcon color={metaTint} />
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: metaTint }} lang={motherIsGeez ? 'ti' : undefined} noWrap>
                   {motherName}
                 </Typography>
               </Box>
