@@ -140,6 +140,88 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
     4. A self-registered account cannot reach any authenticated resolver until both gates pass — proven against the resolvers, not just the client-side route guard.
     5. `npm test --workspaces` is green.
 
+## Phase Details
+
+### Phase 30: Approval Moves to the Account
+
+**Goal**: Approve and reject act on the account itself — `User.status` — instead of on an invitation row, with approval/rejection emails, audit logging, and admin-only enforcement all preserved, and the existing invitation flow behaving exactly as it did before.
+**Depends on**: Nothing new (first v4.1 phase; builds on the existing invitation/approval flow, `requireAdmin`, audit log, and mailer)
+**Requirements**: APPR-01, APPR-03, APPR-04, APPR-05, INVITE-04
+**Success Criteria** (what must be TRUE):
+
+  1. An admin approves a pending account by account id and that person can sign in; rejecting blocks sign-in with the existing message.
+  2. Approval and rejection emails still send, and both actions are written to the audit log with the acting admin and target account.
+  3. A non-admin calling approve or reject is refused server-side.
+  4. Existing invitation rows still render with their inviter, status, and timestamps — including ones sent by non-admin members.
+  5. The backend suite passes with the invitation flow behaving exactly as it did before.
+
+**Plans**: TBD
+
+### Phase 31: Invitations Become Admin-Only
+
+**Goal**: Every invitation is admin-issued — non-admin members can no longer create one server-side, nor see the UI offering it — so an invited person, vouched for by the admin who invited them, activates on email verification alone and never occupies the approval queue.
+**Depends on**: Phase 30 (approval must already live on the account before invited registrants can be exempted from it)
+**Requirements**: INVITE-01, INVITE-02, INVITE-03
+**Success Criteria** (what must be TRUE):
+
+  1. A linked non-admin member calling `createInvitation` is refused server-side, not merely hidden from.
+  2. A non-admin no longer sees the invite form or a nav entry offering it; an admin sees it unchanged.
+  3. Someone who registers through an admin invitation and verifies their email can sign in with no admin action in between.
+  4. The approval queue no longer contains invited registrants — only accounts that still need a judgement.
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+### Phase 32: Tokenless Registration
+
+**Goal**: `register` accepts a call with no invitation token and safely creates a `Pending`, unverified account — reusing the invited path's password rules, email normalisation, and verification-token handling, with enumeration-safe responses, admin notification on verification, and the existing per-IP rate limit applied.
+**Depends on**: Phase 31 (the invite path is settled first, so the approval queue has exactly one kind of occupant before the public door opens)
+**Requirements**: REG-02, REG-03, REG-05, REG-06, REG-07, SEC-01, SEC-02, SEC-03
+**Success Criteria** (what must be TRUE):
+
+  1. `register` with no token creates a `Pending`, unverified account from the user's own email, storing the relationship note.
+  2. An email that already has an account gets a response indistinguishable from one that does not, and the real owner is emailed that someone tried to register with their address.
+  3. An unverified self-registration is absent from the approval queue; verifying the email puts it there and notifies administrators.
+  4. Password rules, email normalisation, and verification-token handling on the tokenless path run the same code as the invited path — no second, weaker implementation.
+  5. The existing per-IP registration rate limit applies to the tokenless path, and the relationship note is length-capped server-side.
+
+**Plans**: TBD
+
+### Phase 33: Public Signup Form & Approval Queue
+
+**Goal**: The two surfaces people actually touch — `/register` with no token renders a public signup form that tells the person plainly what happens next, and admins get a queue listing each waiting account with the context needed to judge it, both built from the app's existing components.
+**Depends on**: Phase 32 (the tokenless `register` mutation and the queue-visibility rules must exist before any UI can call them)
+**Requirements**: REG-01, REG-04, APPR-02, APPR-06
+**Success Criteria** (what must be TRUE):
+
+  1. `/register` with no token renders a signup form (name, email, password, required relationship note) instead of the invitation-only dead end.
+  2. Submitting it tells the person plainly what happens next: verify your email, then an administrator reviews your request.
+  3. The admin queue lists each waiting account with name, email, relationship note, and registration time, and approve/reject work from there.
+  4. An approved self-registrant who is not yet linked to a family member lands on the existing `/pending` screen.
+  5. Loading, empty, and failed states render through the app's existing components — never a broken or empty panel.
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+### Phase 34: Open-Registration Switch & Quality Gate
+
+**Goal**: The door can be closed — an admin turns public signup off from inside the app and the server refuses tokenless registration — and the security boundaries of the whole milestone are proven by adversarial tests against the resolvers, with the full workspace suite green.
+**Depends on**: Phase 33 (the full open-registration path must be in place before it can be gated and adversarially tested)
+**Requirements**: ADMIN-01, ADMIN-02, ADMIN-03, SEC-04, SEC-05
+**Success Criteria** (what must be TRUE):
+
+  1. An admin turns public signup off from inside the app and a tokenless `register` call is refused server-side; `/register` returns to the invitation-only message.
+  2. The current on/off state is visible to admins wherever they can change it.
+  3. Adversarial tests prove a non-admin cannot invite, approve, or reject, and cannot register tokenless while the switch is off.
+  4. A self-registered account cannot reach any authenticated resolver until both gates pass — proven against the resolvers, not just the client-side route guard.
+  5. `npm test --workspaces` is green.
+
+**Plans**: TBD
+
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order (v4.1):**
