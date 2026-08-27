@@ -158,8 +158,16 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
 **Plans:** 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 30-01-PLAN.md — User model approval columns (D-04) + migration 019 (scratch-DB proof + human-verified apply to local dev DB)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 30-02-PLAN.md — Relocate approveInvitation/rejectInvitation into account-addressed approveUser/rejectUser (D-01..D-09), delete old mutations, wire barrels
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 30-03-PLAN.md — Backend test coverage: retarget existing approveReject.test.js + new D-07/D-08-D-09/no-invitation-path coverage, full suite green (SC-5)
 - [ ] 30-04-PLAN.md — Rewire ApprovalsPage to approveUser/rejectUser (D-10) + D-11 disabled state for unverified rows
 
