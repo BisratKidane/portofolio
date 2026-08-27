@@ -155,7 +155,13 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
   4. Existing invitation rows still render with their inviter, status, and timestamps — including ones sent by non-admin members.
   5. The backend suite passes with the invitation flow behaving exactly as it did before.
 
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 30-01-PLAN.md — User model approval columns (D-04) + migration 019 (scratch-DB proof + human-verified apply to local dev DB)
+- [ ] 30-02-PLAN.md — Relocate approveInvitation/rejectInvitation into account-addressed approveUser/rejectUser (D-01..D-09), delete old mutations, wire barrels
+- [ ] 30-03-PLAN.md — Backend test coverage: retarget existing approveReject.test.js + new D-07/D-08-D-09/no-invitation-path coverage, full suite green (SC-5)
+- [ ] 30-04-PLAN.md — Rewire ApprovalsPage to approveUser/rejectUser (D-10) + D-11 disabled state for unverified rows
 
 ### Phase 31: Invitations Become Admin-Only
 
@@ -258,7 +264,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete    | 2026-08-04 |
 | 28. Admin Actions on /detail | v4.0 | 5/5 | Complete    | 2026-08-04 |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
-| 30. Approval Moves to the Account | v4.1 | 0/– | Not started | — |
+| 30. Approval Moves to the Account | v4.1 | 0/4 | Not started | — |
 | 31. Invitations Become Admin-Only | v4.1 | 0/– | Not started | — |
 | 32. Tokenless Registration | v4.1 | 0/– | Not started | — |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
