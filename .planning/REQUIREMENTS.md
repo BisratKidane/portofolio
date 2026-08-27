@@ -91,4 +91,28 @@ Explicit exclusions with reasoning:
 
 | Requirement | Phase |
 |-------------|-------|
-| _(filled in by the roadmap)_ | |
+| REG-01 | Phase 33 |
+| REG-02 | Phase 32 |
+| REG-03 | Phase 32 |
+| REG-04 | Phase 33 |
+| REG-05 | Phase 32 |
+| REG-06 | Phase 32 |
+| REG-07 | Phase 32 |
+| INVITE-01 | Phase 31 |
+| INVITE-02 | Phase 31 |
+| INVITE-03 | Phase 31 |
+| INVITE-04 | Phase 30 |
+| APPR-01 | Phase 30 |
+| APPR-02 | Phase 33 |
+| APPR-03 | Phase 30 |
+| APPR-04 | Phase 30 |
+| APPR-05 | Phase 30 |
+| APPR-06 | Phase 33 |
+| ADMIN-01 | Phase 34 |
+| ADMIN-02 | Phase 34 |
+| ADMIN-03 | Phase 34 |
+| SEC-01 | Phase 32 |
+| SEC-02 | Phase 32 |
+| SEC-03 | Phase 32 |
+| SEC-04 | Phase 34 |
+| SEC-05 | Phase 34 |

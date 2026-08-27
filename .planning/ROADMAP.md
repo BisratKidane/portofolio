@@ -1,4 +1,4 @@
-# Roadmap: Portfolio Auth App — Testing Foundation, Collaborative Family Tree, Ge'ez Native-Script Names & Family Detail Navigation
+# Roadmap: Portfolio Auth App — Testing Foundation, Collaborative Family Tree, Ge'ez Native-Script Names, Family Detail Navigation & Open Registration
 
 ## Milestones
 
@@ -7,6 +7,7 @@
 - ✅ **v2.0 Collaborative Family Tree** — Phases 12–17 (shipped 2026-07-25)
 - ✅ **v3.0 Ge'ez Native-Script Names** — Phases 18–23 (shipped 2026-07-31)
 - ✅ **v4.0 Family Detail & Descendant Navigation** — Phases 24–29 (shipped 2026-08-05)
+- 🔨 **v4.1 Open Registration with Approval** — Phases 30–34 (in progress)
 
 ## Phases
 
@@ -89,10 +90,60 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
 
 </details>
 
+### 🔨 v4.1 Open Registration with Approval (Phases 30–34) — IN PROGRESS
+
+**Milestone Goal:** A visitor can create an account without an invitation, but the account stays inert until they verify their email **and** an administrator approves them as family — while an invited person, vouched for by the admin who invited them, activates on email verification alone.
+
+**Build order rationale:** approval moves onto the account *first*, while the invite flow is still its only producer, so that refactor is provably behaviour-preserving before anything new depends on it. The invite path is settled next (admin-only, no approval) so the queue has exactly one kind of occupant before the public door opens. Backend precedes UI throughout, per the project's TDD convention.
+
+- [ ] **Phase 30: Approval Moves to the Account** — approve/reject act on `User.status`, not on an invitation row
+  - Requirements: APPR-01, APPR-03, APPR-04, APPR-05, INVITE-04
+  - Success criteria:
+    1. An admin approves a pending account by account id and that person can sign in; rejecting blocks sign-in with the existing message.
+    2. Approval and rejection emails still send, and both actions are written to the audit log with the acting admin and target account.
+    3. A non-admin calling approve or reject is refused server-side.
+    4. Existing invitation rows still render with their inviter, status, and timestamps — including ones sent by non-admin members.
+    5. The backend suite passes with the invitation flow behaving exactly as it did before.
+
+- [ ] **Phase 31: Invitations Become Admin-Only** — every invitation is admin-issued, so an invited person can safely skip approval
+  - Requirements: INVITE-01, INVITE-02, INVITE-03
+  - Success criteria:
+    1. A linked non-admin member calling `createInvitation` is refused server-side, not merely hidden from.
+    2. A non-admin no longer sees the invite form or a nav entry offering it; an admin sees it unchanged.
+    3. Someone who registers through an admin invitation and verifies their email can sign in with no admin action in between.
+    4. The approval queue no longer contains invited registrants — only accounts that still need a judgement.
+
+- [ ] **Phase 32: Tokenless Registration** — `register` can create an account with no invitation, safely
+  - Requirements: REG-02, REG-03, REG-05, REG-06, REG-07, SEC-01, SEC-02, SEC-03
+  - Success criteria:
+    1. `register` with no token creates a `Pending`, unverified account from the user's own email, storing the relationship note.
+    2. An email that already has an account gets a response indistinguishable from one that does not, and the real owner is emailed that someone tried to register with their address.
+    3. An unverified self-registration is absent from the approval queue; verifying the email puts it there and notifies administrators.
+    4. Password rules, email normalisation, and verification-token handling on the tokenless path run the same code as the invited path — no second, weaker implementation.
+    5. The existing per-IP registration rate limit applies to the tokenless path, and the relationship note is length-capped server-side.
+
+- [ ] **Phase 33: Public Signup Form & Approval Queue** — the two surfaces people actually touch
+  - Requirements: REG-01, REG-04, APPR-02, APPR-06
+  - Success criteria:
+    1. `/register` with no token renders a signup form (name, email, password, required relationship note) instead of the invitation-only dead end.
+    2. Submitting it tells the person plainly what happens next: verify your email, then an administrator reviews your request.
+    3. The admin queue lists each waiting account with name, email, relationship note, and registration time, and approve/reject work from there.
+    4. An approved self-registrant who is not yet linked to a family member lands on the existing `/pending` screen.
+    5. Loading, empty, and failed states render through the app's existing components — never a broken or empty panel.
+
+- [ ] **Phase 34: Open-Registration Switch & Quality Gate** — the door can be closed, and the boundaries are proven
+  - Requirements: ADMIN-01, ADMIN-02, ADMIN-03, SEC-04, SEC-05
+  - Success criteria:
+    1. An admin turns public signup off from inside the app and a tokenless `register` call is refused server-side; `/register` returns to the invitation-only message.
+    2. The current on/off state is visible to admins wherever they can change it.
+    3. Adversarial tests prove a non-admin cannot invite, approve, or reject, and cannot register tokenless while the switch is off.
+    4. A self-registered account cannot reach any authenticated resolver until both gates pass — proven against the resolvers, not just the client-side route guard.
+    5. `npm test --workspaces` is green.
+
 ## Progress
 
-**Execution Order (v4.0):**
-Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
+**Execution Order (v4.1):**
+Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -125,3 +176,8 @@ Phases execute in numeric order: 24 → 25 → 26 → 27 → 28 → 29.
 | 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete    | 2026-08-04 |
 | 28. Admin Actions on /detail | v4.0 | 5/5 | Complete    | 2026-08-04 |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
+| 30. Approval Moves to the Account | v4.1 | 0/– | Not started | — |
+| 31. Invitations Become Admin-Only | v4.1 | 0/– | Not started | — |
+| 32. Tokenless Registration | v4.1 | 0/– | Not started | — |
+| 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
+| 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
