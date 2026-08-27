@@ -436,14 +436,14 @@ Confirmed via `grep -rln "invitation\.approved\|invitation\.rejected\|invitation
 
 **All other claims in this research are `[VERIFIED]`** via direct `Read`/`Bash grep`/`cat` of the actual files in this repository at commit time — this is a brownfield-move phase, not a technology-selection phase, so almost nothing here rests on training-data knowledge or external documentation. No package versions were sourced from training data or WebSearch; all versions above came from reading `package.json`/`npm ls` directly in this repo.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should the new `approval.resolver.js` also relocate the `pendingRegistrations` query, or does it stay in `invitation.resolver.js`?**
+1. **RESOLVED: Should the new `approval.resolver.js` also relocate the `pendingRegistrations` query, or does it stay in `invitation.resolver.js`?**
    - What we know: D-10 says "`pendingRegistrations` stays invitation-shaped" and CONTEXT.md's canonical refs list `invitation.schema.js` as owning "the mutations being removed and the `pendingRegistrations` query that stays" — this reads as staying in the invitation module.
    - What's unclear: whether "stays" means "stays in `invitation.resolver.js`" (my reading) or "stays conceptually the same but could physically live anywhere."
    - Recommendation: keep `pendingRegistrations` in `invitation.resolver.js`/`invitation.schema.js` exactly where it is today — this matches the plain-reading of D-10 and requires zero file movement for a query this phase explicitly says is out of scope to change.
 
-2. **Does the D-08/D-09 error message need to be distinct for approve vs. reject, or can both share one string?**
+2. **RESOLVED: Does the D-08/D-09 error message need to be distinct for approve vs. reject, or can both share one string?**
    - What we know: CONTEXT.md's Claude's Discretion section covers "error message wording" generally; D-09 states "one symmetric rule for both actions."
    - What's unclear: whether "symmetric rule" implies identical wording or just identical logic.
    - Recommendation: one shared message/guard function (e.g., a small local helper called from both mutations) — minimizes duplication and matches the "one rule, not two" philosophy stated explicitly in CONTEXT.md's Specific Ideas section.
