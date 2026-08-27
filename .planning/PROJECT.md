@@ -2,13 +2,39 @@
 
 ## What This Is
 
-A full-stack authentication application built as a portfolio piece: a React + MUI single-page frontend talking to an Express + Apollo GraphQL backend, with user accounts persisted in MySQL via Sequelize. It ships email-verified registration, JWT login with server-side session revocation, rate-limited auth mutations, protected routes, a dashboard, and (as of v1.0) a full-stack automated test suite enforced in CI. As of v1.1 the security posture is hardened — the account-takeover, brute-force, stale-session, and first-user-ADMIN privilege-escalation vulnerabilities that v1.0 deliberately documented are remediated. As of v2.0 it is a collaborative family-tree app (membership-gated `/manage` editing + a pan/zoom `/family` tree), and as of v3.0 family members can carry their name in Ge'ez script (ግዕዝ) alongside Latin, rendered with a self-hosted Ethiopic webfont so it displays correctly on every device.
+A full-stack authentication application built as a portfolio piece: a React + MUI single-page frontend talking to an Express + Apollo GraphQL backend, with user accounts persisted in MySQL via Sequelize. It ships email-verified registration, JWT login with server-side session revocation, rate-limited auth mutations, protected routes, a dashboard, and (as of v1.0) a full-stack automated test suite enforced in CI. As of v1.1 the security posture is hardened — the account-takeover, brute-force, stale-session, and first-user-ADMIN privilege-escalation vulnerabilities that v1.0 deliberately documented are remediated. As of v2.0 it is a collaborative family-tree app (membership-gated `/manage` editing + a pan/zoom `/family` tree), as of v3.0 family members can carry their name in Ge'ez script (ግዕዝ) alongside Latin, rendered with a self-hosted Ethiopic webfont so it displays correctly on every device, and as of v4.0 a `/detail` page opens on the family head and walks descendants generation by generation. Account creation is invitation-only: an admin issues a one-time email invitation, the invitee registers and verifies, and an admin approves before login works — a system built after v4.0 outside the milestone flow and first formalised in v4.1, which opens a second, self-service door behind the same approval gate.
 
 ## Core Value
 
 Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
 
-## Current Milestone: v4.0 Family Detail & Descendant Navigation
+## Current Milestone: v4.1 Open Registration with Approval
+
+**Goal:** A visitor can create an account without an invitation, but the account stays inert until they verify their email **and** an administrator approves them as family — while an invited person, already vouched for by the admin who invited them, activates on email verification alone.
+
+**The shape of it.** Today `/register` without a token is a dead end reading *"Agne is invitation-only"*, and `register(token!, ...)` takes the invitee's email from the invitation row. Approval acts on the **Invitation**, which then flips `User.status` to `Active`. This milestone opens a second door and, in doing so, makes approval mean exactly one thing: **is this stranger actually family?**
+
+| | Invited | Self-registered |
+|---|---|---|
+| Entry | `/register?token=…` | `/register` (public form) |
+| Email source | the invitation | user-supplied, must be verified |
+| After email verification | → `Active` automatically | → `Pending`, enters the admin queue |
+| Admin approval | **no longer required** (change) | **required** |
+| Family-member link | required (existing `/pending` gate) | required (existing `/pending` gate) |
+
+**Target features:**
+- **Public signup form** — `/register` with no token becomes a real form: name, email, password, and a **required** "how are you related to the family?" note, which is the only context an admin has to judge a stranger on.
+- **Tokenless `register`** — the token becomes optional. The invited path still takes the email from the invitation; the self-registration path takes it from the user and proves ownership by verification.
+- **Approval only for self-registrations** — an admin who sent an invitation has already vouched for that person; making them approve again is redundant. Invited + email-verified now activates automatically.
+- **Approve the User, not an invitation** — `approveUser`/`rejectUser` act on `User.status`, which is already the real login gate. A self-registrant has no invitation, and writing an "invitation" row for someone nobody invited would be a lie in the schema.
+- **Verification gates the queue** — a self-registration is invisible to admins until the email is verified, so the queue only ever holds people who proved they own the address.
+- **Admin toggle for open registration** — close public signup back to invite-only from inside the app, without a redeploy, if it is ever abused.
+- **No email-enumeration oracle on the public path** — `register` currently answers *"An account with this email already exists"*, which on an unauthenticated form lets anyone probe which addresses have accounts. The public path returns the same response either way and tells the real owner by email.
+- **Abuse controls** — the existing per-IP rate limit (`register`: 5/hour) extended to cover the tokenless path.
+
+**Explicitly out of scope this milestone:** merging approval and family-member linking into one step (they stay separate — a self-registered user still lands on `/pending` until an admin links them via the existing `/link-accounts` flow, which already links to an existing member *or* creates a bare member); a migration for users stranded mid-invite (production was checked: 3 Active, 0 Pending — nobody is in that state); CAPTCHA or third-party bot detection; self-service family-member claiming; changing the login gate, `/pending`, or `/link-accounts`.
+
+## Shipped Milestone: v4.0 Family Detail & Descendant Navigation (2026-08-05)
 
 **Goal:** A new `/detail` page (for all authenticated users) that opens on the family head in a reusable person card, lets you search by Latin **and** Ge'ez first/last name to reset the main person, and expand children → grandchildren on demand — capped at three generations with a forward-shift as you navigate deeper — showing each displayed person's spouse(s) alongside them, with admin-only add-child/add-spouse and edit (all backend-enforced, reusing existing flows), loaded lazily.
 
@@ -112,7 +138,7 @@ Changes to the app can be made with confidence — auth and core flows are prote
 
 <!-- v1.0/v1.1/v2.0/v3.0/v4.0 all shipped (see Validated above + milestones/ archive). No next milestone scoped yet — run /gsd:new-milestone to define one (questioning → research → requirements → roadmap). -->
 
-- _(none — v4.0 shipped 2026-08-05; next milestone requirements defined via `/gsd:new-milestone`)_
+- v4.1 Open Registration with Approval — see `.planning/REQUIREMENTS.md` (REG-*, APPR-*, ADMIN-*, SEC-*). Phases 30+ in `.planning/ROADMAP.md`.
 
 ### Out of Scope
 
@@ -235,4 +261,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-05 after the v4.0 Family Detail & Descendant Navigation milestone — shipped and archived (Phases 24–29, 20 plans). `/detail` opens on the family head in a reusable PersonCard, supports Latin+Ge'ez search, expands descendants by generation (3-gen cap + forward-shift, lazy + cached), shows spouses, and offers backend-enforced admin edit/add — keyboard-operable and screen-legible, closing with the full suite green under an honest MariaDB-skip caveat. Roadmap + requirements archived to `milestones/v4.0-*`; tagged `v4.0`. Deferred: Phase 26/27 browser UAT passes, WR-01 gender-border non-text contrast (WCAG 1.4.11). Next: `/gsd:new-milestone`.*
+*Last updated: 2026-08-27 — started milestone v4.1 Open Registration with Approval. Opens a public signup form behind the existing email-verification + admin-approval gates, and removes the now-redundant approval step from the invited path (an admin who invited someone has already vouched for them). Approval moves from the Invitation row to `User.status`, and the public path loses its email-enumeration oracle. Requirements in `REQUIREMENTS.md`, phases from 30 in `ROADMAP.md`.*

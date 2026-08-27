@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.0
-milestone_name: Family Detail & Descendant Navigation
-status: Awaiting next milestone
-stopped_at: Completed 29-04-PLAN.md — Phase 29 complete, ready for verification
-last_updated: "2026-08-05T15:16:56.846Z"
-last_activity: 2026-08-05 — Milestone v4.0 completed and archived
+milestone: v4.1
+milestone_name: Open Registration with Approval
+status: planning
+last_updated: "2026-08-27T08:04:52.687Z"
+last_activity: 2026-08-27
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 20
-  completed_plans: 20
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -25,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 ## Current Position
 
-Phase: Milestone v4.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-08-05 — Milestone v4.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-08-27 — Milestone v4.1 started
 
 ## Deferred Items
 

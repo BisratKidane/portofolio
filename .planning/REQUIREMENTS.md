@@ -1,0 +1,94 @@
+# Requirements: v4.1 Open Registration with Approval
+
+**Milestone goal:** A visitor can create an account without an invitation, but the account stays inert until they verify their email **and** an administrator approves them as family — while an invited person, vouched for by the admin who invited them, activates on email verification alone.
+
+**Branch:** TBD (set at first phase)
+
+---
+
+## The two paths
+
+| | Admin invitation | Self-registration |
+|---|---|---|
+| Who initiates | **ADMIN only** *(change — any linked member can today)* | anyone |
+| Entry | `/register?token=…` | `/register` (public form) |
+| Email source | the invitation | user-supplied, proven by verification |
+| After email verification | → `Active` *(change — approval removed)* | → stays `Pending`, enters admin queue |
+| Admin approval | not required | **required** |
+| Family-member link | required — existing `/pending` + `/link-accounts`, unchanged | same |
+
+Approval now means exactly one thing: **is this stranger actually family?**
+
+---
+
+## v4.1 Requirements
+
+### Self-Registration (REG)
+
+- [ ] **REG-01**: A visitor can reach `/register` with no invitation token and see a real signup form — name, email, password, and a required "how are you related to the family?" note — instead of today's "Agne is invitation-only" dead end.
+- [ ] **REG-02**: The `register` mutation accepts a request with no invitation token, creating an account from the user's own email with `status: 'Pending'` and email unverified.
+- [ ] **REG-03**: The relationship note the self-registrant writes is stored with the account and shown to admins at approval time — it is the only context an admin has to judge a stranger on.
+- [ ] **REG-04**: After submitting, a self-registrant is told plainly what happens next: verify your email, then an administrator reviews your request before you can sign in.
+- [ ] **REG-05**: A self-registration whose email is not yet verified never appears in the admin approval queue.
+- [ ] **REG-06**: Verifying the email moves a self-registration into the admin approval queue (the account stays `Pending`) and notifies administrators that someone is waiting.
+- [ ] **REG-07**: Password strength, email normalisation, and email-verification token handling on the tokenless path behave identically to the existing invited path — no second, weaker implementation.
+
+### Invitation Path (INVITE)
+
+- [ ] **INVITE-01**: Only an ADMIN can create an invitation. The restriction is enforced server-side in the resolver, not merely hidden in the UI.
+- [ ] **INVITE-02**: Non-admins no longer see the invite form or a route/nav entry that offers it; admins see it unchanged.
+- [ ] **INVITE-03**: A person who registers through an admin invitation and verifies their email becomes `Active` automatically — no approval step, because the admin who invited them already vouched for them.
+- [ ] **INVITE-04**: Invitation rows created before this change (including ones sent by non-admin members) remain readable and correctly rendered — historical data is not broken or rewritten.
+
+### Approval (APPR)
+
+- [ ] **APPR-01**: An admin can approve or reject a pending account directly, acting on the account itself rather than on an invitation record — a self-registrant has no invitation to act on.
+- [ ] **APPR-02**: The admin approval queue lists every account awaiting a decision with the name, email, relationship note, and when they registered — enough to decide without leaving the page.
+- [ ] **APPR-03**: Approving activates the account and emails the person that they can now sign in; rejecting blocks sign-in and emails them, including the reason when the admin gives one.
+- [ ] **APPR-04**: Approve and reject are admin-only, enforced server-side, and written to the audit log with the acting admin and the target account.
+- [ ] **APPR-05**: The login gate is unchanged: sign-in still requires a verified email **and** an `Active` account, with the existing distinct messages for pending, rejected, and disabled accounts.
+- [ ] **APPR-06**: An approved self-registrant still has to be linked to a family member before reaching the app — they land on the existing `/pending` screen until an admin links them via the existing `/link-accounts` flow.
+
+### Open-Registration Control (ADMIN)
+
+- [ ] **ADMIN-01**: An admin can turn public self-registration on or off from inside the app, without a redeploy, so a spam wave can be stopped in seconds.
+- [ ] **ADMIN-02**: While public registration is off, `/register` without a token shows the invitation-only message **and** the mutation rejects a tokenless registration — the switch is enforced on the server, not just in the UI.
+- [ ] **ADMIN-03**: The current on/off state is visible to admins wherever they can change it, so nobody has to guess whether the door is open.
+
+### Security & Abuse (SEC)
+
+- [ ] **SEC-01**: The public signup path gives the same response whether or not that email already has an account, so it cannot be used to discover who has one; the real account owner is told by email that someone tried to register with their address.
+- [ ] **SEC-02**: The existing per-IP rate limit on registration covers the tokenless path, so an open form cannot be used to flood the approval queue or probe the system.
+- [ ] **SEC-03**: The relationship note is length-capped on the server and rendered safely everywhere it is shown — the admin UI and the admin notification email included.
+- [ ] **SEC-04**: Adversarial tests prove the boundaries hold: a non-admin cannot create an invitation, cannot approve or reject an account, and cannot register without a token while public registration is off.
+- [ ] **SEC-05**: A self-registered account cannot reach any authenticated surface before both gates pass — proven against the resolvers, not just the client-side route guard.
+
+---
+
+## Future Requirements
+
+Deferred — valuable, but not this milestone:
+
+- Merging approval and family-member linking into one admin step (approve + pick who they are in the tree).
+- Letting a self-registrant propose which family member they are during signup (a privacy leak unless done post-approval).
+- CAPTCHA or third-party bot detection on the public form.
+- Restoring an invite capability for ordinary members under an admin-review flow.
+- Bulk approve/reject in the admin queue.
+
+## Out of Scope
+
+Explicit exclusions with reasoning:
+
+- **A migration for users stranded mid-invite** — production was checked before scoping: 3 Active users, 0 Pending, invitations 2 Approved + 1 Expired. Nobody is in that state, so the migration would be dead code.
+- **Changing the login gate, `/pending`, or `/link-accounts`** — all three already do the right thing; the milestone reuses them untouched. `/link-accounts` already covers "recognised as family but not in the tree yet" by creating a bare member and linking in one step.
+- **Approval for admin-issued invitations** — deliberately removed. An admin who sends an invitation has already made the judgement approval exists to make; requiring it twice is redundant.
+- **Self-service family-member claiming** — deciding who someone is in the tree stays an admin judgement.
+- **New auth methods (OAuth, social login, MFA)** — this milestone opens a second door into the existing email+password flow, it does not add new kinds of door.
+
+---
+
+## Traceability
+
+| Requirement | Phase |
+|-------------|-------|
+| _(filled in by the roadmap)_ | |
