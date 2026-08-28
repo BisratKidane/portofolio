@@ -1,4 +1,4 @@
-import { requireAdmin, requireFamilyAccess, createInvitationToken, hashInvitationToken, invitationExpiry } from '../utils/auth.js';
+import { requireAdmin, createInvitationToken, hashInvitationToken, invitationExpiry } from '../utils/auth.js';
 import { writeAuditLog } from '../utils/audit.js';
 import { sendInvitationEmail } from '../services/mailer.js';
 import { env } from '../config/env.js';
@@ -11,9 +11,11 @@ function blankToNull(value) {
 
 export const invitationResolvers = {
   Query: {
-    // An inviter's own sent invitations.
+    // Admin-only: an inviter's own sent invitations (D-02 — after this phase
+    // every invitation is admin-issued, so a non-admin's list could only ever
+    // return legacy rows they cannot act on).
     myInvitations: async (_parent, _args, { models, user }) => {
-      requireFamilyAccess(user);
+      requireAdmin(user);
       return models.Invitation.findAll({ where: { inviterId: user.id }, order: [['createdAt', 'DESC']] });
     },
     // Admin-only: every invitation.
@@ -28,11 +30,10 @@ export const invitationResolvers = {
     }
   },
   Mutation: {
-    // Any Active linked family member (or admin) may invite. Access is already
-    // gated to Active users by getUserFromRequest; requireFamilyAccess adds the
-    // linked-member requirement so an unlinked account can't invite.
+    // Admin-only (D-01): every invitation is now admin-issued, enforced
+    // server-side, not merely hidden in the UI.
     createInvitation: async (_parent, { input }, { models, user }) => {
-      requireFamilyAccess(user);
+      requireAdmin(user);
 
       const invitedEmail = blankToNull(input.invitedEmail);
 
