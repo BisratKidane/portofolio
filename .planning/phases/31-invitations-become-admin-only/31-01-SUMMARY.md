@@ -102,3 +102,7 @@ None - no external service configuration required.
 ---
 *Phase: 31-invitations-become-admin-only*
 *Completed: 2026-08-28*
+
+## Self-Check: PASSED
+
+All created/modified files verified present; all 5 commits (98754b0, 0270072, e978072, 028f298, e7f53c7) verified present in git log.
