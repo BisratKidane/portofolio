@@ -183,7 +183,17 @@ Plans:
   3. Someone who registers through an admin invitation and verifies their email can sign in with no admin action in between.
   4. The approval queue no longer contains invited registrants — only accounts that still need a judgement.
 
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 31-01-PLAN.md — Admin-only invitation guards (D-01, D-02) + narrowed pendingRegistrations queue filter (D-09)
+- [ ] 31-02-PLAN.md — Pending -> Active promotion inside verifyEmail (D-04..D-07) + register copy/notify cleanup (D-11, D-13)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 31-03-PLAN.md — /invitations route + nav gating (D-03), ApprovalsPage dead-branch removal (D-10), VerifyEmail routing coverage (F-02)
 
 **UI hint**: yes
 
