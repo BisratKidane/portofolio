@@ -159,10 +159,6 @@ export const userResolvers = {
         console.error('Failed to send verification email:', err);
       });
 
-      notifyAdminsOfPendingRegistration(models, { invitation, user: createdUser }).catch((err) => {
-        console.error('Failed to notify admins of pending registration:', err);
-      });
-
       writeAuditLog(models, {
         action: 'invitation.registered',
         actorUserId: createdUser.id,
@@ -172,8 +168,7 @@ export const userResolvers = {
       }).catch((err) => console.error('Failed to write audit log:', err));
 
       return {
-        message:
-          'Registration received. Verify your email — then an administrator will review and approve your account before you can sign in.'
+        message: 'Registration received. Verify your email to activate your account.'
       };
     },
     login: async (_parent, { email, password }, { models }) => {
