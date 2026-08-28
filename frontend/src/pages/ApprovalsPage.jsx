@@ -13,6 +13,7 @@ import {
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography
 } from '@mui/material';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
@@ -35,8 +36,8 @@ const PENDING_QUERY = `
   }
 `;
 
-const APPROVE = `mutation Approve($id: ID!) { approveInvitation(invitationId: $id) { id status } }`;
-const REJECT = `mutation Reject($id: ID!, $reason: String) { rejectInvitation(invitationId: $id, reason: $reason) { id status } }`;
+const APPROVE = `mutation Approve($id: ID!) { approveUser(userId: $id) { id status } }`;
+const REJECT = `mutation Reject($id: ID!, $reason: String) { rejectUser(userId: $id, reason: $reason) { id status } }`;
 
 function formatWhen(value) {
   if (!value) return '—';
@@ -76,7 +77,7 @@ export default function ApprovalsPage() {
     setError('');
     setBusyId(row.id);
     try {
-      await graphqlRequest(APPROVE, { id: row.id });
+      await graphqlRequest(APPROVE, { id: row.registeredUser.id });
       await load();
     } catch (err) {
       setError(err.message);
@@ -91,7 +92,7 @@ export default function ApprovalsPage() {
     setBusyId(row.id);
     setRejectTarget(null);
     try {
-      await graphqlRequest(REJECT, { id: row.id, reason: rejectReason || null });
+      await graphqlRequest(REJECT, { id: row.registeredUser.id, reason: rejectReason || null });
       setRejectReason('');
       await load();
     } catch (err) {
@@ -125,6 +126,7 @@ export default function ApprovalsPage() {
           {rows.map((row) => {
             const name = row.registeredUser?.name || row.invitedName || row.invitedEmail;
             const email = row.registeredUser?.email || row.invitedEmail;
+            const unverified = row.registeredUser && !row.registeredUser.emailVerified;
             return (
               <Paper key={row.id} elevation={0} sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 4, border: `1px solid ${colors.line}` }}>
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between">
@@ -144,24 +146,32 @@ export default function ApprovalsPage() {
                     </Stack>
                   </Box>
                   <Stack direction={{ xs: 'row', md: 'column' }} spacing={1.5} sx={{ flexShrink: 0 }}>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      startIcon={<CheckCircleRoundedIcon />}
-                      disabled={busyId === row.id}
-                      onClick={() => handleApprove(row)}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      startIcon={<CancelRoundedIcon />}
-                      disabled={busyId === row.id}
-                      onClick={() => { setRejectTarget(row); setRejectReason(''); }}
-                    >
-                      Reject
-                    </Button>
+                    <Tooltip title={unverified ? 'Waiting for the applicant to verify their email address.' : ''}>
+                      <span>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          startIcon={<CheckCircleRoundedIcon />}
+                          disabled={busyId === row.id || unverified}
+                          onClick={() => handleApprove(row)}
+                        >
+                          Approve
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title={unverified ? 'Waiting for the applicant to verify their email address.' : ''}>
+                      <span>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          startIcon={<CancelRoundedIcon />}
+                          disabled={busyId === row.id || unverified}
+                          onClick={() => { setRejectTarget(row); setRejectReason(''); }}
+                        >
+                          Reject
+                        </Button>
+                      </span>
+                    </Tooltip>
                   </Stack>
                 </Stack>
               </Paper>

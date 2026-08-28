@@ -20,6 +20,8 @@ const ROW = {
   registeredUser: { id: '9', name: 'Joseph Q', email: 'joe@example.com', emailVerified: true }
 };
 
+const UNVERIFIED_ROW = { ...ROW, registeredUser: { ...ROW.registeredUser, emailVerified: false } };
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -44,7 +46,7 @@ describe('ApprovalsPage', () => {
   it('approves a registration and refetches', async () => {
     graphqlRequest
       .mockResolvedValueOnce({ pendingRegistrations: [ROW] })
-      .mockResolvedValueOnce({ approveInvitation: { id: '5', status: 'Approved' } })
+      .mockResolvedValueOnce({ approveUser: { id: '9', status: 'Active' } })
       .mockResolvedValueOnce({ pendingRegistrations: [] });
 
     render(<ApprovalsPage />);
@@ -53,7 +55,7 @@ describe('ApprovalsPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /approve/i }));
 
     await waitFor(() => {
-      expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('approveInvitation'), { id: '5' });
+      expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('approveUser'), { id: '9' });
     });
     expect(await screen.findByText(/No registrations are waiting/i)).toBeInTheDocument();
   });
@@ -61,7 +63,7 @@ describe('ApprovalsPage', () => {
   it('rejects a registration with a reason', async () => {
     graphqlRequest
       .mockResolvedValueOnce({ pendingRegistrations: [ROW] })
-      .mockResolvedValueOnce({ rejectInvitation: { id: '5', status: 'Rejected' } })
+      .mockResolvedValueOnce({ rejectUser: { id: '9', status: 'Rejected' } })
       .mockResolvedValueOnce({ pendingRegistrations: [] });
 
     render(<ApprovalsPage />);
@@ -74,10 +76,20 @@ describe('ApprovalsPage', () => {
     await userEvent.click(dialogReject);
 
     await waitFor(() => {
-      expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('rejectInvitation'), {
-        id: '5',
+      expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('rejectUser'), {
+        id: '9',
         reason: 'Not a relative'
       });
     });
+  });
+
+  it('disables Approve and Reject for a row whose email is not verified', async () => {
+    graphqlRequest.mockResolvedValueOnce({ pendingRegistrations: [UNVERIFIED_ROW] });
+    render(<ApprovalsPage />);
+
+    await screen.findByText('Joseph Q');
+
+    expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
   });
 });
