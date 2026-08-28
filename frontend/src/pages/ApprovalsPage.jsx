@@ -126,7 +126,19 @@ export default function ApprovalsPage() {
           {rows.map((row) => {
             const name = row.registeredUser?.name || row.invitedName || row.invitedEmail;
             const email = row.registeredUser?.email || row.invitedEmail;
-            const unverified = row.registeredUser && !row.registeredUser.emailVerified;
+            const unverified = Boolean(row.registeredUser) && !row.registeredUser.emailVerified;
+            // Both mutations address the ACCOUNT, so a row whose registeredUser
+            // is null has nothing to act on -- fk_invitations_registered_user is
+            // ON DELETE SET NULL (migration 016), so this is reachable. Guarding
+            // only on `unverified` let those buttons render enabled and then
+            // dereference row.registeredUser.id on click.
+            const orphaned = !row.registeredUser;
+            const blocked = unverified || orphaned;
+            const blockedReason = orphaned
+              ? 'This registration has no account to act on.'
+              : unverified
+                ? 'Waiting for the applicant to verify their email address.'
+                : '';
             return (
               <Paper key={row.id} elevation={0} sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 4, border: `1px solid ${colors.line}` }}>
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between">
@@ -146,26 +158,26 @@ export default function ApprovalsPage() {
                     </Stack>
                   </Box>
                   <Stack direction={{ xs: 'row', md: 'column' }} spacing={1.5} sx={{ flexShrink: 0 }}>
-                    <Tooltip title={unverified ? 'Waiting for the applicant to verify their email address.' : ''}>
+                    <Tooltip title={blockedReason}>
                       <span>
                         <Button
                           variant="contained"
                           color="success"
                           startIcon={<CheckCircleRoundedIcon />}
-                          disabled={busyId === row.id || unverified}
+                          disabled={busyId === row.id || blocked}
                           onClick={() => handleApprove(row)}
                         >
                           Approve
                         </Button>
                       </span>
                     </Tooltip>
-                    <Tooltip title={unverified ? 'Waiting for the applicant to verify their email address.' : ''}>
+                    <Tooltip title={blockedReason}>
                       <span>
                         <Button
                           variant="outlined"
                           color="error"
                           startIcon={<CancelRoundedIcon />}
-                          disabled={busyId === row.id || unverified}
+                          disabled={busyId === row.id || blocked}
                           onClick={() => { setRejectTarget(row); setRejectReason(''); }}
                         >
                           Reject

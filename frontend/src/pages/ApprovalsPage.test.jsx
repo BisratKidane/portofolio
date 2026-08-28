@@ -22,6 +22,11 @@ const ROW = {
 
 const UNVERIFIED_ROW = { ...ROW, registeredUser: { ...ROW.registeredUser, emailVerified: false } };
 
+// fk_invitations_registered_user is ON DELETE SET NULL (migration 016), so an
+// invitation can outlive the account it created and arrive here with a null
+// registeredUser.
+const ORPHANED_ROW = { ...ROW, registeredUser: null };
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -89,6 +94,21 @@ describe('ApprovalsPage', () => {
 
     await screen.findByText('Joseph Q');
 
+    expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
+  });
+
+  it('disables Approve and Reject for a row with no registered user (WR-01)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ pendingRegistrations: [ORPHANED_ROW] });
+    render(<ApprovalsPage />);
+
+    await screen.findByText('Cousin Joe');
+
+    // `row.registeredUser && !row.registeredUser.emailVerified` short-circuits
+    // to null when registeredUser is null -- falsy -- so the buttons rendered
+    // ENABLED and clicking dereferenced row.registeredUser.id. That is the
+    // exact failure D-11 exists to prevent, fixed for emailVerified but not
+    // for the other nullable case.
     expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
     expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
   });
