@@ -96,7 +96,7 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
 
 **Build order rationale:** approval moves onto the account *first*, while the invite flow is still its only producer, so that refactor is provably behaviour-preserving before anything new depends on it. The invite path is settled next (admin-only, no approval) so the queue has exactly one kind of occupant before the public door opens. Backend precedes UI throughout, per the project's TDD convention.
 
-- [ ] **Phase 30: Approval Moves to the Account** — approve/reject act on `User.status`, not on an invitation row
+- [x] **Phase 30: Approval Moves to the Account** — approve/reject act on `User.status`, not on an invitation row (completed 2026-08-28)
   - Requirements: APPR-01, APPR-03, APPR-04, APPR-05, INVITE-04
   - Success criteria:
     1. An admin approves a pending account by account id and that person can sign in; rejecting blocks sign-in with the existing message.
@@ -155,7 +155,7 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
   4. Existing invitation rows still render with their inviter, status, and timestamps — including ones sent by non-admin members.
   5. The backend suite passes with the invitation flow behaving exactly as it did before.
 
-**Plans:** 2/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -168,8 +168,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 30-03-PLAN.md — Backend test coverage: retarget existing approveReject.test.js + new D-07/D-08-D-09/no-invitation-path coverage, full suite green (SC-5)
-- [ ] 30-04-PLAN.md — Rewire ApprovalsPage to approveUser/rejectUser (D-10) + D-11 disabled state for unverified rows
+- [x] 30-03-PLAN.md — Backend test coverage: retarget existing approveReject.test.js + new D-07/D-08-D-09/no-invitation-path coverage, full suite green (SC-5)
+- [x] 30-04-PLAN.md — Rewire ApprovalsPage to approveUser/rejectUser (D-10) + D-11 disabled state for unverified rows
 
 ### Phase 31: Invitations Become Admin-Only
 
@@ -272,7 +272,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete    | 2026-08-04 |
 | 28. Admin Actions on /detail | v4.0 | 5/5 | Complete    | 2026-08-04 |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
-| 30. Approval Moves to the Account | v4.1 | 2/4 | In Progress|  |
+| 30. Approval Moves to the Account | v4.1 | 4/4 | Complete   | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 0/– | Not started | — |
 | 32. Tokenless Registration | v4.1 | 0/– | Not started | — |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
