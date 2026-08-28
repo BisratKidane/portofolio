@@ -247,6 +247,7 @@ export const userResolvers = {
       }
 
       const sequelize = models.User.sequelize;
+      let promotedInvitation = null;
 
       // Verify-and-promote run inside a single transaction so token consumption and the single
       // ADMIN-slot decision commit (or roll back) as one atomic unit. The admin-count read takes
@@ -271,6 +272,26 @@ export const userResolvers = {
           if (Number(adminCount) === 0) {
             await models.User.update({ role: 'ADMIN' }, { where: { id: user.id }, transaction: t });
           }
+
+          // Invited-registrant auto-activation (D-04/D-05/D-06/D-07, INVITE-03): the admin who
+          // sent the invitation already vouched for this person at invite time, so email
+          // verification is the only remaining gate. Keyed on the FK alone (never on
+          // Invitation.status, per D-08) so it is unaffected by that status staying 'Registered'.
+          const invitation = await models.Invitation.findOne({
+            where: { registeredUserId: user.id },
+            transaction: t
+          });
+          if (invitation) {
+            // Conditional update: only promotes from Pending. A Rejected or Disabled account
+            // that re-verifies its email stays Rejected/Disabled -- promotion is silently
+            // skipped, never resurrected (D-06). No approvedAt/approvedBy stamp and no
+            // Invitation.status write here -- nobody decided; the admin vouched at invite time.
+            const [activatedCount] = await models.User.update(
+              { status: 'Active' },
+              { where: { id: user.id, status: 'Pending' }, transaction: t }
+            );
+            if (activatedCount > 0) promotedInvitation = invitation;
+          }
         });
 
       const isDeadlock = (error) =>
@@ -283,10 +304,21 @@ export const userResolvers = {
         // committed, single-use token not consumed), so it is safe to retry exactly once. Any
         // other error, or a second deadlock, propagates unchanged.
         if (!isDeadlock(error)) throw error;
+        promotedInvitation = null; // the first attempt never committed; a fresh attempt decides
         await verifyAndPromote();
       }
 
       await user.reload();
+
+      if (promotedInvitation) {
+        writeAuditLog(models, {
+          action: 'invitation.activated',
+          actorUserId: user.id,
+          invitationId: promotedInvitation.id,
+          targetUserId: user.id
+        }).catch((err) => console.error('Failed to write audit log:', err));
+      }
+
       return { token: signToken(user), user };
     },
     resendVerificationEmail: async (_parent, { email }, { models }) => {
