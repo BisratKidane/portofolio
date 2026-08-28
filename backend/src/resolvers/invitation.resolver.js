@@ -1,4 +1,4 @@
-import { requireAdmin, requireFamilyAccess, createInvitationToken, hashInvitationToken, invitationExpiry } from '../utils/auth.js';
+import { requireAdmin, createInvitationToken, hashInvitationToken, invitationExpiry } from '../utils/auth.js';
 import { writeAuditLog } from '../utils/audit.js';
 import { sendInvitationEmail } from '../services/mailer.js';
 import { env } from '../config/env.js';
@@ -11,9 +11,11 @@ function blankToNull(value) {
 
 export const invitationResolvers = {
   Query: {
-    // An inviter's own sent invitations.
+    // Admin-only: an inviter's own sent invitations (D-02 — after this phase
+    // every invitation is admin-issued, so a non-admin's list could only ever
+    // return legacy rows they cannot act on).
     myInvitations: async (_parent, _args, { models, user }) => {
-      requireFamilyAccess(user);
+      requireAdmin(user);
       return models.Invitation.findAll({ where: { inviterId: user.id }, order: [['createdAt', 'DESC']] });
     },
     // Admin-only: every invitation.
@@ -21,18 +23,42 @@ export const invitationResolvers = {
       requireAdmin(user);
       return models.Invitation.findAll({ order: [['createdAt', 'DESC']] });
     },
-    // Admin-only: invitations awaiting an approval decision.
+    // Admin-only: invitations awaiting an approval decision. Narrowed (D-09) to
+    // exclude registrants who are unverified (haven't proven the address yet)
+    // or already Active (decision already made) -- a two-step query, not a
+    // Sequelize `include`-with-`where` (no precedent for that shape anywhere
+    // in this backend; see approval.resolver.js's registeredUserId lookup for
+    // the closer analog). An orphaned row (no registeredUserId) always stays
+    // reachable (D-10) since there's no account to check eligibility against.
+    // Never writes Invitation.status -- read-only narrowing (D-08).
     pendingRegistrations: async (_parent, _args, { models, user }) => {
       requireAdmin(user);
-      return models.Invitation.findAll({ where: { status: 'Registered' }, order: [['registeredAt', 'DESC']] });
+
+      const registered = await models.Invitation.findAll({
+        where: { status: 'Registered' },
+        order: [['registeredAt', 'DESC']]
+      });
+
+      const registeredUserIds = registered
+        .map((invitation) => invitation.registeredUserId)
+        .filter((id) => id != null);
+
+      const eligibleUsers = await models.User.findAll({
+        where: { id: registeredUserIds, status: 'Pending', emailVerified: true },
+        attributes: ['id']
+      });
+      const eligibleIds = new Set(eligibleUsers.map((eligibleUser) => eligibleUser.id));
+
+      return registered.filter(
+        (invitation) => invitation.registeredUserId == null || eligibleIds.has(invitation.registeredUserId)
+      );
     }
   },
   Mutation: {
-    // Any Active linked family member (or admin) may invite. Access is already
-    // gated to Active users by getUserFromRequest; requireFamilyAccess adds the
-    // linked-member requirement so an unlinked account can't invite.
+    // Admin-only (D-01): every invitation is now admin-issued, enforced
+    // server-side, not merely hidden in the UI.
     createInvitation: async (_parent, { input }, { models, user }) => {
-      requireFamilyAccess(user);
+      requireAdmin(user);
 
       const invitedEmail = blankToNull(input.invitedEmail);
 

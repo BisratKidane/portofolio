@@ -22,6 +22,10 @@ const CREATE_INVITATION = `
 const MY_INVITATIONS = `query { myInvitations { id invitedEmail } }`;
 const ALL_INVITATIONS = `query { invitations { id inviter { id name } } }`;
 
+// The linked, Active, non-admin USER actor F-01 names -- the exact adversarial
+// actor createInvitation/myInvitations must refuse under D-01/D-02, since an
+// unlinked account was already refused by the old requireFamilyAccess guard
+// and would prove nothing about the new requireAdmin guard.
 async function activeMember(overrides = {}) {
   const member = await models.FamilyMember.create({ firstname: 'Ada', lastname: 'Lovelace', gender: 'Female' });
   return createTestUser({ role: 'USER', familyMemberId: member.id, ...overrides });
@@ -34,7 +38,7 @@ beforeEach(async () => {
 
 describe('createInvitation', () => {
   it('creates an email invitation, emails the link, stores only the token hash, and audits it', async () => {
-    const inviter = await activeMember({ email: 'inviter@example.com', name: 'Ada' });
+    const inviter = await createTestUser({ role: 'ADMIN', email: 'inviter@example.com', name: 'Ada' });
 
     const { data, errors } = await graphql(
       CREATE_INVITATION,
@@ -64,7 +68,7 @@ describe('createInvitation', () => {
   });
 
   it('rejects an invitation with a blank email address', async () => {
-    const inviter = await activeMember({ email: 'inviter3@example.com' });
+    const inviter = await createTestUser({ role: 'ADMIN', email: 'inviter3@example.com' });
     const { errors } = await graphql(
       CREATE_INVITATION,
       { input: { invitedEmail: '   ', invitedName: 'No Email' } },
@@ -89,14 +93,27 @@ describe('createInvitation', () => {
       { input: { invitedEmail: 'x@example.com' } },
       unlinked
     );
-    expect(errors[0].message).toBe('Your account is not yet linked to a family member.');
+    expect(errors[0].message).toBe('Admin access is required.');
+  });
+
+  // F-01/SC-1: the adversarial actor INVITE-01 names -- linked, Active,
+  // non-admin. Proves the guard is enforced server-side, not merely hidden in
+  // the UI (D-01).
+  it('refuses a linked, Active, non-admin member (F-01/SC-1)', async () => {
+    const member = await activeMember();
+    const { errors } = await graphql(
+      CREATE_INVITATION,
+      { input: { invitedEmail: 'x@example.com' } },
+      member
+    );
+    expect(errors[0].message).toBe('Admin access is required.');
   });
 });
 
 describe('invitation queries', () => {
   it('myInvitations returns only the caller\'s invitations', async () => {
-    const a = await activeMember({ email: 'a@example.com' });
-    const b = await activeMember({ email: 'b@example.com' });
+    const a = await createTestUser({ role: 'ADMIN', email: 'a@example.com' });
+    const b = await createTestUser({ role: 'ADMIN', email: 'b@example.com' });
     await graphql(CREATE_INVITATION, { input: { invitedEmail: 'a-invite@example.com' } }, a);
     await graphql(CREATE_INVITATION, { input: { invitedEmail: 'b-invite@example.com' } }, b);
 
@@ -105,14 +122,23 @@ describe('invitation queries', () => {
     expect(data.myInvitations[0].invitedEmail).toBe('a-invite@example.com');
   });
 
-  it('invitations (all) requires admin and resolves the inviter', async () => {
-    const member = await activeMember({ email: 'm@example.com', name: 'Ada' });
-    await graphql(CREATE_INVITATION, { input: { invitedEmail: 'z@example.com' } }, member);
+  // D-02: myInvitations is admin-only, independent of nav visibility -- defense
+  // in depth given this codebase's history of authorization gaps surviving
+  // green tests (Phases 14, 15, 30).
+  it('denies myInvitations to a non-admin', async () => {
+    const member = await activeMember();
+    const { errors } = await graphql(MY_INVITATIONS, {}, member);
+    expect(errors[0].message).toBe('Admin access is required.');
+  });
 
-    const denied = await graphql(ALL_INVITATIONS, {}, member);
+  it('invitations (all) requires admin and resolves the inviter', async () => {
+    const admin = await createTestUser({ role: 'ADMIN', email: 'm@example.com', name: 'Ada' });
+    await graphql(CREATE_INVITATION, { input: { invitedEmail: 'z@example.com' } }, admin);
+
+    const nonAdmin = await activeMember({ email: 'nonadmin@example.com' });
+    const denied = await graphql(ALL_INVITATIONS, {}, nonAdmin);
     expect(denied.errors[0].message).toBe('Admin access is required.');
 
-    const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
     const { data, errors } = await graphql(ALL_INVITATIONS, {}, admin);
     expect(errors).toBeUndefined();
     expect(data.invitations).toHaveLength(1);
