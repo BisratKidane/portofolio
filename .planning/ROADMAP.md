@@ -155,12 +155,12 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
   4. Existing invitation rows still render with their inviter, status, and timestamps — including ones sent by non-admin members.
   5. The backend suite passes with the invitation flow behaving exactly as it did before.
 
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 30-01-PLAN.md — User model approval columns (D-04) + migration 019 (scratch-DB proof + human-verified apply to local dev DB)
+- [x] 30-01-PLAN.md — User model approval columns (D-04) + migration 019 (scratch-DB proof + human-verified apply to local dev DB)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -272,7 +272,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete    | 2026-08-04 |
 | 28. Admin Actions on /detail | v4.0 | 5/5 | Complete    | 2026-08-04 |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
-| 30. Approval Moves to the Account | v4.1 | 0/4 | Not started | — |
+| 30. Approval Moves to the Account | v4.1 | 1/4 | In Progress|  |
 | 31. Invitations Become Admin-Only | v4.1 | 0/– | Not started | — |
 | 32. Tokenless Registration | v4.1 | 0/– | Not started | — |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |

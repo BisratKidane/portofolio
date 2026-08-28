@@ -42,7 +42,7 @@ Approval now means exactly one thing: **is this stranger actually family?**
 
 ### Approval (APPR)
 
-- [ ] **APPR-01**: An admin can approve or reject a pending account directly, acting on the account itself rather than on an invitation record — a self-registrant has no invitation to act on.
+- [x] **APPR-01**: An admin can approve or reject a pending account directly, acting on the account itself rather than on an invitation record — a self-registrant has no invitation to act on.
 - [ ] **APPR-02**: The admin approval queue lists every account awaiting a decision with the name, email, relationship note, and when they registered — enough to decide without leaving the page.
 - [ ] **APPR-03**: Approving activates the account and emails the person that they can now sign in; rejecting blocks sign-in and emails them, including the reason when the admin gives one.
 - [ ] **APPR-04**: Approve and reject are admin-only, enforced server-side, and written to the audit log with the acting admin and the target account.

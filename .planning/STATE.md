@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
 status: executing
-stopped_at: Phase 30 context gathered
-last_updated: "2026-08-27T14:11:45.831Z"
-last_activity: 2026-08-27 -- Phase 30 planning complete
+stopped_at: Completed 30-01-PLAN.md
+last_updated: "2026-08-28T06:42:08.423Z"
+last_activity: 2026-08-28
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Milestone complete
+**Current focus:** Phase 30 — approval-moves-to-the-account
 
 ## Current Position
 
-Phase: 30 — Approval Moves to the Account (not started)
-Plan: —
+Phase: 30 (approval-moves-to-the-account) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-08-27 -- Phase 30 planning complete
+Last activity: 2026-08-28
 
 ## Deferred Items
 
@@ -97,6 +97,7 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 | Phase 27 P03 | 15min | 2 tasks | 2 files |
 | Phase 27 P04 | 25min | 2 tasks | 2 files |
 | Phase 29 P04 | 20min | 3 tasks | 2 files |
+| Phase 30 P01 | 25min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 27]: PERF-03's exact cache-hit re-expand render count is 2 (not 1) -- traced to MemberAvatarImage's benign mount-effect settling commit on the freshly re-mounted card, distinct from a cache-miss expand's 3+ commit cost
 - [Phase 29]: Mirrored 20-UAT.md's (v3.0) completed-status convention for 29-HUMAN-UAT.md (status: complete, [testing complete], result: pass) since 26/27-HUMAN-UAT.md were never actually driven past their initial pending scaffold
 - [Phase 29]: Full-suite SC-4 gate reported with explicit D-01 MariaDB caveat: local run is FE 435/435 + BE 411/413 (2 engine-gated skips, documented in KNOWN-ISSUES.md), never an unqualified 100% claim -- CI (MySQL 8.4) runs VERIFY-04/REL-06 unconditionally
+- [Phase 30]: Plan 30-01: approvedBy on users is a plain unassociated INTEGER.UNSIGNED column (no FK), matching the 015/018 ALTER-on-existing-table precedent rather than invitations.approvedBy's CREATE-TABLE-time FK
+- [Phase 30]: Migration 019 proven via scratch-DB dry run then human-verified applied to real local dev database (portofolio); production apply explicitly deferred (F-03)
 
 ### Pending Todos
 
@@ -174,9 +177,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-27T12:52:28.141Z
-Stopped at: Phase 30 context gathered
-Resume file: .planning/phases/30-approval-moves-to-the-account/30-CONTEXT.md
+Last session: 2026-08-28T06:41:33.323Z
+Stopped at: Completed 30-01-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
