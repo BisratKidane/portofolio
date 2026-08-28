@@ -57,7 +57,21 @@ export function initUser(sequelize) {
         type: DataTypes.ENUM('Pending', 'Active', 'Rejected', 'Disabled'),
         allowNull: false,
         defaultValue: 'Pending'
-      }
+      },
+      // Mirrors Invitation.js's four decision fields (approvedAt/approvedBy/
+      // rejectedAt/rejectionReason). A self-registrant (Phase 32+) has no
+      // invitation row, so the account itself must be able to carry its own
+      // approval/rejection decision. Storage only here -- Plan 30-02's
+      // approveUser/rejectUser resolvers are what actually write these
+      // fields (D-04). Unlike Invitation.js's approvedBy (association-
+      // derived), approvedBy here is a plain unassociated INTEGER.UNSIGNED
+      // column -- no FK, matching the ALTER-TABLE-on-an-existing-table
+      // precedent (015/018) rather than invitations.approvedBy's
+      // CREATE-TABLE-time FK.
+      approvedAt: { type: DataTypes.DATE, allowNull: true },
+      approvedBy: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
+      rejectedAt: { type: DataTypes.DATE, allowNull: true },
+      rejectionReason: { type: DataTypes.TEXT, allowNull: true }
       // familyMemberId is added by the User.belongsTo(FamilyMember) association in
       // models/index.js (Phase 13, D-07) -- not redeclared here.
     },
