@@ -16,11 +16,23 @@ files_reviewed_list:
   - frontend/src/pages/ApprovalsPage.jsx
   - frontend/src/pages/ApprovalsPage.test.jsx
 findings:
-  critical: 1
-  warning: 10
+  critical: 0
+  warning: 8
   info: 6
-  total: 17
+  total: 14
 status: issues_found
+resolved:
+  - CR-01  # fixed in 35306b9 -- lock-then-guard inside the transaction
+  - WR-01  # fixed in 090ffe6 -- orphaned-row guard on Approve/Reject
+  - WR-05  # fixed in ce48cc8 -- vi.waitFor around all AuditLog assertions
+  - WR-09  # closed by construction: unreachable once CR-01 is fixed
+remaining_note: >-
+  8 warnings and 6 info findings remain open as tracked debt. WR-02 (orphaned
+  invitation has no API remedy), WR-03 (rejectUser has no authorization test),
+  WR-04 (no test discriminates D-07-before-D-08 ordering), WR-06 (migration 019
+  failure mode is a full outage, not a degraded feature), WR-07 (unescaped
+  reason in rejection email HTML), and WR-10 (submitReject dereferences
+  rejectTarget before the try block) are the substantive ones.
 ---
 
 # Phase 30: Code Review Report
@@ -548,3 +560,20 @@ user-deletion feature is ever introduced.
 _Reviewed: 2026-08-28T07:46:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+---
+
+## Resolution Log (post-review, Phase 30 execution)
+
+Fixed during the execute-phase code review gate, test-first in each case:
+
+| ID | Status | Commit | Evidence |
+|----|--------|--------|----------|
+| CR-01 | Fixed | `35306b9` | Two regression tests failed before the change (both concurrent approves succeeded, both concurrent rejects succeeded) and pass deterministically across repeated runs after it. Read + guard moved inside the transaction under `lock: t.LOCK.UPDATE`. |
+| WR-01 | Fixed | `090ffe6` | Test asserting both buttons disabled for a `registeredUser: null` row failed before, passes after. Guard split into `unverified` / `orphaned` / `blocked`, each with its own tooltip. |
+| WR-05 | Fixed | `ce48cc8` | The unguarded `AuditLog` reads began failing once CR-01's locked reads shifted timing — confirming the flake was real, not phantom. All four now poll via `vi.waitFor`. |
+| WR-09 | Closed by construction | `35306b9` | Was only reachable *through* CR-01. With the account transitioning out of `Pending` only under the row lock, a stale opposite decision can no longer survive. |
+
+Full suite after fixes: backend 421 passed / 2 skipped (63 files), frontend 440 passed (42 files), build clean.
+
+The remaining 8 warnings and 6 info findings are open and tracked in the sections above.
