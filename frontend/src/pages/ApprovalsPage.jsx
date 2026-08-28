@@ -35,8 +35,8 @@ const PENDING_QUERY = `
   }
 `;
 
-const APPROVE = `mutation Approve($id: ID!) { approveInvitation(invitationId: $id) { id status } }`;
-const REJECT = `mutation Reject($id: ID!, $reason: String) { rejectInvitation(invitationId: $id, reason: $reason) { id status } }`;
+const APPROVE = `mutation Approve($id: ID!) { approveUser(userId: $id) { id status } }`;
+const REJECT = `mutation Reject($id: ID!, $reason: String) { rejectUser(userId: $id, reason: $reason) { id status } }`;
 
 function formatWhen(value) {
   if (!value) return '—';
@@ -76,7 +76,7 @@ export default function ApprovalsPage() {
     setError('');
     setBusyId(row.id);
     try {
-      await graphqlRequest(APPROVE, { id: row.id });
+      await graphqlRequest(APPROVE, { id: row.registeredUser.id });
       await load();
     } catch (err) {
       setError(err.message);
@@ -91,7 +91,7 @@ export default function ApprovalsPage() {
     setBusyId(row.id);
     setRejectTarget(null);
     try {
-      await graphqlRequest(REJECT, { id: row.id, reason: rejectReason || null });
+      await graphqlRequest(REJECT, { id: row.registeredUser.id, reason: rejectReason || null });
       setRejectReason('');
       await load();
     } catch (err) {
