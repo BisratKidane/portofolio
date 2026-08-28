@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
-status: ready_to_plan
-stopped_at: Phase 30 complete (4/4) — ready to discuss Phase 31
-last_updated: 2026-08-28T08:35:09.044Z
+status: planning
+stopped_at: Phase 31 context gathered
+last_updated: "2026-08-28T13:21:44.501Z"
 last_activity: 2026-08-28
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
   completed_plans: 4
-  percent: 0
+  percent: 20
 ---
 
 # Project State
@@ -180,9 +180,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-28T07:00:40.878Z
-Stopped at: Completed 30-01-PLAN.md
-Resume file: None
+Last session: 2026-08-28T13:21:44.494Z
+Stopped at: Phase 31 context gathered
+Resume file: .planning/phases/31-invitations-become-admin-only/31-CONTEXT.md
 
 ## Operator Next Steps
 
