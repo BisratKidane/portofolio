@@ -48,7 +48,5 @@ export const invitationTypeDefs = `#graphql
 
   extend type Mutation {
     createInvitation(input: CreateInvitationInput!): CreateInvitationResult!
-    approveInvitation(invitationId: ID!): Invitation!
-    rejectInvitation(invitationId: ID!, reason: String): Invitation!
   }
 `;
