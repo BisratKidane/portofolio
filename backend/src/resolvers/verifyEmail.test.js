@@ -4,6 +4,7 @@ import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
 import { hashVerificationToken } from '../utils/auth.js';
 import { env } from '../config/env.js';
 import { isMariaDB } from '../../test/dbEngine.js';
+import { models } from '../models/index.js';
 
 const VERIFY_EMAIL_MUTATION = `
   mutation VerifyEmail($token: String!) {
@@ -14,6 +15,7 @@ const VERIFY_EMAIL_MUTATION = `
         name
         email
         role
+        status
       }
     }
   }
@@ -243,5 +245,108 @@ describe('verifyEmail', () => {
 
     expect(response.errors).toBeUndefined();
     expect(response.data.verifyEmail.user.role).toBe('USER');
+  });
+
+  // SC-3: an invited, Pending registrant is promoted straight to Active the moment they
+  // verify their email, with no admin action in between (D-04, D-05, D-07).
+  it('promotes a Pending invited registrant to Active on verification (SC-3)', async () => {
+    const user = await createTestUser({
+      email: 'invited-verifier@example.com',
+      status: 'Pending',
+      emailVerified: false,
+      role: 'USER',
+      emailVerificationToken: hashVerificationToken('invited-verifier-token'),
+      emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    });
+    const inviter = await createTestUser({ role: 'ADMIN', email: 'inviter-sc3@example.com' });
+    const invitation = await models.Invitation.create({
+      tokenHash: 'irrelevant-hash-for-this-test',
+      inviterId: inviter.id,
+      invitedEmail: user.email,
+      relationshipToFamily: 'cousin',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: 'Registered',
+      registeredAt: new Date(),
+      registeredUserId: user.id
+    });
+
+    const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'invited-verifier-token' });
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data.verifyEmail.user.status).toBe('Active');
+    expect(response.data.verifyEmail.token).toEqual(expect.any(String));
+
+    await user.reload();
+    expect(user.status).toBe('Active');
+    expect(user.emailVerified).toBe(true);
+
+    await invitation.reload();
+    // D-08: the promotion never stamps Invitation.status -- it stays 'Registered'.
+    expect(invitation.status).toBe('Registered');
+  });
+
+  // D-06: a Rejected account that re-verifies its email stays Rejected -- verification
+  // itself still succeeds, but promotion is silently skipped, never resurrecting it.
+  it('does not resurrect a Rejected invited account on verification (D-06)', async () => {
+    const user = await createTestUser({
+      email: 'rejected-verifier@example.com',
+      status: 'Rejected',
+      emailVerified: false,
+      role: 'USER',
+      emailVerificationToken: hashVerificationToken('rejected-verifier-token'),
+      emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    });
+    const inviter = await createTestUser({ role: 'ADMIN', email: 'inviter-rejected@example.com' });
+    await models.Invitation.create({
+      tokenHash: 'irrelevant-hash-for-this-test-2',
+      inviterId: inviter.id,
+      invitedEmail: user.email,
+      relationshipToFamily: 'cousin',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: 'Registered',
+      registeredAt: new Date(),
+      registeredUserId: user.id
+    });
+
+    const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'rejected-verifier-token' });
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data.verifyEmail.user.status).toBe('Rejected');
+
+    await user.reload();
+    expect(user.emailVerified).toBe(true);
+    expect(user.status).toBe('Rejected');
+  });
+
+  // D-06: identical guarantee for a Disabled account.
+  it('does not resurrect a Disabled invited account on verification (D-06)', async () => {
+    const user = await createTestUser({
+      email: 'disabled-verifier@example.com',
+      status: 'Disabled',
+      emailVerified: false,
+      role: 'USER',
+      emailVerificationToken: hashVerificationToken('disabled-verifier-token'),
+      emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    });
+    const inviter = await createTestUser({ role: 'ADMIN', email: 'inviter-disabled@example.com' });
+    await models.Invitation.create({
+      tokenHash: 'irrelevant-hash-for-this-test-3',
+      inviterId: inviter.id,
+      invitedEmail: user.email,
+      relationshipToFamily: 'cousin',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: 'Registered',
+      registeredAt: new Date(),
+      registeredUserId: user.id
+    });
+
+    const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'disabled-verifier-token' });
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data.verifyEmail.user.status).toBe('Disabled');
+
+    await user.reload();
+    expect(user.emailVerified).toBe(true);
+    expect(user.status).toBe('Disabled');
   });
 });

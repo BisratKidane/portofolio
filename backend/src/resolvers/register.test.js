@@ -45,7 +45,7 @@ describe('register (invitation-only)', () => {
     const { data, errors } = await graphql(REGISTER_MUTATION, { token: rawToken, name: 'Ada', password: 'Password123!' });
 
     expect(errors).toBeUndefined();
-    expect(typeof data.register.message).toBe('string');
+    expect(data.register.message).toBe('Registration received. Verify your email to activate your account.');
 
     const user = await models.User.findOne({ where: { email: 'ada@example.com' } });
     expect(user.role).toBe('USER');
@@ -59,7 +59,7 @@ describe('register (invitation-only)', () => {
     expect(invitation.registeredAt).toBeInstanceOf(Date);
   });
 
-  it('emails the verification link and notifies admins', async () => {
+  it('emails the verification link and does not notify admins (D-11)', async () => {
     await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
     const { rawToken } = await makeInvitation({ invitedEmail: 'ada@example.com' });
 
@@ -68,8 +68,8 @@ describe('register (invitation-only)', () => {
 
     await vi.waitFor(() => {
       expect(sendVerificationEmail).toHaveBeenCalledTimes(1);
-      expect(sendPendingRegistrationEmail).toHaveBeenCalled();
     });
+    expect(sendPendingRegistrationEmail).not.toHaveBeenCalled();
     expect(sendVerificationEmail.mock.calls[0][0].to).toBe('ada@example.com');
 
     const user = await models.User.findOne({ where: { email: 'ada@example.com' } });
