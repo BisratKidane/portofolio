@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
-status: executing
-stopped_at: Completed 30-01-PLAN.md
-last_updated: "2026-08-28T07:02:15.951Z"
+status: ready_to_plan
+stopped_at: Phase 30 complete (4/4) — ready to discuss Phase 31
+last_updated: 2026-08-28T08:35:09.044Z
 last_activity: 2026-08-28
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 4
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 30 — approval-moves-to-the-account
+**Current focus:** Phase 31 — invitations become admin only
 
 ## Current Position
 
-Phase: 30 (approval-moves-to-the-account) — EXECUTING
-Plan: 3 of 4
-Status: Ready to execute
+Phase: 31
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-08-28
 
 ## Deferred Items
@@ -66,7 +66,7 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 
 **Velocity:**
 
-- Total plans completed: 81 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
+- Total plans completed: 85 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
 - Average duration: - min
 - Total execution time: 0 hours (v4.0)
 
@@ -85,6 +85,7 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 | 27 | 4 | - | - |
 | 28 | 5 | - | - |
 | 29 | 4 | - | - |
+| 30 | 4 | - | - |
 
 **Recent Trend:**
 

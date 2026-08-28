@@ -272,7 +272,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 27. Descendant Navigation & Performance | v4.0 | 4/4 | Complete    | 2026-08-04 |
 | 28. Admin Actions on /detail | v4.0 | 5/5 | Complete    | 2026-08-04 |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
-| 30. Approval Moves to the Account | v4.1 | 4/4 | Complete   | 2026-08-28 |
+| 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 0/– | Not started | — |
 | 32. Tokenless Registration | v4.1 | 0/– | Not started | — |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
