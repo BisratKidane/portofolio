@@ -233,3 +233,81 @@ describe('pendingRegistrations query', () => {
     expect(errors[0].message).toBe('Admin access is required.');
   });
 });
+
+// CR-01 regression (code review, Phase 30). The D-07 guard originally ran as a
+// read-then-write outside any transaction, with no row lock, so two overlapping
+// requests both passed `assertDispositionable` before either wrote. That is not
+// a hypothetical: two admins working the same queue, or one admin with the page
+// open in two tabs, is enough. The frontend's busyId interlock is per-component
+// and does not span tabs, sessions, or scripted clients.
+describe('concurrent disposition (CR-01)', () => {
+  it('lets exactly one of two concurrent approveUser calls win', async () => {
+    const { registrant } = await pendingRegistration();
+    const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
+
+    const results = await Promise.all([
+      graphql(APPROVE, { id: String(registrant.id) }, admin),
+      graphql(APPROVE, { id: String(registrant.id) }, admin)
+    ]);
+
+    const succeeded = results.filter((r) => !r.errors);
+    const failed = results.filter((r) => r.errors);
+    expect(succeeded).toHaveLength(1);
+    expect(failed).toHaveLength(1);
+    expect(failed[0].errors[0].message).toBe('This account is not awaiting a decision.');
+
+    await registrant.reload();
+    expect(registrant.status).toBe('Active');
+
+    // One decision means one audit row and one email -- not two of each.
+    const audits = await models.AuditLog.findAll({ where: { action: 'user.approved' } });
+    expect(audits).toHaveLength(1);
+    expect(sendAccountApprovedEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('never leaves an account stamped both approved and rejected', async () => {
+    const { registrant } = await pendingRegistration();
+    const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
+
+    const results = await Promise.all([
+      graphql(APPROVE, { id: String(registrant.id) }, admin),
+      graphql(REJECT, { id: String(registrant.id), reason: 'nope' }, admin)
+    ]);
+
+    expect(results.filter((r) => !r.errors)).toHaveLength(1);
+    expect(results.filter((r) => r.errors)).toHaveLength(1);
+
+    // The row must reflect exactly one decision. A row carrying both
+    // approvedAt and rejectedAt is a state no single code path can produce,
+    // and it is precisely the audit record this phase exists to make
+    // trustworthy.
+    await registrant.reload();
+    const approved = registrant.approvedAt !== null;
+    const rejected = registrant.rejectedAt !== null;
+    expect(approved).not.toBe(rejected);
+    expect(registrant.status).toBe(approved ? 'Active' : 'Rejected');
+
+    // The applicant must not receive two contradictory emails.
+    const emailsSent =
+      sendAccountApprovedEmail.mock.calls.length + sendAccountRejectedEmail.mock.calls.length;
+    expect(emailsSent).toBe(1);
+  });
+
+  it('lets exactly one of two concurrent rejectUser calls win', async () => {
+    const { registrant } = await pendingRegistration();
+    const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
+
+    const results = await Promise.all([
+      graphql(REJECT, { id: String(registrant.id), reason: 'first' }, admin),
+      graphql(REJECT, { id: String(registrant.id), reason: 'second' }, admin)
+    ]);
+
+    expect(results.filter((r) => !r.errors)).toHaveLength(1);
+    expect(results.filter((r) => r.errors)).toHaveLength(1);
+
+    await registrant.reload();
+    expect(registrant.status).toBe('Rejected');
+    const audits = await models.AuditLog.findAll({ where: { action: 'user.rejected' } });
+    expect(audits).toHaveLength(1);
+  });
+});

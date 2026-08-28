@@ -19,15 +19,28 @@ export const approvalResolvers = {
     // inside the same transaction, sharing the identical now/admin.id values.
     approveUser: async (_parent, { userId }, { models, user }) => {
       requireAdmin(user);
-      const target = await models.User.findByPk(userId);
-      if (!target) throw new Error('User not found.');
-      assertDispositionable(target);
-
-      const invitation = await models.Invitation.findOne({ where: { registeredUserId: target.id } });
-      const now = new Date();
 
       const sequelize = models.User.sequelize;
+      let target;
+      let invitation;
       await sequelize.transaction(async (t) => {
+        // Read and guard INSIDE the transaction under a row lock. Reading
+        // first and writing later left the D-07 guard TOCTOU-bypassable: two
+        // overlapping requests both passed the check before either wrote, so
+        // an account could end up stamped approved AND rejected. The lock
+        // makes the second request block until the first commits, then
+        // re-evaluate the guard against fresh state and lose.
+        target = await models.User.findByPk(userId, { transaction: t, lock: t.LOCK.UPDATE });
+        if (!target) throw new Error('User not found.');
+        assertDispositionable(target);
+
+        invitation = await models.Invitation.findOne({
+          where: { registeredUserId: target.id },
+          transaction: t,
+          lock: t.LOCK.UPDATE
+        });
+        const now = new Date();
+
         await target.update({ status: 'Active', approvedAt: now, approvedBy: user.id }, { transaction: t });
         if (invitation) {
           await invitation.update({ status: 'Approved', approvedAt: now, approvedBy: user.id }, { transaction: t });
@@ -52,16 +65,24 @@ export const approvalResolvers = {
     // now/cleanReason values used for the User row.
     rejectUser: async (_parent, { userId, reason }, { models, user }) => {
       requireAdmin(user);
-      const target = await models.User.findByPk(userId);
-      if (!target) throw new Error('User not found.');
-      assertDispositionable(target);
-
-      const invitation = await models.Invitation.findOne({ where: { registeredUserId: target.id } });
-      const now = new Date();
       const cleanReason = typeof reason === 'string' && reason.trim() ? reason.trim() : null;
 
       const sequelize = models.User.sequelize;
+      let target;
+      let invitation;
       await sequelize.transaction(async (t) => {
+        // Same lock-then-guard ordering as approveUser -- see the comment there.
+        target = await models.User.findByPk(userId, { transaction: t, lock: t.LOCK.UPDATE });
+        if (!target) throw new Error('User not found.');
+        assertDispositionable(target);
+
+        invitation = await models.Invitation.findOne({
+          where: { registeredUserId: target.id },
+          transaction: t,
+          lock: t.LOCK.UPDATE
+        });
+        const now = new Date();
+
         await target.update({ status: 'Rejected', rejectedAt: now, rejectionReason: cleanReason }, { transaction: t });
         if (invitation) {
           await invitation.update({ status: 'Rejected', rejectedAt: now, rejectionReason: cleanReason }, { transaction: t });
