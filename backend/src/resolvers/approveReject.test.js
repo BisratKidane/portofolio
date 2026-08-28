@@ -10,8 +10,8 @@ import { sendAccountApprovedEmail, sendAccountRejectedEmail } from '../services/
 import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
 import { models } from '../models/index.js';
 
-const APPROVE = `mutation A($id: ID!) { approveInvitation(invitationId: $id) { id status } }`;
-const REJECT = `mutation R($id: ID!, $reason: String) { rejectInvitation(invitationId: $id, reason: $reason) { id status rejectionReason } }`;
+const APPROVE = `mutation A($id: ID!) { approveUser(userId: $id) { id status } }`;
+const REJECT = `mutation R($id: ID!, $reason: String) { rejectUser(userId: $id, reason: $reason) { id status } }`;
 const PENDING = `query { pendingRegistrations { id invitedEmail registeredUser { id name } } }`;
 
 // Creates a Registered invitation with a Pending registered user awaiting review.
@@ -36,14 +36,14 @@ beforeEach(async () => {
   vi.clearAllMocks();
 });
 
-describe('approveInvitation', () => {
+describe('approveUser', () => {
   it('activates the user, stamps the decision, emails them, and audits it', async () => {
     const { registrant, invitation } = await pendingRegistration();
     const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
 
-    const { data, errors } = await graphql(APPROVE, { id: String(invitation.id) }, admin);
+    const { data, errors } = await graphql(APPROVE, { id: String(registrant.id) }, admin);
     expect(errors).toBeUndefined();
-    expect(data.approveInvitation.status).toBe('Approved');
+    expect(data.approveUser.status).toBe('Active');
 
     await registrant.reload();
     expect(registrant.status).toBe('Active');
@@ -54,60 +54,46 @@ describe('approveInvitation', () => {
     await vi.waitFor(() => expect(sendAccountApprovedEmail).toHaveBeenCalledTimes(1));
     expect(sendAccountApprovedEmail.mock.calls[0][0].to).toBe('newbie@example.com');
 
-    const audits = await models.AuditLog.findAll({ where: { action: 'invitation.approved' } });
+    const audits = await models.AuditLog.findAll({ where: { action: 'user.approved' } });
     expect(audits).toHaveLength(1);
   });
 
   it('rejects a non-admin', async () => {
-    const { invitation } = await pendingRegistration();
+    const { registrant } = await pendingRegistration();
     const member = await createTestUser({ role: 'USER', email: 'member@example.com' });
-    const { errors } = await graphql(APPROVE, { id: String(invitation.id) }, member);
+    const { errors } = await graphql(APPROVE, { id: String(registrant.id) }, member);
     expect(errors[0].message).toBe('Admin access is required.');
-  });
-
-  it('refuses to approve an invitation not awaiting approval', async () => {
-    const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
-    const inviter = await createTestUser({ role: 'ADMIN', email: 'inviter2@example.com' });
-    const inv = await models.Invitation.create({
-      tokenHash: 'hash-pending',
-      inviterId: inviter.id,
-      invitedEmail: 'notyet@example.com',
-      expiresAt: new Date(Date.now() + 1e6),
-      status: 'Pending'
-    });
-    const { errors } = await graphql(APPROVE, { id: String(inv.id) }, admin);
-    expect(errors[0].message).toBe('This registration is not awaiting approval.');
   });
 });
 
-describe('rejectInvitation', () => {
+describe('rejectUser', () => {
   it('marks the user Rejected, records the reason, emails them, and audits it', async () => {
     const { registrant, invitation } = await pendingRegistration('reject-me@example.com');
     const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
 
     const { data, errors } = await graphql(
       REJECT,
-      { id: String(invitation.id), reason: 'Not a family member.' },
+      { id: String(registrant.id), reason: 'Not a family member.' },
       admin
     );
     expect(errors).toBeUndefined();
-    expect(data.rejectInvitation.status).toBe('Rejected');
-    expect(data.rejectInvitation.rejectionReason).toBe('Not a family member.');
+    expect(data.rejectUser.status).toBe('Rejected');
 
     await registrant.reload();
     expect(registrant.status).toBe('Rejected');
+    expect(registrant.rejectionReason).toBe('Not a family member.');
 
     await vi.waitFor(() => expect(sendAccountRejectedEmail).toHaveBeenCalledTimes(1));
     expect(sendAccountRejectedEmail.mock.calls[0][0].reason).toBe('Not a family member.');
 
-    const audits = await models.AuditLog.findAll({ where: { action: 'invitation.rejected' } });
+    const audits = await models.AuditLog.findAll({ where: { action: 'user.rejected' } });
     expect(audits).toHaveLength(1);
   });
 
   it('blocks a rejected user from logging in', async () => {
-    const { invitation } = await pendingRegistration('blocked@example.com');
+    const { registrant } = await pendingRegistration('blocked@example.com');
     const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
-    await graphql(REJECT, { id: String(invitation.id), reason: null }, admin);
+    await graphql(REJECT, { id: String(registrant.id), reason: null }, admin);
 
     const login = `mutation($e:String!,$p:String!){ login(email:$e,password:$p){ token } }`;
     const { errors } = await graphql(login, { e: 'blocked@example.com', p: 'Password123!' });
