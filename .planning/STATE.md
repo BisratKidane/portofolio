@@ -4,13 +4,13 @@ milestone: v4.1
 milestone_name: Open Registration with Approval
 status: executing
 stopped_at: Completed 30-01-PLAN.md
-last_updated: "2026-08-28T06:42:08.423Z"
+last_updated: "2026-08-28T07:02:15.951Z"
 last_activity: 2026-08-28
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 ## Current Position
 
 Phase: 30 (approval-moves-to-the-account) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-08-28
 
@@ -98,6 +98,7 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 | Phase 27 P04 | 25min | 2 tasks | 2 files |
 | Phase 29 P04 | 20min | 3 tasks | 2 files |
 | Phase 30 P01 | 25min | 3 tasks | 3 files |
+| Phase 30 P02 | 20min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,7 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 29]: Full-suite SC-4 gate reported with explicit D-01 MariaDB caveat: local run is FE 435/435 + BE 411/413 (2 engine-gated skips, documented in KNOWN-ISSUES.md), never an unqualified 100% claim -- CI (MySQL 8.4) runs VERIFY-04/REL-06 unconditionally
 - [Phase 30]: Plan 30-01: approvedBy on users is a plain unassociated INTEGER.UNSIGNED column (no FK), matching the 015/018 ALTER-on-existing-table precedent rather than invitations.approvedBy's CREATE-TABLE-time FK
 - [Phase 30]: Migration 019 proven via scratch-DB dry run then human-verified applied to real local dev database (portofolio); production apply explicitly deferred (F-03)
+- [Phase 30]: Plan 30-02: target.update(...) carries status + decision fields together in one call (D-04); now/cleanReason computed once and reused for both the User and Invitation row updates so they share byte-identical values (D-05)
 
 ### Pending Todos
 
@@ -177,7 +179,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-28T06:41:33.323Z
+Last session: 2026-08-28T07:00:40.878Z
 Stopped at: Completed 30-01-PLAN.md
 Resume file: None
 

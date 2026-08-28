@@ -38,14 +38,14 @@ Approval now means exactly one thing: **is this stranger actually family?**
 - [ ] **INVITE-01**: Only an ADMIN can create an invitation. The restriction is enforced server-side in the resolver, not merely hidden in the UI.
 - [ ] **INVITE-02**: Non-admins no longer see the invite form or a route/nav entry that offers it; admins see it unchanged.
 - [ ] **INVITE-03**: A person who registers through an admin invitation and verifies their email becomes `Active` automatically — no approval step, because the admin who invited them already vouched for them.
-- [ ] **INVITE-04**: Invitation rows created before this change (including ones sent by non-admin members) remain readable and correctly rendered — historical data is not broken or rewritten.
+- [x] **INVITE-04**: Invitation rows created before this change (including ones sent by non-admin members) remain readable and correctly rendered — historical data is not broken or rewritten.
 
 ### Approval (APPR)
 
 - [x] **APPR-01**: An admin can approve or reject a pending account directly, acting on the account itself rather than on an invitation record — a self-registrant has no invitation to act on.
 - [ ] **APPR-02**: The admin approval queue lists every account awaiting a decision with the name, email, relationship note, and when they registered — enough to decide without leaving the page.
-- [ ] **APPR-03**: Approving activates the account and emails the person that they can now sign in; rejecting blocks sign-in and emails them, including the reason when the admin gives one.
-- [ ] **APPR-04**: Approve and reject are admin-only, enforced server-side, and written to the audit log with the acting admin and the target account.
+- [x] **APPR-03**: Approving activates the account and emails the person that they can now sign in; rejecting blocks sign-in and emails them, including the reason when the admin gives one.
+- [x] **APPR-04**: Approve and reject are admin-only, enforced server-side, and written to the audit log with the acting admin and the target account.
 - [ ] **APPR-05**: The login gate is unchanged: sign-in still requires a verified email **and** an `Active` account, with the existing distinct messages for pending, rejected, and disabled accounts.
 - [ ] **APPR-06**: An approved self-registrant still has to be linked to a family member before reaching the app — they land on the existing `/pending` screen until an admin links them via the existing `/link-accounts` flow.
 
