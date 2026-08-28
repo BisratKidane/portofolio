@@ -20,6 +20,8 @@ const ROW = {
   registeredUser: { id: '9', name: 'Joseph Q', email: 'joe@example.com', emailVerified: true }
 };
 
+const UNVERIFIED_ROW = { ...ROW, registeredUser: { ...ROW.registeredUser, emailVerified: false } };
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -79,5 +81,15 @@ describe('ApprovalsPage', () => {
         reason: 'Not a relative'
       });
     });
+  });
+
+  it('disables Approve and Reject for a row whose email is not verified', async () => {
+    graphqlRequest.mockResolvedValueOnce({ pendingRegistrations: [UNVERIFIED_ROW] });
+    render(<ApprovalsPage />);
+
+    await screen.findByText('Joseph Q');
+
+    expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
   });
 });
