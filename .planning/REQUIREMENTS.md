@@ -46,7 +46,7 @@ Approval now means exactly one thing: **is this stranger actually family?**
 - [ ] **APPR-02**: The admin approval queue lists every account awaiting a decision with the name, email, relationship note, and when they registered — enough to decide without leaving the page.
 - [x] **APPR-03**: Approving activates the account and emails the person that they can now sign in; rejecting blocks sign-in and emails them, including the reason when the admin gives one.
 - [x] **APPR-04**: Approve and reject are admin-only, enforced server-side, and written to the audit log with the acting admin and the target account.
-- [ ] **APPR-05**: The login gate is unchanged: sign-in still requires a verified email **and** an `Active` account, with the existing distinct messages for pending, rejected, and disabled accounts.
+- [x] **APPR-05**: The login gate is unchanged: sign-in still requires a verified email **and** an `Active` account, with the existing distinct messages for pending, rejected, and disabled accounts.
 - [ ] **APPR-06**: An approved self-registrant still has to be linked to a family member before reaching the app — they land on the existing `/pending` screen until an admin links them via the existing `/link-accounts` flow.
 
 ### Open-Registration Control (ADMIN)

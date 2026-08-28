@@ -162,6 +162,29 @@ describe('rejectUser', () => {
     });
   });
 
+  // WR-03 (code review + phase verification). approveUser had a non-admin test
+  // and rejectUser did not, so `requireAdmin` could be deleted from rejectUser
+  // and the suite would stay green. Phase 14 of this project shipped four authz
+  // gaps behind green tests for exactly this reason: the non-admin paths were
+  // never exercised.
+  it('rejects a non-admin', async () => {
+    const { registrant } = await pendingRegistration();
+    const member = await createTestUser({ role: 'USER', email: 'member@example.com' });
+    const { errors } = await graphql(REJECT, { id: String(registrant.id), reason: 'nope' }, member);
+    expect(errors[0].message).toBe('Admin access is required.');
+
+    // The account must be untouched -- refused, not partially applied.
+    await registrant.reload();
+    expect(registrant.status).toBe('Pending');
+    expect(registrant.rejectedAt).toBeNull();
+  });
+
+  it('rejects an unauthenticated caller', async () => {
+    const { registrant } = await pendingRegistration();
+    const { errors } = await graphql(REJECT, { id: String(registrant.id), reason: 'nope' });
+    expect(errors[0].message).toBe('You must be logged in to perform this action.');
+  });
+
   it('blocks a rejected user from logging in', async () => {
     const { registrant } = await pendingRegistration('blocked@example.com');
     const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
