@@ -61,8 +61,12 @@ describe('approveUser', () => {
     await vi.waitFor(() => expect(sendAccountApprovedEmail).toHaveBeenCalledTimes(1));
     expect(sendAccountApprovedEmail.mock.calls[0][0].to).toBe('newbie@example.com');
 
-    const audits = await models.AuditLog.findAll({ where: { action: 'user.approved' } });
-    expect(audits).toHaveLength(1);
+    // writeAuditLog is fire-and-forget, so poll the query itself -- waiting on
+    // the mocked mailer does not cover the real DB insert.
+    await vi.waitFor(async () => {
+      const audits = await models.AuditLog.findAll({ where: { action: 'user.approved' } });
+      expect(audits).toHaveLength(1);
+    });
   });
 
   it('rejects a non-admin', async () => {
@@ -152,8 +156,10 @@ describe('rejectUser', () => {
     await vi.waitFor(() => expect(sendAccountRejectedEmail).toHaveBeenCalledTimes(1));
     expect(sendAccountRejectedEmail.mock.calls[0][0].reason).toBe('Not a family member.');
 
-    const audits = await models.AuditLog.findAll({ where: { action: 'user.rejected' } });
-    expect(audits).toHaveLength(1);
+    await vi.waitFor(async () => {
+      const audits = await models.AuditLog.findAll({ where: { action: 'user.rejected' } });
+      expect(audits).toHaveLength(1);
+    });
   });
 
   it('blocks a rejected user from logging in', async () => {
@@ -260,8 +266,10 @@ describe('concurrent disposition (CR-01)', () => {
     expect(registrant.status).toBe('Active');
 
     // One decision means one audit row and one email -- not two of each.
-    const audits = await models.AuditLog.findAll({ where: { action: 'user.approved' } });
-    expect(audits).toHaveLength(1);
+    await vi.waitFor(async () => {
+      const audits = await models.AuditLog.findAll({ where: { action: 'user.approved' } });
+      expect(audits).toHaveLength(1);
+    });
     expect(sendAccountApprovedEmail).toHaveBeenCalledTimes(1);
   });
 
@@ -307,7 +315,9 @@ describe('concurrent disposition (CR-01)', () => {
 
     await registrant.reload();
     expect(registrant.status).toBe('Rejected');
-    const audits = await models.AuditLog.findAll({ where: { action: 'user.rejected' } });
-    expect(audits).toHaveLength(1);
+    await vi.waitFor(async () => {
+      const audits = await models.AuditLog.findAll({ where: { action: 'user.rejected' } });
+      expect(audits).toHaveLength(1);
+    });
   });
 });
