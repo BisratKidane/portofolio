@@ -23,10 +23,35 @@ export const invitationResolvers = {
       requireAdmin(user);
       return models.Invitation.findAll({ order: [['createdAt', 'DESC']] });
     },
-    // Admin-only: invitations awaiting an approval decision.
+    // Admin-only: invitations awaiting an approval decision. Narrowed (D-09) to
+    // exclude registrants who are unverified (haven't proven the address yet)
+    // or already Active (decision already made) -- a two-step query, not a
+    // Sequelize `include`-with-`where` (no precedent for that shape anywhere
+    // in this backend; see approval.resolver.js's registeredUserId lookup for
+    // the closer analog). An orphaned row (no registeredUserId) always stays
+    // reachable (D-10) since there's no account to check eligibility against.
+    // Never writes Invitation.status -- read-only narrowing (D-08).
     pendingRegistrations: async (_parent, _args, { models, user }) => {
       requireAdmin(user);
-      return models.Invitation.findAll({ where: { status: 'Registered' }, order: [['registeredAt', 'DESC']] });
+
+      const registered = await models.Invitation.findAll({
+        where: { status: 'Registered' },
+        order: [['registeredAt', 'DESC']]
+      });
+
+      const registeredUserIds = registered
+        .map((invitation) => invitation.registeredUserId)
+        .filter((id) => id != null);
+
+      const eligibleUsers = await models.User.findAll({
+        where: { id: registeredUserIds, status: 'Pending', emailVerified: true },
+        attributes: ['id']
+      });
+      const eligibleIds = new Set(eligibleUsers.map((eligibleUser) => eligibleUser.id));
+
+      return registered.filter(
+        (invitation) => invitation.registeredUserId == null || eligibleIds.has(invitation.registeredUserId)
+      );
     }
   },
   Mutation: {
