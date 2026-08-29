@@ -451,4 +451,117 @@ describe('verifyEmail', () => {
 
     expect(await models.AuditLog.count({ where: { action: 'invitation.activated' } })).toBe(0);
   });
+
+  // 31-05, TOCTOU lock: the inviter is a legitimate ADMIN/Active/verified account at the moment
+  // verifyEmail begins, but is demoted to USER by a concurrent raw connection WHILE verifyEmail's
+  // own transaction is still open (blocked on the admin-slot FOR UPDATE scan, which needs the
+  // inviter's row). Against a plain, non-locking re-read the inviter check would still see the
+  // transaction's earlier REPEATABLE READ snapshot (still role: 'ADMIN') and wrongly promote --
+  // this test proves the row is genuinely locked, not just re-read.
+  it('refuses to promote a Pending registrant when the inviter is demoted to USER concurrently with redemption (31-05, TOCTOU lock)', async (ctx) => {
+    ctx.skip(
+      await isMariaDB(),
+      'MariaDB does not implement the MySQL 8.4 SELECT ... FOR UPDATE lock-wait semantics this ' +
+        'test asserts (it raises a Sequelize optimistic-version error instead, same divergence as ' +
+        'VERIFY-04). This test runs and must pass on CI (MySQL 8.4). See KNOWN-ISSUES.md.'
+    );
+    const registrant = await createTestUser({
+      email: 'toctou-registrant@example.com',
+      status: 'Pending',
+      emailVerified: false,
+      role: 'USER',
+      emailVerificationToken: hashVerificationToken('toctou-lock-token'),
+      emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    });
+    const inviter = await createTestUser({ role: 'ADMIN', email: 'toctou-inviter@example.com' });
+    // A separate, always-present anchor admin keeps the admin-slot count >= 1 after the inviter
+    // is demoted, so the unrelated ADMIN-slot-filling branch never fires on this test.
+    await createTestUser({ role: 'ADMIN', email: 'toctou-anchor-admin@example.com' });
+    await models.Invitation.create({
+      tokenHash: 'irrelevant-hash-for-toctou-lock-test',
+      inviterId: inviter.id,
+      invitedEmail: registrant.email,
+      relationshipToFamily: 'cousin',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: 'Registered',
+      registeredAt: new Date(),
+      registeredUserId: registrant.id
+    });
+
+    const conn = await rawConnection();
+    let response;
+    try {
+      await conn.beginTransaction();
+      await conn.query('SELECT * FROM users WHERE id = ? FOR UPDATE', [inviter.id]);
+
+      await Promise.all([
+        (async () => {
+          response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'toctou-lock-token' });
+        })(),
+        (async () => {
+          await conn.query('SELECT SLEEP(0.3)');
+          await conn.query('UPDATE users SET role = ? WHERE id = ?', ['USER', inviter.id]);
+          await conn.commit();
+        })()
+      ]);
+    } finally {
+      try {
+        await conn.rollback();
+      } catch {
+        /* already committed */
+      }
+      await conn.end();
+    }
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data.verifyEmail.user.status).toBe('Pending');
+
+    await registrant.reload();
+    expect(registrant.status).toBe('Pending');
+    expect(registrant.emailVerified).toBe(true);
+
+    expect(await models.AuditLog.count({ where: { action: 'invitation.activated' } })).toBe(0);
+  });
+
+  // 31-05, emailVerified gap: an ADMIN/Active inviter whose own emailVerified is false (e.g.
+  // after changing their email via updateUser) cannot authenticate at all per
+  // getUserFromRequest, yet role/status alone would still let them vouch for a pending invitee
+  // under the pre-fix predicate. isFunctioningAdmin must require emailVerified too.
+  it('does not activate a Pending account whose inviter is an ADMIN with emailVerified: false (31-05, emailVerified gap)', async () => {
+    const registrant = await createTestUser({
+      email: 'emailverified-gap-registrant@example.com',
+      status: 'Pending',
+      emailVerified: false,
+      role: 'USER',
+      emailVerificationToken: hashVerificationToken('emailverified-gap-token'),
+      emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    });
+    const inviter = await createTestUser({
+      role: 'ADMIN',
+      status: 'Active',
+      emailVerified: false,
+      email: 'emailverified-gap-inviter@example.com'
+    });
+    await models.Invitation.create({
+      tokenHash: 'irrelevant-hash-for-emailverified-gap-test',
+      inviterId: inviter.id,
+      invitedEmail: registrant.email,
+      relationshipToFamily: 'cousin',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: 'Registered',
+      registeredAt: new Date(),
+      registeredUserId: registrant.id
+    });
+
+    const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'emailverified-gap-token' });
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data.verifyEmail.user.status).toBe('Pending');
+
+    await registrant.reload();
+    expect(registrant.emailVerified).toBe(true);
+    expect(registrant.status).toBe('Pending');
+
+    expect(await models.AuditLog.count({ where: { action: 'invitation.activated' } })).toBe(0);
+  });
 });
