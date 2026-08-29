@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
 status: executing
-stopped_at: Phase 31 context gathered
+stopped_at: Phase 31 verification -- gaps found (SC-3)
 last_updated: "2026-08-28T14:17:39.884Z"
-last_activity: 2026-08-28 -- Phase 31 execution started
+last_activity: 2026-08-29 -- Phase 31 all 3 plans executed; verification 3/4, SC-3 gap open
 progress:
   total_phases: 5
   completed_phases: 1
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 Phase: 31 (invitations-become-admin-only) — EXECUTING
 Plan: 1 of 3
-Status: Executing Phase 31
-Last activity: 2026-08-28 -- Phase 31 execution started
+Status: Phase 31 executed -- awaiting gap closure (SC-3)
+Last activity: 2026-08-29 -- Phase 31 all 3 plans executed; verification 3/4, SC-3 gap open
 
 ## Deferred Items
 
