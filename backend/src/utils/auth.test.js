@@ -7,6 +7,7 @@ import {
   requireAuth,
   requireAdmin,
   requireFamilyAccess,
+  isFunctioningAdmin,
   createResetToken,
   resetTokenExpiry,
   createVerificationToken,
@@ -197,6 +198,28 @@ describe('requireFamilyAccess', () => {
 
   it('throws for null (via requireAuth)', () => {
     expect(() => requireFamilyAccess(null)).toThrow('You must be logged in to perform this action.');
+  });
+});
+
+describe('isFunctioningAdmin', () => {
+  it('returns true for role ADMIN, status Active, emailVerified true', () => {
+    expect(isFunctioningAdmin({ role: 'ADMIN', status: 'Active', emailVerified: true })).toBe(true);
+  });
+
+  it('returns false for role USER (all else matching)', () => {
+    expect(isFunctioningAdmin({ role: 'USER', status: 'Active', emailVerified: true })).toBe(false);
+  });
+
+  it('returns false for status Disabled (all else matching)', () => {
+    expect(isFunctioningAdmin({ role: 'ADMIN', status: 'Disabled', emailVerified: true })).toBe(false);
+  });
+
+  it('returns false for emailVerified: false (all else matching)', () => {
+    expect(isFunctioningAdmin({ role: 'ADMIN', status: 'Active', emailVerified: false })).toBe(false);
+  });
+
+  it('returns false for null', () => {
+    expect(isFunctioningAdmin(null)).toBe(false);
   });
 });
 
