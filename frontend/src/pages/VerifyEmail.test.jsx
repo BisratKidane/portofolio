@@ -49,6 +49,32 @@ describe('VerifyEmail page', () => {
     expect(graphqlRequest).toHaveBeenCalledWith(expect.any(String), { token: 'abc123' });
   });
 
+  it('navigates to /dashboard when the verified account is Active (F-02, SC-3)', async () => {
+    graphqlRequest.mockResolvedValueOnce({
+      verifyEmail: {
+        token: 'tok-active',
+        user: { id: 4, name: 'Beti', email: 'beti@example.com', role: 'USER', status: 'Active' }
+      }
+    });
+
+    renderVerifyEmail(['/verify-email?token=active-token']);
+
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith('/dashboard'));
+  });
+
+  it('navigates to /pending when the verified account is still Pending', async () => {
+    graphqlRequest.mockResolvedValueOnce({
+      verifyEmail: {
+        token: 'tok-pending',
+        user: { id: 5, name: 'Caleb', email: 'caleb@example.com', role: 'USER', status: 'Pending' }
+      }
+    });
+
+    renderVerifyEmail(['/verify-email?token=pending-token']);
+
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith('/pending'));
+  });
+
   it('shows a recoverable error state and never navigates when verification fails', async () => {
     graphqlRequest.mockRejectedValueOnce(new Error('The email verification token is invalid or has expired.'));
 

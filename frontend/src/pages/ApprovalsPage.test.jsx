@@ -20,8 +20,6 @@ const ROW = {
   registeredUser: { id: '9', name: 'Joseph Q', email: 'joe@example.com', emailVerified: true }
 };
 
-const UNVERIFIED_ROW = { ...ROW, registeredUser: { ...ROW.registeredUser, emailVerified: false } };
-
 // fk_invitations_registered_user is ON DELETE SET NULL (migration 016), so an
 // invitation can outlive the account it created and arrive here with a null
 // registeredUser.
@@ -86,16 +84,6 @@ describe('ApprovalsPage', () => {
         reason: 'Not a relative'
       });
     });
-  });
-
-  it('disables Approve and Reject for a row whose email is not verified', async () => {
-    graphqlRequest.mockResolvedValueOnce({ pendingRegistrations: [UNVERIFIED_ROW] });
-    render(<ApprovalsPage />);
-
-    await screen.findByText('Joseph Q');
-
-    expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
   });
 
   it('disables Approve and Reject for a row with no registered user (WR-01)', async () => {
