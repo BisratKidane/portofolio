@@ -349,4 +349,106 @@ describe('verifyEmail', () => {
     expect(user.emailVerified).toBe(true);
     expect(user.status).toBe('Disabled');
   });
+
+  // CR-01 (legacy row): a Pending, invited registrant whose invitation was issued by a
+  // non-admin (a pre-Phase-31 row, when createInvitation was still gated by
+  // requireFamilyAccess) must not be silently promoted -- existence of the Invitation row
+  // alone proves nothing about who currently holds ADMIN.
+  it('does not activate a Pending account whose invitation was issued by a non-admin (CR-01, legacy row)', async () => {
+    const user = await createTestUser({
+      email: 'legacy-row-verifier@example.com',
+      status: 'Pending',
+      emailVerified: false,
+      role: 'USER',
+      emailVerificationToken: hashVerificationToken('legacy-row-verifier-token'),
+      emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    });
+    const inviter = await createTestUser({ role: 'USER', email: 'inviter-legacy-row@example.com' });
+    await models.Invitation.create({
+      tokenHash: 'irrelevant-hash-for-this-test-4',
+      inviterId: inviter.id,
+      invitedEmail: user.email,
+      relationshipToFamily: 'cousin',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: 'Registered',
+      registeredAt: new Date(),
+      registeredUserId: user.id
+    });
+
+    const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'legacy-row-verifier-token' });
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data.verifyEmail.user.status).toBe('Pending');
+
+    await user.reload();
+    expect(user.emailVerified).toBe(true);
+    expect(user.status).toBe('Pending');
+
+    expect(await models.AuditLog.count({ where: { action: 'invitation.activated' } })).toBe(0);
+  });
+
+  // CR-01 (demoted/disabled admin, TOCTOU): the inviter's authority is re-checked at
+  // redemption time, not trusted from invite-creation time -- an admin who has since been
+  // disabled must not still vouch for anyone.
+  it('does not activate a Pending account whose inviter is an admin who is now Disabled (CR-01, demoted/disabled admin)', async () => {
+    const user = await createTestUser({
+      email: 'demoted-admin-verifier@example.com',
+      status: 'Pending',
+      emailVerified: false,
+      role: 'USER',
+      emailVerificationToken: hashVerificationToken('demoted-admin-verifier-token'),
+      emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    });
+    const inviter = await createTestUser({
+      role: 'ADMIN',
+      status: 'Disabled',
+      email: 'inviter-demoted-admin@example.com'
+    });
+    await models.Invitation.create({
+      tokenHash: 'irrelevant-hash-for-this-test-5',
+      inviterId: inviter.id,
+      invitedEmail: user.email,
+      relationshipToFamily: 'cousin',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: 'Registered',
+      registeredAt: new Date(),
+      registeredUserId: user.id
+    });
+
+    const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'demoted-admin-verifier-token' });
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data.verifyEmail.user.status).toBe('Pending');
+
+    await user.reload();
+    expect(user.emailVerified).toBe(true);
+    expect(user.status).toBe('Pending');
+
+    expect(await models.AuditLog.count({ where: { action: 'invitation.activated' } })).toBe(0);
+  });
+
+  // CR-02 (regression guard): a Pending account with NO invitation row at all must stay
+  // Pending -- pins the `if (invitation)` boundary itself so a future change cannot silently
+  // remove it and have the suite stay green.
+  it('does not activate a Pending account with no invitation row at all (CR-02, regression guard)', async () => {
+    const user = await createTestUser({
+      email: 'no-invitation-verifier@example.com',
+      status: 'Pending',
+      emailVerified: false,
+      role: 'USER',
+      emailVerificationToken: hashVerificationToken('no-invitation-verifier-token'),
+      emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    });
+
+    const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'no-invitation-verifier-token' });
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data.verifyEmail.user.status).toBe('Pending');
+
+    await user.reload();
+    expect(user.emailVerified).toBe(true);
+    expect(user.status).toBe('Pending');
+
+    expect(await models.AuditLog.count({ where: { action: 'invitation.activated' } })).toBe(0);
+  });
 });
