@@ -4,8 +4,8 @@ milestone: v4.1
 milestone_name: Open Registration with Approval
 status: executing
 stopped_at: Phase 31 context gathered
-last_updated: "2026-08-28T14:02:36.038Z"
-last_activity: 2026-08-28 -- Phase 31 planning complete
+last_updated: "2026-08-28T14:17:39.884Z"
+last_activity: 2026-08-28 -- Phase 31 execution started
 progress:
   total_phases: 5
   completed_phases: 1
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 31 — invitations become admin only
+**Current focus:** Phase 31 — invitations-become-admin-only
 
 ## Current Position
 
-Phase: 31
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-08-28 -- Phase 31 planning complete
+Phase: 31 (invitations-become-admin-only) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 31
+Last activity: 2026-08-28 -- Phase 31 execution started
 
 ## Deferred Items
 
