@@ -75,8 +75,13 @@ describe('register (invitation-only)', () => {
     const user = await models.User.findOne({ where: { email: 'ada@example.com' } });
     expect(hashVerificationToken(sendVerificationEmail.mock.calls[0][0].token)).toBe(user.emailVerificationToken);
 
-    const audits = await models.AuditLog.findAll({ where: { action: 'invitation.registered' } });
-    expect(audits).toHaveLength(1);
+    // writeAuditLog is fire-and-forget in register (user.resolver.js) -- the mutation returns
+    // before the audit row is committed, so this assertion must poll like the
+    // sendVerificationEmail one above rather than read the table once (post-merge race, 31-05).
+    await vi.waitFor(async () => {
+      const audits = await models.AuditLog.findAll({ where: { action: 'invitation.registered' } });
+      expect(audits).toHaveLength(1);
+    });
   });
 
   it('rejects an invalid invitation token', async () => {
