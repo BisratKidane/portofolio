@@ -30,14 +30,14 @@ export default function App() {
           <Route path="manage" element={<ManagePage />} />
           <Route path="family" element={<FamilyTreePage />} />
           <Route path="detail" element={<DetailPage />} />
-          <Route path="invitations" element={<InvitationsPage />} />
-          {/* Old split routes now redirect to the merged Invitations page. */}
-          <Route path="invite" element={<Navigate to="/invitations" replace />} />
-          <Route path="approvals" element={<Navigate to="/invitations" replace />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
           <Route path="link-accounts" element={<LinkAccountsPage />} />
           <Route path="admin/link-members" element={<Navigate to="/link-accounts" replace />} />
+          <Route path="invitations" element={<InvitationsPage />} />
+          {/* Old split routes now redirect to the merged Invitations page. */}
+          <Route path="invite" element={<Navigate to="/invitations" replace />} />
+          <Route path="approvals" element={<Navigate to="/invitations" replace />} />
         </Route>
       </Route>
     </Routes>

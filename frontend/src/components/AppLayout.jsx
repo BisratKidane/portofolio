@@ -70,13 +70,15 @@ export default function AppLayout() {
                 >
                   Manage
                 </Button>
-                <Button
-                  component={RouterLink}
-                  to="/invitations"
-                  sx={{ color: colors.slate, fontWeight: 600, display: { xs: 'none', sm: 'inline-flex' } }}
-                >
-                  Invitations
-                </Button>
+                {user.role === 'ADMIN' && (
+                  <Button
+                    component={RouterLink}
+                    to="/invitations"
+                    sx={{ color: colors.slate, fontWeight: 600, display: { xs: 'none', sm: 'inline-flex' } }}
+                  >
+                    Invitations
+                  </Button>
+                )}
                 {user.role === 'ADMIN' && (
                   <Button
                     component={RouterLink}
