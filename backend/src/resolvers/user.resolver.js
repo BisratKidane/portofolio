@@ -277,15 +277,26 @@ export const userResolvers = {
             transaction: t
           });
           if (invitation) {
+            // Re-check the vouching admin's CURRENT role and status at redemption time, not
+            // trusted from invite-creation time (T-31-11/T-31-12). Closes two exploitable
+            // paths: (1) pre-Phase-31 invitations issued by a linked, Active, non-admin family
+            // member under the old requireFamilyAccess guard, still live with no migration
+            // touching them, and (2) an invitation whose inviter is later demoted to USER,
+            // disabled, or rejected before the invitee verifies (TOCTOU). Re-reading the
+            // inviter's live row on every redemption closes both without a migration (D-05).
+            const inviter = await models.User.findByPk(invitation.inviterId, { transaction: t });
+            const vouchedByAdmin = Boolean(inviter) && inviter.role === 'ADMIN' && inviter.status === 'Active';
             // Conditional update: only promotes from Pending. A Rejected or Disabled account
             // that re-verifies its email stays Rejected/Disabled -- promotion is silently
             // skipped, never resurrected (D-06). No approvedAt/approvedBy stamp and no
             // Invitation.status write here -- nobody decided; the admin vouched at invite time.
-            const [activatedCount] = await models.User.update(
-              { status: 'Active' },
-              { where: { id: user.id, status: 'Pending' }, transaction: t }
-            );
-            if (activatedCount > 0) promotedInvitation = invitation;
+            if (vouchedByAdmin) {
+              const [activatedCount] = await models.User.update(
+                { status: 'Active' },
+                { where: { id: user.id, status: 'Pending' }, transaction: t }
+              );
+              if (activatedCount > 0) promotedInvitation = invitation;
+            }
           }
         });
 
