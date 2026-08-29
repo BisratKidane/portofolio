@@ -106,3 +106,17 @@ None - no external service configuration required.
 ---
 *Phase: 31-invitations-become-admin-only*
 *Completed: 2026-08-29*
+
+## Self-Check: PASSED
+
+- FOUND: frontend/src/App.jsx
+- FOUND: frontend/src/components/AppLayout.jsx
+- FOUND: frontend/src/pages/ApprovalsPage.jsx
+- FOUND: frontend/src/pages/ApprovalsPage.test.jsx
+- FOUND: frontend/src/pages/VerifyEmail.test.jsx
+- FOUND: .planning/phases/31-invitations-become-admin-only/31-03-SUMMARY.md
+- FOUND: commit b64ab64 (feat, Task 1)
+- FOUND: commit f3b0c3b (test, Task 2 test-removal)
+- FOUND: commit f34ce1a (feat, Task 2 implementation)
+- FOUND: commit b8e510b (test, Task 3)
+- FOUND: commit 8e82c0f (docs, SUMMARY.md)
