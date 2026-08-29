@@ -200,3 +200,17 @@ None — no external service configuration required.
 ---
 *Phase: 31-invitations-become-admin-only*
 *Completed: 2026-08-29*
+
+## Self-Check: PASSED
+
+All claimed files verified present on disk:
+- FOUND: backend/src/resolvers/verifyEmail.test.js
+- FOUND: backend/src/resolvers/user.resolver.js
+- FOUND: backend/src/utils/auth.js
+- FOUND: backend/src/utils/auth.test.js
+- FOUND: .planning/phases/31-invitations-become-admin-only/31-05-SUMMARY.md
+
+All claimed commit hashes verified present in git log:
+- FOUND: 39170c9 (test(31-05): add TOCTOU lock-contention and emailVerified-gap regression tests)
+- FOUND: 7ff6ef3 (fix(31-05): lock inviter row and gate vouching on isFunctioningAdmin (emailVerified))
+- FOUND: bef8b98 (docs(31-05): add plan 05 SUMMARY with mutation-test-the-guard evidence)
