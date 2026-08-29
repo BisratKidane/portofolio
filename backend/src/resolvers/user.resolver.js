@@ -5,6 +5,7 @@ import {
   hashInvitationToken,
   hashResetToken,
   hashVerificationToken,
+  isFunctioningAdmin,
   requireAdmin,
   requireAuth,
   requireFamilyAccess,
@@ -277,15 +278,27 @@ export const userResolvers = {
             transaction: t
           });
           if (invitation) {
-            // Re-check the vouching admin's CURRENT role and status at redemption time, not
-            // trusted from invite-creation time (T-31-11/T-31-12). Closes two exploitable
-            // paths: (1) pre-Phase-31 invitations issued by a linked, Active, non-admin family
-            // member under the old requireFamilyAccess guard, still live with no migration
-            // touching them, and (2) an invitation whose inviter is later demoted to USER,
-            // disabled, or rejected before the invitee verifies (TOCTOU). Re-reading the
-            // inviter's live row on every redemption closes both without a migration (D-05).
-            const inviter = await models.User.findByPk(invitation.inviterId, { transaction: t });
-            const vouchedByAdmin = Boolean(inviter) && inviter.role === 'ADMIN' && inviter.status === 'Active';
+            // Re-check the vouching admin's CURRENT standing at redemption time, not trusted
+            // from invite-creation time (T-31-11/T-31-12). The inviter row is LOCKED
+            // (lock: t.LOCK.UPDATE) for the duration of this decision -- a plain re-read alone
+            // does NOT close the TOCTOU, because under InnoDB REPEATABLE READ a non-locking
+            // SELECT can still be served from this transaction's earlier consistent-read
+            // snapshot, established when the individualHooks: true token-consumption
+            // User.update two statements above performs its own internal SELECT (i.e. before
+            // any concurrent demote could have committed). A genuine locking read always sees
+            // the latest committed row, independent of that snapshot. This closes three paths:
+            // (1) pre-Phase-31 invitations issued by a linked, Active, non-admin family member
+            // under the old requireFamilyAccess guard, still live with no migration touching
+            // them; (2) an invitation whose inviter is demoted, disabled, or rejected --
+            // including CONCURRENTLY, mid-transaction, while this verification is in flight
+            // (T-31-12); and (3) an invitation whose inviter's own email is no longer verified,
+            // using the same functioning-admin definition (isFunctioningAdmin, utils/auth.js)
+            // as the admin-slot count and updateUser's last-administrator guard.
+            const inviter = await models.User.findByPk(invitation.inviterId, {
+              transaction: t,
+              lock: t.LOCK.UPDATE
+            });
+            const vouchedByAdmin = isFunctioningAdmin(inviter);
             // Conditional update: only promotes from Pending. A Rejected or Disabled account
             // that re-verifies its email stays Rejected/Disabled -- promotion is silently
             // skipped, never resurrected (D-06). No approvedAt/approvedBy stamp and no

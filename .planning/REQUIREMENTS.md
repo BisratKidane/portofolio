@@ -37,7 +37,7 @@ Approval now means exactly one thing: **is this stranger actually family?**
 
 - [ ] **INVITE-01**: Only an ADMIN can create an invitation. The restriction is enforced server-side in the resolver, not merely hidden in the UI.
 - [ ] **INVITE-02**: Non-admins no longer see the invite form or a route/nav entry that offers it; admins see it unchanged.
-- [ ] **INVITE-03**: A person who registers through an admin invitation and verifies their email becomes `Active` automatically — no approval step, because the admin who invited them already vouched for them.
+- [x] **INVITE-03**: A person who registers through an admin invitation and verifies their email becomes `Active` automatically — no approval step, because the admin who invited them already vouched for them.
 - [x] **INVITE-04**: Invitation rows created before this change (including ones sent by non-admin members) remain readable and correctly rendered — historical data is not broken or rewritten.
 
 ### Approval (APPR)

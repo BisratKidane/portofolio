@@ -50,6 +50,19 @@ export function requireFamilyAccess(user) {
   if (!user.familyMemberId) throw new Error('Your account is not yet linked to a family member.');
 }
 
+// The single named in-memory definition of "a currently-functioning administrator": role ADMIN,
+// status Active, AND emailVerified true. Scoped to an already-loaded User instance (today: only
+// verifyAndPromote's inviter-vouching check in user.resolver.js). Deliberately NOT applied to the
+// admin-slot raw SQL COUNT(*) (user.resolver.js ~263-264, a raw SQL string, not a JS predicate
+// over a loaded instance) or updateUser's last-administrator guard (user.resolver.js ~425-428, a
+// Sequelize where-clause count over a different set of users, not an in-memory check on one row)
+// -- unifying those would change their query/locking shape and is out of scope here. This helper
+// only covers the in-memory-instance case, so a fourth call site loading a User row can reuse it
+// instead of hand-rolling a fourth variant of the same three-part check.
+export function isFunctioningAdmin(user) {
+  return Boolean(user) && user.role === 'ADMIN' && user.status === 'Active' && user.emailVerified === true;
+}
+
 export function createResetToken() {
   return crypto.randomBytes(32).toString('hex');
 }
