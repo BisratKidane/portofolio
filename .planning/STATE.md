@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
 status: executing
-stopped_at: Phase 31 context gathered
+stopped_at: Phase 31 verified — gaps_found (2 residual gaps)
 last_updated: "2026-08-29T14:51:26.548Z"
-last_activity: 2026-08-29 -- Phase 31 execution started
+last_activity: 2026-08-29 -- Phase 31 all 4 plans executed; re-verification found 2 residual gaps
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
   percent: 20
 ---
 
@@ -25,10 +25,24 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 ## Current Position
 
-Phase: 31 (invitations-become-admin-only) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 31
-Last activity: 2026-08-29 -- Phase 31 execution started
+Phase: 31 (invitations-become-admin-only) — GAPS FOUND
+Plan: 4 of 4 (all executed)
+Status: Phase 31 not complete — re-verification found 2 residual gaps on the inviter-vouching guard
+Last activity: 2026-08-29 -- Phase 31 all 4 plans executed; re-verification found 2 residual gaps
+
+The original blocking gap (SC-3/INVITE-03 auto-activation keyed on Invitation-row existence
+alone) IS closed by plan 31-04. Two NEW gaps were found in its replacement guard:
+
+1. `verifyAndPromote`'s inviter re-check (`user.resolver.js:287`) is a non-locking `findByPk`,
+   so it is not structurally TOCTOU-safe. It is safe today only as an accidental side effect of
+   `users.role` having no index, which forces an unrelated `COUNT(*) ... FOR UPDATE` to lock the
+   whole table. Adding `KEY idx_users_role (role)` would silently reopen the window.
+   Fix: `lock: t.LOCK.UPDATE` + a lock-contention regression test.
+2. `vouchedByAdmin` (`user.resolver.js:288`) omits `emailVerified`, unlike the three other admin
+   guards in this codebase. An admin who changes their own email still silently vouches.
+   Fix: `&& inviter.emailVerified === true` + a regression test.
+
+Next: /gsd:plan-phase 31 --gaps
 
 ## Deferred Items
 
