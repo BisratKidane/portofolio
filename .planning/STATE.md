@@ -4,8 +4,8 @@ milestone: v4.1
 milestone_name: Open Registration with Approval
 status: executing
 stopped_at: Phase 31 context gathered
-last_updated: "2026-08-29T21:10:01.927Z"
-last_activity: 2026-08-29 -- Phase 31 planning complete
+last_updated: "2026-08-29T21:12:01.980Z"
+last_activity: 2026-08-29 -- Phase 31 execution started
 progress:
   total_phases: 5
   completed_phases: 1
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 ## Current Position
 
-Phase: 31 (invitations-become-admin-only) — GAPS FOUND
-Plan: 4 of 4 (all executed)
-Status: Ready to execute
-Last activity: 2026-08-29 -- Phase 31 planning complete
+Phase: 31 (invitations-become-admin-only) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 31
+Last activity: 2026-08-29 -- Phase 31 execution started
 
 The original blocking gap (SC-3/INVITE-03 auto-activation keyed on Invitation-row existence
 alone) IS closed by plan 31-04. Two NEW gaps were found in its replacement guard:
