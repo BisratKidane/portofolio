@@ -183,7 +183,7 @@ Plans:
   3. Someone who registers through an admin invitation and verifies their email can sign in with no admin action in between.
   4. The approval queue no longer contains invited registrants — only accounts that still need a judgement.
 
-**Plans:** 4/4 plans complete (verification: gaps_found — 2 residual gaps on the inviter-vouching guard)
+**Plans:** 5/5 plans complete (verification: gaps_found after wave 3 — 2 residual gaps on the inviter-vouching guard; wave 4 closes them)
 
 Plans:
 **Wave 1**
@@ -198,6 +198,10 @@ Plans:
 **Wave 3** *(gap closure — SC-3/INVITE-03, blocked on Wave 1's verifyEmail change)*
 
 - [x] 31-04-PLAN.md — Re-verify inviter's current role/status at verifyEmail redemption time (closes CR-01/CR-02 auto-activation bypass found in 31-VERIFICATION.md)
+
+**Wave 4** *(gap closure — TOCTOU lock + emailVerified gap, blocked on Wave 3's verifyAndPromote change)*
+
+- [ ] 31-05-PLAN.md — Lock the inviter row (lock: t.LOCK.UPDATE) for the duration of the vouching decision and extract isFunctioningAdmin (role+status+emailVerified) for vouchedByAdmin (closes the 2 residual gaps found in 31-VERIFICATION.md's re-verification of 31-04)
 
 **UI hint**: yes
 
