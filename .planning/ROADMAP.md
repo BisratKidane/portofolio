@@ -183,7 +183,7 @@ Plans:
   3. Someone who registers through an admin invitation and verifies their email can sign in with no admin action in between.
   4. The approval queue no longer contains invited registrants — only accounts that still need a judgement.
 
-**Plans:** 3/3 plans complete
+**Plans:** 3/4 plans complete (gap closure in progress — SC-3 open)
 
 Plans:
 **Wave 1**
@@ -194,6 +194,10 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 31-03-PLAN.md — /invitations route + nav gating (D-03), ApprovalsPage dead-branch removal (D-10), VerifyEmail routing coverage (F-02)
+
+**Wave 3** *(gap closure — SC-3/INVITE-03, blocked on Wave 1's verifyEmail change)*
+
+- [ ] 31-04-PLAN.md — Re-verify inviter's current role/status at verifyEmail redemption time (closes CR-01/CR-02 auto-activation bypass found in 31-VERIFICATION.md)
 
 **UI hint**: yes
 
@@ -283,7 +287,7 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 28. Admin Actions on /detail | v4.0 | 5/5 | Complete    | 2026-08-04 |
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
-| 31. Invitations Become Admin-Only | v4.1 | 3/3 | Gaps Found  | — |
+| 31. Invitations Become Admin-Only | v4.1 | 3/4 | Gaps Found  | — |
 | 32. Tokenless Registration | v4.1 | 0/– | Not started | — |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
