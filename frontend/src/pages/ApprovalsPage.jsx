@@ -3,7 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -31,7 +30,7 @@ const PENDING_QUERY = `
       invitationNote
       registeredAt
       inviter { id name }
-      registeredUser { id name email emailVerified }
+      registeredUser { id name email }
     }
   }
 `;
@@ -126,28 +125,18 @@ export default function ApprovalsPage() {
           {rows.map((row) => {
             const name = row.registeredUser?.name || row.invitedName || row.invitedEmail;
             const email = row.registeredUser?.email || row.invitedEmail;
-            const unverified = Boolean(row.registeredUser) && !row.registeredUser.emailVerified;
             // Both mutations address the ACCOUNT, so a row whose registeredUser
             // is null has nothing to act on -- fk_invitations_registered_user is
-            // ON DELETE SET NULL (migration 016), so this is reachable. Guarding
-            // only on `unverified` let those buttons render enabled and then
-            // dereference row.registeredUser.id on click.
+            // ON DELETE SET NULL (migration 016), so this is reachable.
             const orphaned = !row.registeredUser;
-            const blocked = unverified || orphaned;
-            const blockedReason = orphaned
-              ? 'This registration has no account to act on.'
-              : unverified
-                ? 'Waiting for the applicant to verify their email address.'
-                : '';
+            const blocked = orphaned;
+            const blockedReason = orphaned ? 'This registration has no account to act on.' : '';
             return (
               <Paper key={row.id} elevation={0} sx={{ p: { xs: 2.5, md: 3 }, borderRadius: 4, border: `1px solid ${colors.line}` }}>
                 <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between">
                   <Box sx={{ minWidth: 0 }}>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Typography variant="h6" noWrap>{name}</Typography>
-                      {row.registeredUser && !row.registeredUser.emailVerified && (
-                        <Chip label="Email unverified" size="small" color="warning" variant="outlined" />
-                      )}
                     </Stack>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>{email}</Typography>
                     <Stack spacing={0.25}>
