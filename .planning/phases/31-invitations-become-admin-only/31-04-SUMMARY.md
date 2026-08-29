@@ -104,3 +104,12 @@ None - no external service configuration required.
 ---
 *Phase: 31-invitations-become-admin-only*
 *Completed: 2026-08-29*
+
+## Self-Check: PASSED
+
+- FOUND: backend/src/resolvers/user.resolver.js
+- FOUND: backend/src/resolvers/verifyEmail.test.js
+- FOUND: .planning/phases/31-invitations-become-admin-only/31-04-SUMMARY.md
+- FOUND: commit 90db793 (test: RED, Task 1)
+- FOUND: commit 5203419 (feat: GREEN, Task 2)
+- FOUND: commit ea24d88 (docs: SUMMARY.md)
