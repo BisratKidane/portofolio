@@ -27,10 +27,10 @@ Approval now means exactly one thing: **is this stranger actually family?**
 
 - [ ] **REG-01**: A visitor can reach `/register` with no invitation token and see a real signup form — name, email, password, and a required "how are you related to the family?" note — instead of today's "Agne is invitation-only" dead end.
 - [x] **REG-02**: The `register` mutation accepts a request with no invitation token, creating an account from the user's own email with `status: 'Pending'` and email unverified.
-- [ ] **REG-03**: The relationship note the self-registrant writes is stored with the account and shown to admins at approval time — it is the only context an admin has to judge a stranger on.
+- [x] **REG-03**: The relationship note the self-registrant writes is stored with the account and shown to admins at approval time — it is the only context an admin has to judge a stranger on.
 - [ ] **REG-04**: After submitting, a self-registrant is told plainly what happens next: verify your email, then an administrator reviews your request before you can sign in.
-- [ ] **REG-05**: A self-registration whose email is not yet verified never appears in the admin approval queue.
-- [ ] **REG-06**: Verifying the email moves a self-registration into the admin approval queue (the account stays `Pending`) and notifies administrators that someone is waiting.
+- [x] **REG-05**: A self-registration whose email is not yet verified never appears in the admin approval queue.
+- [x] **REG-06**: Verifying the email moves a self-registration into the admin approval queue (the account stays `Pending`) and notifies administrators that someone is waiting.
 - [x] **REG-07**: Password strength, email normalisation, and email-verification token handling on the tokenless path behave identically to the existing invited path — no second, weaker implementation.
 
 ### Invitation Path (INVITE)

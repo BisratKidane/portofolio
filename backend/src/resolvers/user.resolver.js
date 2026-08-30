@@ -24,22 +24,35 @@ import {
   sendVerificationEmail
 } from '../services/mailer.js';
 
-// Best-effort: email every Active admin that a new invited account has
-// registered and is awaiting approval. Failure here must never fail the
-// registration itself (the caller wraps this in .catch).
-async function notifyAdminsOfPendingRegistration(models, { invitation, user }) {
-  const admins = await models.User.findAll({ where: { role: 'ADMIN', status: 'Active' } });
+// Best-effort: email every Active, email-verified admin that a new pending
+// account is awaiting approval. Failure here must never fail the
+// registration itself (the caller wraps this in .catch). Plain-field
+// contract (D-12): the caller supplies `user` plus whichever of
+// `relationshipNote`/`inviterName`/`relationship` it actually has, rather
+// than an `invitation` object -- this serves two possible caller shapes,
+// an invitation-having caller passing `inviterName`/`relationship`, and a
+// self-registrant caller passing only `relationshipNote`. Only the
+// self-registrant caller (verifyEmail's D-12 wiring) actually calls this
+// function this phase; the invited `register` branch still does not,
+// unchanged from Phase 31.
+async function notifyAdminsOfPendingRegistration(
+  models,
+  { user, relationshipNote = null, inviterName = null, relationship = null }
+) {
+  // D-13: an admin whose own email is unverified never receives this
+  // notification, matching the other admin guards in this codebase
+  // (requireAdmin/isFunctioningAdmin/updateUser's last-administrator count).
+  const admins = await models.User.findAll({ where: { role: 'ADMIN', status: 'Active', emailVerified: true } });
   if (admins.length === 0) return;
-  const inviter = invitation.inviterId ? await models.User.findByPk(invitation.inviterId) : null;
   await Promise.all(
     admins.map((admin) =>
       sendPendingRegistrationEmail({
         to: admin.email,
         newUserName: user.name,
         newUserEmail: user.email,
-        inviterName: inviter?.name || 'Unknown',
-        relationship: invitation.relationshipToFamily,
-        note: invitation.invitationNote,
+        inviterName,
+        relationship,
+        note: relationshipNote,
         registeredAt: user.createdAt || new Date()
       })
     )
@@ -111,6 +124,19 @@ export const userResolvers = {
     unlinkedUsers: async (_parent, _args, { models, user }) => {
       requireAdmin(user);
       return models.User.findAll({ where: { familyMemberId: null }, order: [['createdAt', 'DESC']] });
+    },
+    // Admin-only (D-11): self-registrations awaiting an approval decision --
+    // Pending AND email-verified, the same two-condition eligibility rule
+    // invitation.resolver.js's pendingRegistrations already applies to its
+    // own registeredUserId lookup. Coexists with pendingRegistrations for
+    // this phase (invitation-flow specific); a null relationshipNote is a
+    // normal state and is not filtered out (F-01, REG-05).
+    pendingApprovals: async (_parent, _args, { models, user }) => {
+      requireAdmin(user);
+      return models.User.findAll({
+        where: { status: 'Pending', emailVerified: true },
+        order: [['createdAt', 'DESC']]
+      });
     }
   },
   Mutation: {
@@ -320,6 +346,7 @@ export const userResolvers = {
 
       const sequelize = models.User.sequelize;
       let promotedInvitation = null;
+      let associatedInvitation = null;
 
       // Verify-and-promote run inside a single transaction so token consumption and the single
       // ADMIN-slot decision commit (or roll back) as one atomic unit. The admin-count read takes
@@ -353,6 +380,7 @@ export const userResolvers = {
             where: { registeredUserId: user.id },
             transaction: t
           });
+          associatedInvitation = invitation;
           if (invitation) {
             // Re-check the vouching admin's CURRENT standing at redemption time, not trusted
             // from invite-creation time (T-31-11/T-31-12). The inviter row is LOCKED
@@ -412,6 +440,16 @@ export const userResolvers = {
           invitationId: promotedInvitation.id,
           targetUserId: user.id
         }).catch((err) => console.error('Failed to write audit log:', err));
+      }
+
+      // D-12: a self-registrant (no Invitation row at all) who is still Pending after commit
+      // has just proven their email is real -- surface them to admins now. Never fires for an
+      // invited registrant (always has an Invitation row, regardless of promotion outcome) and
+      // never for an already-Active account (promoted or previously approved).
+      if (!associatedInvitation && user.status === 'Pending') {
+        notifyAdminsOfPendingRegistration(models, { user, relationshipNote: user.relationshipNote }).catch((err) =>
+          console.error('Failed to notify admins of pending self-registration:', err)
+        );
       }
 
       return { token: signToken(user), user };

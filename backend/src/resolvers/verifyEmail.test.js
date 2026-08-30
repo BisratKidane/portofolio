@@ -1,10 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import mysql from 'mysql2/promise';
 import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
 import { hashVerificationToken } from '../utils/auth.js';
 import { env } from '../config/env.js';
 import { isMariaDB } from '../../test/dbEngine.js';
 import { models } from '../models/index.js';
+
+vi.mock('../services/mailer.js', () => ({
+  sendPendingRegistrationEmail: vi.fn().mockResolvedValue(undefined)
+}));
+
+import { sendPendingRegistrationEmail } from '../services/mailer.js';
 
 const VERIFY_EMAIL_MUTATION = `
   mutation VerifyEmail($token: String!) {
@@ -42,6 +48,7 @@ async function rawConnection() {
 }
 
 beforeEach(resetTables);
+beforeEach(() => vi.clearAllMocks());
 
 describe('verifyEmail', () => {
   it('flips emailVerified, clears the token/expiry, and returns a working session for a valid token', async () => {
@@ -563,5 +570,136 @@ describe('verifyEmail', () => {
     expect(registrant.status).toBe('Pending');
 
     expect(await models.AuditLog.count({ where: { action: 'invitation.activated' } })).toBe(0);
+  });
+
+  // D-12/D-13: verifying a self-registered (no Invitation row) account notifies Active,
+  // email-verified admins exactly once via the plain-field notifier; an invited registrant
+  // never triggers this notifier, whether or not their verification promotes them to Active.
+  describe('admin notification on self-registration verification (D-12, D-13)', () => {
+    it('notifies Active, email-verified admins exactly once when a self-registrant (no Invitation row) verifies their email', async () => {
+      const admin = await createTestUser({ role: 'ADMIN', email: 'notify-admin@example.com' });
+      await createTestUser({
+        email: 'self-registrant@example.com',
+        name: 'Self Registrant',
+        status: 'Pending',
+        emailVerified: false,
+        role: 'USER',
+        relationshipNote: "My cousin on my mother's side",
+        emailVerificationToken: hashVerificationToken('self-registrant-token'),
+        emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+
+      const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'self-registrant-token' });
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data.verifyEmail.user.status).toBe('Pending');
+
+      await vi.waitFor(() => {
+        expect(sendPendingRegistrationEmail).toHaveBeenCalledTimes(1);
+      });
+      expect(sendPendingRegistrationEmail.mock.calls[0][0].to).toBe(admin.email);
+      expect(sendPendingRegistrationEmail.mock.calls[0][0].newUserName).toBe('Self Registrant');
+      expect(sendPendingRegistrationEmail.mock.calls[0][0].newUserEmail).toBe('self-registrant@example.com');
+      expect(sendPendingRegistrationEmail.mock.calls[0][0].note).toBe("My cousin on my mother's side");
+    });
+
+    it('never notifies admins when an invited registrant (unvouched inviter) verifies their email and stays Pending', async () => {
+      const user = await createTestUser({
+        email: 'invited-unvouched@example.com',
+        status: 'Pending',
+        emailVerified: false,
+        role: 'USER',
+        emailVerificationToken: hashVerificationToken('invited-unvouched-token'),
+        emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+      const inviter = await createTestUser({ role: 'USER', email: 'inviter-unvouched@example.com' });
+      await models.Invitation.create({
+        tokenHash: 'irrelevant-hash-unvouched',
+        inviterId: inviter.id,
+        invitedEmail: user.email,
+        relationshipToFamily: 'cousin',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        status: 'Registered',
+        registeredAt: new Date(),
+        registeredUserId: user.id
+      });
+
+      const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'invited-unvouched-token' });
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data.verifyEmail.user.status).toBe('Pending');
+
+      // F-02: wait on an already-settled side effect from the same call before
+      // asserting the notifier was NOT called -- never a bare synchronous check.
+      await vi.waitFor(async () => {
+        await user.reload();
+        expect(user.emailVerified).toBe(true);
+      });
+      expect(sendPendingRegistrationEmail).not.toHaveBeenCalled();
+    });
+
+    it('never notifies admins when an invited registrant is promoted to Active on verification', async () => {
+      const user = await createTestUser({
+        email: 'invited-vouched@example.com',
+        status: 'Pending',
+        emailVerified: false,
+        role: 'USER',
+        emailVerificationToken: hashVerificationToken('invited-vouched-token'),
+        emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+      const inviter = await createTestUser({ role: 'ADMIN', email: 'inviter-vouched@example.com' });
+      await models.Invitation.create({
+        tokenHash: 'irrelevant-hash-vouched',
+        inviterId: inviter.id,
+        invitedEmail: user.email,
+        relationshipToFamily: 'cousin',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        status: 'Registered',
+        registeredAt: new Date(),
+        registeredUserId: user.id
+      });
+
+      const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'invited-vouched-token' });
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data.verifyEmail.user.status).toBe('Active');
+
+      // F-02: wait on the already-settled audit-log side effect before asserting
+      // the notifier was NOT called.
+      await vi.waitFor(async () => {
+        const audits = await models.AuditLog.findAll({ where: { action: 'invitation.activated' } });
+        expect(audits).toHaveLength(1);
+      });
+      expect(sendPendingRegistrationEmail).not.toHaveBeenCalled();
+    });
+
+    it('excludes an Active admin whose own email is unverified from the notified recipients (D-13)', async () => {
+      const verifiedAdmin = await createTestUser({ role: 'ADMIN', email: 'verified-admin@example.com' });
+      const unverifiedAdmin = await createTestUser({
+        role: 'ADMIN',
+        status: 'Active',
+        emailVerified: false,
+        email: 'unverified-admin@example.com'
+      });
+      await createTestUser({
+        email: 'self-registrant-d13@example.com',
+        status: 'Pending',
+        emailVerified: false,
+        role: 'USER',
+        emailVerificationToken: hashVerificationToken('self-registrant-d13-token'),
+        emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+
+      const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'self-registrant-d13-token' });
+      expect(response.errors).toBeUndefined();
+
+      await vi.waitFor(() => {
+        expect(sendPendingRegistrationEmail).toHaveBeenCalledTimes(1);
+      });
+      expect(sendPendingRegistrationEmail.mock.calls[0][0].to).toBe(verifiedAdmin.email);
+      expect(sendPendingRegistrationEmail.mock.calls.some((call) => call[0].to === unverifiedAdmin.email)).toBe(
+        false
+      );
+    });
   });
 });
