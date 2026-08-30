@@ -1,21 +1,25 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import bcrypt from 'bcryptjs';
 import { models } from '../models/index.js';
 import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
 
 vi.mock('../services/mailer.js', () => ({
   sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
   sendPendingRegistrationEmail: vi.fn().mockResolvedValue(undefined),
-  sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined)
+  sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
+  sendRegistrationAttemptEmail: vi.fn().mockResolvedValue(undefined)
 }));
 
-import { sendVerificationEmail, sendPendingRegistrationEmail } from '../services/mailer.js';
+import { sendVerificationEmail, sendPendingRegistrationEmail, sendRegistrationAttemptEmail } from '../services/mailer.js';
 import { createInvitationToken, hashInvitationToken, hashVerificationToken } from '../utils/auth.js';
 
 const REGISTER_MUTATION = `
-  mutation Register($token: String!, $name: String!, $password: String!) {
-    register(token: $token, name: $name, password: $password) { message }
+  mutation Register($token: String, $name: String!, $email: String, $password: String!, $relationshipNote: String) {
+    register(token: $token, name: $name, email: $email, password: $password, relationshipNote: $relationshipNote) { message }
   }
 `;
+
+const SUCCESS_MESSAGE = 'Registration received. Verify your email to activate your account.';
 
 // Creates a Pending invitation and returns its raw (unhashed) token.
 async function makeInvitation(overrides = {}) {
@@ -45,7 +49,7 @@ describe('register (invitation-only)', () => {
     const { data, errors } = await graphql(REGISTER_MUTATION, { token: rawToken, name: 'Ada', password: 'Password123!' });
 
     expect(errors).toBeUndefined();
-    expect(data.register.message).toBe('Registration received. Verify your email to activate your account.');
+    expect(data.register.message).toBe(SUCCESS_MESSAGE);
 
     const user = await models.User.findOne({ where: { email: 'ada@example.com' } });
     expect(user.role).toBe('USER');
@@ -131,5 +135,112 @@ describe('register (invitation-only)', () => {
     const { rawToken } = await makeInvitation({ invitedEmail: 'taken@example.com' });
     const { errors } = await graphql(REGISTER_MUTATION, { token: rawToken, name: 'Dup', password: 'Password123!' });
     expect(errors[0].message).toBe('An account with this email already exists.');
+  });
+
+  it('creates the account at the invitation\'s invitedEmail even when a hostile email argument is supplied (D-02)', async () => {
+    const { rawToken } = await makeInvitation({ invitedEmail: 'alice@example.com' });
+
+    const { errors } = await graphql(REGISTER_MUTATION, {
+      token: rawToken,
+      name: 'X',
+      email: 'attacker@evil.com',
+      password: 'Password123!'
+    });
+    expect(errors).toBeUndefined();
+
+    const legit = await models.User.findOne({ where: { email: 'alice@example.com' } });
+    expect(legit).not.toBeNull();
+
+    const hostile = await models.User.findOne({ where: { email: 'attacker@evil.com' } });
+    expect(hostile).toBeNull();
+  });
+});
+
+describe('register (tokenless)', () => {
+  it('creates a Pending, unverified USER from a fresh email with the stored relationship note', async () => {
+    const { data, errors } = await graphql(REGISTER_MUTATION, {
+      name: 'Ada',
+      email: 'ADA@Example.com ',
+      password: 'Password123!',
+      relationshipNote: 'my cousin'
+    });
+
+    expect(errors).toBeUndefined();
+    expect(data.register.message).toBe(SUCCESS_MESSAGE);
+
+    const user = await models.User.findOne({ where: { email: 'ada@example.com' } });
+    expect(user).not.toBeNull();
+    expect(user.status).toBe('Pending');
+    expect(user.emailVerified).toBe(false);
+    expect(user.relationshipNote).toBe('my cousin');
+    expect(user.emailVerificationToken).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('returns the identical success message and creates no second row when the email is already taken, and emails the real owner (D-08, D-10, SEC-01)', async () => {
+    const existing = await createTestUser({ email: 'taken@example.com', name: 'Existing Owner' });
+
+    const first = await graphql(REGISTER_MUTATION, {
+      name: 'Impersonator',
+      email: 'taken@example.com',
+      password: 'Password123!'
+    });
+
+    expect(first.errors).toBeUndefined();
+    expect(first.data.register.message).toBe(SUCCESS_MESSAGE);
+    expect(await models.User.count({ where: { email: 'taken@example.com' } })).toBe(1);
+
+    await vi.waitFor(() => {
+      expect(sendRegistrationAttemptEmail).toHaveBeenCalledTimes(1);
+    });
+    expect(sendRegistrationAttemptEmail.mock.calls[0][0]).toEqual({
+      to: existing.email,
+      name: existing.name
+    });
+  });
+
+  it('rejects a tokenless register with no email (email required, no token)', async () => {
+    const { errors } = await graphql(REGISTER_MUTATION, { name: 'X', password: 'Password123!' });
+    expect(errors[0].message).toBe('Email is required.');
+  });
+
+  it('lets a tokenless self-registrant log in with their original plain-text password once verified and Active', async () => {
+    const { errors } = await graphql(REGISTER_MUTATION, {
+      name: 'Bea',
+      email: 'bea@example.com',
+      password: 'Password123!'
+    });
+    expect(errors).toBeUndefined();
+
+    const user = await models.User.findOne({ where: { email: 'bea@example.com' } });
+    user.emailVerified = true;
+    user.status = 'Active';
+    await user.save();
+
+    const isValid = await user.validatePassword('Password123!');
+    expect(isValid).toBe(true);
+  });
+
+  it('computes the bcrypt hash before the existing-user lookup (D-09, shape not timing)', async () => {
+    const bcryptSpy = vi.spyOn(bcrypt, 'hash');
+    const findOneSpy = vi.spyOn(models.User, 'findOne');
+
+    const { errors } = await graphql(REGISTER_MUTATION, {
+      name: 'Cara',
+      email: 'cara@example.com',
+      password: 'Password123!'
+    });
+    expect(errors).toBeUndefined();
+
+    // Guard: the spy must have actually intercepted the calls, not silently
+    // no-op'd (possible for a CJS default-export module like bcryptjs under
+    // Vitest's ESM interop). Otherwise the ordering assertion below would
+    // pass vacuously against zero real calls.
+    expect(bcryptSpy.mock.calls.length).toBe(1);
+    expect(findOneSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
+
+    expect(bcryptSpy.mock.invocationCallOrder[0]).toBeLessThan(findOneSpy.mock.invocationCallOrder[0]);
+
+    bcryptSpy.mockRestore();
+    findOneSpy.mockRestore();
   });
 });
