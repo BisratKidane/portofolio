@@ -243,4 +243,30 @@ describe('register (tokenless)', () => {
     bcryptSpy.mockRestore();
     findOneSpy.mockRestore();
   });
+
+  it('rejects a relationship note over 500 characters and creates no row (D-05)', async () => {
+    const countBefore = await models.User.count();
+
+    const { errors } = await graphql(REGISTER_MUTATION, {
+      name: 'Dora',
+      email: 'dora@example.com',
+      password: 'Password123!',
+      relationshipNote: 'x'.repeat(501)
+    });
+
+    expect(errors[0].message).toBe('Relationship note must be 500 characters or fewer.');
+    expect(await models.User.count()).toBe(countBefore);
+  });
+
+  it('accepts a tokenless register with no relationship note and stores null (D-06, F-01)', async () => {
+    const { errors } = await graphql(REGISTER_MUTATION, {
+      name: 'Eli',
+      email: 'eli@example.com',
+      password: 'Password123!'
+    });
+    expect(errors).toBeUndefined();
+
+    const user = await models.User.findOne({ where: { email: 'eli@example.com' } });
+    expect(user.relationshipNote).toBeNull();
+  });
 });

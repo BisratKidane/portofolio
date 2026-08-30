@@ -43,8 +43,8 @@ const NAMED_FRAGMENT_LOGIN_MUTATION = `
 `;
 
 const REGISTER_MUTATION = `
-  mutation Register($token: String!, $name: String!, $password: String!) {
-    register(token: $token, name: $name, password: $password) {
+  mutation Register($token: String, $name: String!, $email: String, $password: String!, $relationshipNote: String) {
+    register(token: $token, name: $name, email: $email, password: $password, relationshipNote: $relationshipNote) {
       message
     }
   }
@@ -201,6 +201,30 @@ describe('register rate limiting (RATE-02)', () => {
 
     for (let i = 0; i < 5; i += 1) {
       expect(responses[i].errors[0].message).toBe('This invitation link is invalid.');
+    }
+    expect(responses[5].errors[0].message).toBe(TOO_MANY_REQUESTS_MESSAGE);
+  });
+
+  it('rejects the 6th tokenless register attempt from the same IP within the window (SEC-02)', async () => {
+    const clientIp = '10.10.21.1';
+    const responses = [];
+
+    for (let i = 0; i < 6; i += 1) {
+      responses.push(
+        await graphql(
+          REGISTER_MUTATION,
+          { name: 'X', email: `ratelimit-${i}@example.com`, password: 'Password123!' },
+          null,
+          clientIp
+        )
+      );
+    }
+
+    for (let i = 0; i < 5; i += 1) {
+      expect(responses[i].errors).toBeUndefined();
+      expect(responses[i].data.register.message).toBe(
+        'Registration received. Verify your email to activate your account.'
+      );
     }
     expect(responses[5].errors[0].message).toBe(TOO_MANY_REQUESTS_MESSAGE);
   });
