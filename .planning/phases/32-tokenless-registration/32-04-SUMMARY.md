@@ -113,3 +113,19 @@ None — every trust boundary touched by this plan (`verifyEmail`'s post-commit 
 ---
 *Phase: 32-tokenless-registration*
 *Completed: 2026-08-30*
+
+## Self-Check: PASSED
+
+All claimed files verified present on disk:
+- FOUND: backend/src/resolvers/pendingApprovals.test.js
+- FOUND: backend/src/resolvers/user.resolver.js
+- FOUND: backend/src/schemas/user.schema.js
+- FOUND: backend/src/resolvers/verifyEmail.test.js
+- FOUND: .planning/phases/32-tokenless-registration/32-04-SUMMARY.md
+
+All claimed commit hashes verified present in git log:
+- FOUND: ccc7beb (refactor: plain-field args + D-13 admin fix)
+- FOUND: f1c3750 (test: D-12/D-13 RED)
+- FOUND: 1d80af9 (feat: D-12 wiring GREEN)
+- FOUND: 16b1ea9 (test: pendingApprovals RED)
+- FOUND: eff5b3e (feat: pendingApprovals GREEN)
