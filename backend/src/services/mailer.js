@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env.js';
+import { escapeHtml } from '../utils/escapeHtml.js';
 
 // Builds the nodemailer transport options.
 //
@@ -72,7 +73,7 @@ export async function sendPasswordResetEmail({ to, token }) {
     intro: 'We received a request to reset your password. Choose a new one using the button below.',
     ctaLabel: 'Choose a new password',
     ctaUrl: link,
-    note: `This link expires in ${env.resetTokenExpiresMinutes} minutes. If you did not request a reset, you can safely ignore this email.`
+    note: `This link expires in ${escapeHtml(String(env.resetTokenExpiresMinutes))} minutes. If you did not request a reset, you can safely ignore this email.`
   });
 
   return sendMail({ to, subject, text, html });
@@ -98,7 +99,7 @@ export async function sendAccountRejectedEmail({ to, name, reason }) {
   const text = `Hi ${name || 'there'},\n\nThank you for your interest. Unfortunately your registration was not approved at this time.${reasonLine}\n\nIf you believe this is a mistake, please reach out to a family administrator.`;
   const html = renderHtml({
     heading: 'Registration update',
-    intro: `Thank you for your interest. Unfortunately your registration was not approved at this time.${reason ? `<br /><br /><em>Reason: ${reason}</em>` : ''}`,
+    intro: `Thank you for your interest. Unfortunately your registration was not approved at this time.${reason ? `<br /><br /><em>Reason: ${escapeHtml(reason)}</em>` : ''}`,
     ctaLabel: 'Visit Agne',
     ctaUrl: env.clientUrl,
     note: 'If you believe this is a mistake, please reach out to a family administrator.'
@@ -109,13 +110,28 @@ export async function sendAccountRejectedEmail({ to, name, reason }) {
 export async function sendPendingRegistrationEmail({ to, newUserName, newUserEmail, inviterName, relationship, note, registeredAt }) {
   const when = registeredAt ? new Date(registeredAt).toISOString() : new Date().toISOString();
   const relLine = relationship ? `\nRelationship to the family: ${relationship}` : '';
-  const noteLine = note ? `\nInvitation note: ${note}` : '';
+  const noteLine = note ? `\nNote: ${note}` : '';
   const reviewUrl = `${env.clientUrl}/invitations`;
   const subject = `New account awaiting approval: ${newUserName}`;
-  const text = `A new account has registered via invitation and is awaiting your approval.\n\nName: ${newUserName}\nEmail: ${newUserEmail}\nInvited by: ${inviterName}${relLine}${noteLine}\nRegistered: ${when}\n\nReview pending registrations: ${reviewUrl}`;
+
+  // A self-registrant (Plan 32-04's D-12 caller) has no inviter -- the copy
+  // must not claim an invitation that never happened.
+  const openingLine = inviterName
+    ? 'A new account has registered via invitation and is awaiting your approval.'
+    : 'A new account has registered directly and is awaiting your approval.';
+  const invitedByLine = inviterName ? `\nInvited by: ${inviterName}` : '';
+  const text = `${openingLine}\n\nName: ${newUserName}\nEmail: ${newUserEmail}${invitedByLine}${relLine}${noteLine}\nRegistered: ${when}\n\nReview pending registrations: ${reviewUrl}`;
+
+  const originHtml = inviterName
+    ? `registered via an invitation from <strong>${escapeHtml(inviterName)}</strong>`
+    : 'registered directly';
+  const escapedNewUserName = escapeHtml(newUserName);
+  const escapedNewUserEmail = escapeHtml(newUserEmail);
+  const relationshipHtml = relationship ? ` as their ${escapeHtml(relationship)}` : '';
+  const noteHtml = note ? `<br /><br /><em>Note: ${escapeHtml(note)}</em>` : '';
   const html = renderHtml({
     heading: 'New account awaiting approval',
-    intro: `<strong>${newUserName}</strong> (${newUserEmail}) registered via an invitation from <strong>${inviterName}</strong>${relationship ? ` as their ${relationship}` : ''} and is awaiting approval.${note ? `<br /><br /><em>Note: ${note}</em>` : ''}`,
+    intro: `<strong>${escapedNewUserName}</strong> (${escapedNewUserEmail}) ${originHtml}${relationshipHtml} and is awaiting approval.${noteHtml}`,
     ctaLabel: 'Review pending registrations',
     ctaUrl: reviewUrl,
     note: `Registered ${when}.`
@@ -131,9 +147,14 @@ export async function sendInvitationEmail({ to, url, inviterName, invitedName, r
   const subject = 'You are invited to join the family';
   const noteLine = note ? `\n\nA note from ${inviterName || 'the inviter'}: ${note}` : '';
   const text = `${greeting}\n\n${from}${rel} to join the family platform.\n\nRegister here (this link expires soon and can be used once):\n${url}${noteLine}\n\nAfter you register, an administrator will review and approve your account before you can sign in.`;
+
+  // Separate escaped values for the HTML branch -- `from`/`rel` above stay
+  // raw for the plain-text body (escaping plain text would corrupt it).
+  const fromHtml = inviterName ? `${escapeHtml(inviterName)} has invited you` : 'You have been invited';
+  const relHtml = relationship ? ` as their ${escapeHtml(relationship)}` : '';
   const html = renderHtml({
     heading: 'You are invited to join the family',
-    intro: `${from}${rel} to join the family platform. Use the button below to register — the link can be used once and expires soon.${note ? `<br /><br /><em>Note: ${note}</em>` : ''}`,
+    intro: `${fromHtml}${relHtml} to join the family platform. Use the button below to register — the link can be used once and expires soon.${note ? `<br /><br /><em>Note: ${escapeHtml(note)}</em>` : ''}`,
     ctaLabel: 'Register your account',
     ctaUrl: url,
     note: 'After registering, an administrator reviews and approves your account before you can sign in.'
@@ -152,6 +173,26 @@ export async function sendVerificationEmail({ to, token }) {
     ctaLabel: 'Verify email',
     ctaUrl: link,
     note: 'This link expires in 24 hours. If you did not create this account, you can safely ignore this email.'
+  });
+
+  return sendMail({ to, subject, text, html });
+}
+
+// D-10: owner notification when someone attempts to self-register with an
+// email address that already belongs to an existing account. Fired only to
+// that account's own stored, real email address (never to caller-supplied
+// input directly) -- see T-32-06 -- so it can't be abused to spam or probe
+// an arbitrary third-party address.
+export async function sendRegistrationAttemptEmail({ to, name }) {
+  const resetUrl = `${env.clientUrl}/forgot-password`;
+  const subject = 'A registration attempt was made with your email address';
+  const text = `Hi ${name || 'there'},\n\nSomeone just tried to create a new account using your email address. No new account was created, and nothing about your existing account changed.\n\nIf this was you and you forgot your password, you can reset it here:\n${resetUrl}\n\nIf you did not do this, you can safely ignore this email.`;
+  const html = renderHtml({
+    heading: 'Registration attempt on your email',
+    intro: `Hi ${escapeHtml(name || 'there')}, someone just tried to create a new account using your email address. No new account was created, and nothing about your existing account changed. If this was you and you forgot your password, use the button below to reset it.`,
+    ctaLabel: 'Reset your password',
+    ctaUrl: resetUrl,
+    note: 'If you did not do this, you can safely ignore this email.'
   });
 
   return sendMail({ to, subject, text, html });
