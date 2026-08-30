@@ -59,7 +59,7 @@ Approval now means exactly one thing: **is this stranger actually family?**
 
 - [ ] **SEC-01**: The public signup path gives the same response whether or not that email already has an account, so it cannot be used to discover who has one; the real account owner is told by email that someone tried to register with their address.
 - [ ] **SEC-02**: The existing per-IP rate limit on registration covers the tokenless path, so an open form cannot be used to flood the approval queue or probe the system.
-- [ ] **SEC-03**: The relationship note is length-capped on the server and rendered safely everywhere it is shown — the admin UI and the admin notification email included.
+- [x] **SEC-03**: The relationship note is length-capped on the server and rendered safely everywhere it is shown — the admin UI and the admin notification email included.
 - [ ] **SEC-04**: Adversarial tests prove the boundaries hold: a non-admin cannot create an invitation, cannot approve or reject an account, and cannot register without a token while public registration is off.
 - [ ] **SEC-05**: A self-registered account cannot reach any authenticated surface before both gates pass — proven against the resolvers, not just the client-side route guard.
 
