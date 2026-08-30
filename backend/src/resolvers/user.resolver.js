@@ -333,6 +333,7 @@ export const userResolvers = {
 
       const sequelize = models.User.sequelize;
       let promotedInvitation = null;
+      let associatedInvitation = null;
 
       // Verify-and-promote run inside a single transaction so token consumption and the single
       // ADMIN-slot decision commit (or roll back) as one atomic unit. The admin-count read takes
@@ -366,6 +367,7 @@ export const userResolvers = {
             where: { registeredUserId: user.id },
             transaction: t
           });
+          associatedInvitation = invitation;
           if (invitation) {
             // Re-check the vouching admin's CURRENT standing at redemption time, not trusted
             // from invite-creation time (T-31-11/T-31-12). The inviter row is LOCKED
@@ -425,6 +427,16 @@ export const userResolvers = {
           invitationId: promotedInvitation.id,
           targetUserId: user.id
         }).catch((err) => console.error('Failed to write audit log:', err));
+      }
+
+      // D-12: a self-registrant (no Invitation row at all) who is still Pending after commit
+      // has just proven their email is real -- surface them to admins now. Never fires for an
+      // invited registrant (always has an Invitation row, regardless of promotion outcome) and
+      // never for an already-Active account (promoted or previously approved).
+      if (!associatedInvitation && user.status === 'Pending') {
+        notifyAdminsOfPendingRegistration(models, { user, relationshipNote: user.relationshipNote }).catch((err) =>
+          console.error('Failed to notify admins of pending self-registration:', err)
+        );
       }
 
       return { token: signToken(user), user };
