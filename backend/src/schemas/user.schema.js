@@ -19,6 +19,7 @@ export const userTypeDefs = `#graphql
     emailVerified: Boolean!
     status: AccountStatus!
     familyMemberId: ID
+    relationshipNote: String
     createdAt: String!
     updatedAt: String!
   }
@@ -56,7 +57,7 @@ export const userTypeDefs = `#graphql
   }
 
   type Mutation {
-    register(token: String!, name: String!, password: String!): RegisterPayload!
+    register(token: String, name: String!, email: String, password: String!, relationshipNote: String): RegisterPayload!
     login(email: String!, password: String!): AuthPayload!
     logout: Boolean!
     requestPasswordReset(email: String!): PasswordResetPayload!
