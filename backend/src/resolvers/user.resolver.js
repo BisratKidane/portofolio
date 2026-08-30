@@ -1,4 +1,5 @@
 import { Op, UniqueConstraintError } from 'sequelize';
+import bcrypt from 'bcryptjs';
 import {
   createResetToken,
   createVerificationToken,
@@ -14,8 +15,14 @@ import {
   verificationTokenExpiry
 } from '../utils/auth.js';
 import { assertPasswordStrength } from '../utils/passwordPolicy.js';
+import { assertRelationshipNoteLength } from '../utils/relationshipNotePolicy.js';
 import { writeAuditLog } from '../utils/audit.js';
-import { sendPasswordResetEmail, sendPendingRegistrationEmail, sendVerificationEmail } from '../services/mailer.js';
+import {
+  sendPasswordResetEmail,
+  sendPendingRegistrationEmail,
+  sendRegistrationAttemptEmail,
+  sendVerificationEmail
+} from '../services/mailer.js';
 
 // Best-effort: email every Active admin that a new invited account has
 // registered and is awaiting approval. Failure here must never fail the
@@ -107,65 +114,135 @@ export const userResolvers = {
     }
   },
   Mutation: {
-    // Public self-registration is DISABLED: registration requires a valid,
-    // unused, unexpired invitation token. The account is created in the
-    // 'Pending' state (email still needs verifying AND an admin still needs to
-    // approve before the user can sign in — two gates).
-    register: async (_parent, { token, name, password }, { models }) => {
+    // Registration accepts EITHER a valid invitation token (invited path,
+    // auto-activates on email verification alone -- the admin already
+    // vouched for this person at invite time) OR no token at all (tokenless
+    // self-registration, Phase 32 -- REG-02). Both branches create the
+    // account in the 'Pending' state pending email verification; the
+    // tokenless branch additionally requires admin approval before login
+    // works (the invited branch does not -- see verifyEmail's
+    // auto-activation logic). No PUBLIC_REGISTRATION_ENABLED flag exists
+    // anywhere: the tokenless branch is live the moment this code deploys
+    // (D-03).
+    register: async (_parent, { token, name, email, password, relationshipNote }, { models }) => {
       assertPasswordStrength(password);
 
-      const invitation = await models.Invitation.findOne({ where: { tokenHash: hashInvitationToken(token) } });
-      if (!invitation) throw new Error('This invitation link is invalid.');
-      if (invitation.status === 'Expired' || invitation.expiresAt < new Date()) {
-        if (invitation.status === 'Pending') {
-          invitation.status = 'Expired';
-          await invitation.save();
+      if (token) {
+        const invitation = await models.Invitation.findOne({ where: { tokenHash: hashInvitationToken(token) } });
+        if (!invitation) throw new Error('This invitation link is invalid.');
+        if (invitation.status === 'Expired' || invitation.expiresAt < new Date()) {
+          if (invitation.status === 'Pending') {
+            invitation.status = 'Expired';
+            await invitation.save();
+          }
+          throw new Error('This invitation link has expired.');
         }
-        throw new Error('This invitation link has expired.');
-      }
-      if (invitation.status !== 'Pending') throw new Error('This invitation has already been used.');
+        if (invitation.status !== 'Pending') throw new Error('This invitation has already been used.');
 
-      const email = invitation.invitedEmail;
-      const existingUser = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
-      if (existingUser) throw new Error('An account with this email already exists.');
+        // Shadows the destructured `email` argument on purpose (D-02): the
+        // invited branch's account is always created at the invitation's own
+        // invitedEmail, never at a caller-supplied `email` argument. This is
+        // what stops a hostile email argument from redirecting Phase 31's
+        // auto-activation vouch to an address the admin never approved.
+        const email = invitation.invitedEmail;
+        const existingUser = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
+        if (existingUser) throw new Error('An account with this email already exists.');
+
+        const verificationToken = createVerificationToken();
+        const sequelize = models.User.sequelize;
+
+        let createdUser;
+        await sequelize.transaction(async (t) => {
+          createdUser = await models.User.create(
+            {
+              name,
+              email,
+              passwordHash: password,
+              status: 'Pending',
+              emailVerificationToken: hashVerificationToken(verificationToken),
+              emailVerificationExpiresAt: verificationTokenExpiry()
+            },
+            { transaction: t }
+          );
+
+          // One-time-use: consume the invitation only if it is STILL Pending. Two
+          // concurrent registrations on the same token race here; the conditional
+          // update means exactly one wins and the loser's transaction rolls back.
+          const [affected] = await models.Invitation.update(
+            { status: 'Registered', registeredAt: new Date(), registeredUserId: createdUser.id },
+            { where: { id: invitation.id, status: 'Pending' }, transaction: t }
+          );
+          if (affected === 0) throw new Error('This invitation has already been used.');
+        });
+
+        sendVerificationEmail({ to: email, token: verificationToken }).catch((err) => {
+          console.error('Failed to send verification email:', err);
+        });
+
+        writeAuditLog(models, {
+          action: 'invitation.registered',
+          actorUserId: createdUser.id,
+          invitationId: invitation.id,
+          targetUserId: createdUser.id,
+          metadata: { email }
+        }).catch((err) => console.error('Failed to write audit log:', err));
+
+        return {
+          message: 'Registration received. Verify your email to activate your account.'
+        };
+      }
+
+      // Tokenless self-registration (REG-02). Enumeration-silent and
+      // timing-safe (SEC-01, D-08, D-09): the taken/free outcomes below
+      // return the byte-identical message, and the bcrypt hash is computed
+      // BEFORE the existing-user lookup so both outcomes pay the same cost.
+      assertRelationshipNoteLength(relationshipNote);
+      if (!email) throw new Error('Email is required.');
+
+      const normalizedEmail = email.toLowerCase().trim();
+      const passwordHash = await bcrypt.hash(password, 12);
+      const existingUser = await models.User.findOne({ where: { email: normalizedEmail } });
+
+      if (existingUser) {
+        // D-10: tell the real account owner, never the caller -- nothing
+        // else changed (no DB write, no audit log), matching D-08's
+        // "identical to the free-email outcome" requirement.
+        sendRegistrationAttemptEmail({ to: existingUser.email, name: existingUser.name }).catch((err) => {
+          console.error('Failed to send registration-attempt email:', err);
+        });
+        return {
+          message: 'Registration received. Verify your email to activate your account.'
+        };
+      }
 
       const verificationToken = createVerificationToken();
-      const sequelize = models.User.sequelize;
+      // { passwordAlreadyHashed: true } is Plan 32-01's explicit control-channel
+      // flag telling User's beforeCreate hook that passwordHash is already a
+      // bcrypt hash and must not be re-hashed (D-09). It is a caller-set
+      // option on this create call, never derived from inspecting
+      // passwordHash's content, so nothing the registrant supplies can spoof it.
+      const createdUser = await models.User.create(
+        {
+          name,
+          email: normalizedEmail,
+          passwordHash,
+          status: 'Pending',
+          emailVerificationToken: hashVerificationToken(verificationToken),
+          emailVerificationExpiresAt: verificationTokenExpiry(),
+          relationshipNote: relationshipNote || null
+        },
+        { passwordAlreadyHashed: true }
+      );
 
-      let createdUser;
-      await sequelize.transaction(async (t) => {
-        createdUser = await models.User.create(
-          {
-            name,
-            email,
-            passwordHash: password,
-            status: 'Pending',
-            emailVerificationToken: hashVerificationToken(verificationToken),
-            emailVerificationExpiresAt: verificationTokenExpiry()
-          },
-          { transaction: t }
-        );
-
-        // One-time-use: consume the invitation only if it is STILL Pending. Two
-        // concurrent registrations on the same token race here; the conditional
-        // update means exactly one wins and the loser's transaction rolls back.
-        const [affected] = await models.Invitation.update(
-          { status: 'Registered', registeredAt: new Date(), registeredUserId: createdUser.id },
-          { where: { id: invitation.id, status: 'Pending' }, transaction: t }
-        );
-        if (affected === 0) throw new Error('This invitation has already been used.');
-      });
-
-      sendVerificationEmail({ to: email, token: verificationToken }).catch((err) => {
+      sendVerificationEmail({ to: normalizedEmail, token: verificationToken }).catch((err) => {
         console.error('Failed to send verification email:', err);
       });
 
       writeAuditLog(models, {
-        action: 'invitation.registered',
+        action: 'user.self_registered',
         actorUserId: createdUser.id,
-        invitationId: invitation.id,
         targetUserId: createdUser.id,
-        metadata: { email }
+        metadata: { email: normalizedEmail }
       }).catch((err) => console.error('Failed to write audit log:', err));
 
       return {
