@@ -223,8 +223,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 32-01-PLAN.md — Relationship note migration + model (D-04) + beforeCreate bcrypt double-hash guard fix
-- [ ] 32-02-PLAN.md — Mailer hardening: escapeHtml across all templates (D-07) + sendRegistrationAttemptEmail (D-10)
+- [x] 32-01-PLAN.md — Relationship note migration + model (D-04) + beforeCreate bcrypt double-hash guard fix
+- [x] 32-02-PLAN.md — Mailer hardening: escapeHtml across all templates (D-07) + sendRegistrationAttemptEmail (D-10)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -306,6 +306,6 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
-| 32. Tokenless Registration | v4.1 | 0/4 | Not started | — |
+| 32. Tokenless Registration | v4.1 | 2/4 | In Progress|  |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
