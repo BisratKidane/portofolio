@@ -54,6 +54,7 @@ export const userTypeDefs = `#graphql
     dashboard: Dashboard!
     users: [User!]!
     unlinkedUsers: [User!]!
+    pendingApprovals: [User!]!
   }
 
   type Mutation {

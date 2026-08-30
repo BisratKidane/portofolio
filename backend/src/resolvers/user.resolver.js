@@ -124,6 +124,19 @@ export const userResolvers = {
     unlinkedUsers: async (_parent, _args, { models, user }) => {
       requireAdmin(user);
       return models.User.findAll({ where: { familyMemberId: null }, order: [['createdAt', 'DESC']] });
+    },
+    // Admin-only (D-11): self-registrations awaiting an approval decision --
+    // Pending AND email-verified, the same two-condition eligibility rule
+    // invitation.resolver.js's pendingRegistrations already applies to its
+    // own registeredUserId lookup. Coexists with pendingRegistrations for
+    // this phase (invitation-flow specific); a null relationshipNote is a
+    // normal state and is not filtered out (F-01, REG-05).
+    pendingApprovals: async (_parent, _args, { models, user }) => {
+      requireAdmin(user);
+      return models.User.findAll({
+        where: { status: 'Pending', emailVerified: true },
+        order: [['createdAt', 'DESC']]
+      });
     }
   },
   Mutation: {
