@@ -46,6 +46,40 @@ describe('beforeCreate hashing hook', () => {
     await expect(bcrypt.compare('Password123!', user.passwordHash)).resolves.toBe(true);
     expect(user.isNewRecord).toBe(true);
   });
+
+  it('does not re-hash an already-hashed passwordHash when options.passwordAlreadyHashed is true (Plan 32-03 D-09 key_link)', async () => {
+    const alreadyHashed = await bcrypt.hash('Password123!', 12);
+    const user = User.build({
+      name: 'Test',
+      email: 'test@example.com',
+      passwordHash: alreadyHashed,
+      role: 'USER'
+    });
+
+    await User.runHooks('beforeCreate', user, { passwordAlreadyHashed: true });
+
+    expect(user.passwordHash).toBe(alreadyHashed);
+    await expect(bcrypt.compare('Password123!', user.passwordHash)).resolves.toBe(true);
+  });
+
+  it('still hashes a plaintext password that merely LOOKS like a bcrypt hash when no options are passed (invited-path regression)', async () => {
+    const bcryptShapedPlaintext = '$2a$04$aaaaaaaaaaaaaaaaaaaaaa';
+    const user = User.build({
+      name: 'Test',
+      email: 'test@example.com',
+      passwordHash: bcryptShapedPlaintext,
+      role: 'USER'
+    });
+
+    await User.runHooks('beforeCreate', user);
+
+    expect(user.passwordHash).not.toBe(bcryptShapedPlaintext);
+    await expect(bcrypt.compare(bcryptShapedPlaintext, user.passwordHash)).resolves.toBe(true);
+  });
+
+  it('declares relationshipNote as nullable (D-04, D-05)', () => {
+    expect(User.rawAttributes.relationshipNote.allowNull).toBe(true);
+  });
 });
 
 describe('beforeUpdate passwordChangedAt stamping hook (SESS-01)', () => {
