@@ -121,9 +121,8 @@ export const userResolvers = {
     // account in the 'Pending' state pending email verification; the
     // tokenless branch additionally requires admin approval before login
     // works (the invited branch does not -- see verifyEmail's
-    // auto-activation logic). No PUBLIC_REGISTRATION_ENABLED flag exists
-    // anywhere: the tokenless branch is live the moment this code deploys
-    // (D-03).
+    // auto-activation logic). No environment-gated feature switch guards
+    // this branch: it is live the moment this code deploys (D-03).
     register: async (_parent, { token, name, email, password, relationshipNote }, { models }) => {
       assertPasswordStrength(password);
 
