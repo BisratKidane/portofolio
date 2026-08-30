@@ -71,7 +71,12 @@ export function initUser(sequelize) {
       approvedAt: { type: DataTypes.DATE, allowNull: true },
       approvedBy: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true },
       rejectedAt: { type: DataTypes.DATE, allowNull: true },
-      rejectionReason: { type: DataTypes.TEXT, allowNull: true }
+      rejectionReason: { type: DataTypes.TEXT, allowNull: true },
+      // A self-registrant's free-text note describing how they relate to the
+      // family (D-03/D-04/REG-03) -- the only context an admin has to judge
+      // a stranger on. Optional per D-06. Length-capped at 500 chars,
+      // matching migration 020's VARCHAR(500).
+      relationshipNote: { type: DataTypes.STRING(500), allowNull: true }
       // familyMemberId is added by the User.belongsTo(FamilyMember) association in
       // models/index.js (Phase 13, D-07) -- not redeclared here.
     },
@@ -83,8 +88,24 @@ export function initUser(sequelize) {
         beforeValidate(user) {
           if (user.email) user.email = user.email.toLowerCase().trim();
         },
-        async beforeCreate(user) {
-          if (user.passwordHash) user.passwordHash = await bcrypt.hash(user.passwordHash, 12);
+        // options.passwordAlreadyHashed (boolean true) is the ONLY signal that
+        // skips hashing -- never derived from passwordHash's shape or content.
+        // Plan 32-03's D-09 precomputes the bcrypt hash before the
+        // existing-user lookup on the tokenless registration path, then calls
+        // models.User.create(values, { passwordAlreadyHashed: true }) to avoid
+        // double-hashing (which would silently lock the self-registrant out
+        // of their own account at first login). The invited path calls
+        // models.User.create with no such option, so options.passwordAlreadyHashed
+        // is undefined and hashing proceeds exactly as before -- unaffected.
+        // A content-sniffing guard (regex-matching passwordHash against a
+        // bcrypt-format pattern) is deliberately rejected: a self-registrant
+        // who chooses a real password shaped like a bcrypt hash (e.g.
+        // starting with $2a$04$) would have that password persisted verbatim
+        // in cleartext, silently -- worse than the double-hash bug this fixes.
+        async beforeCreate(user, options) {
+          if (user.passwordHash && !(options && options.passwordAlreadyHashed)) {
+            user.passwordHash = await bcrypt.hash(user.passwordHash, 12);
+          }
         },
         async beforeUpdate(user) {
           if (user.changed('passwordHash')) {
