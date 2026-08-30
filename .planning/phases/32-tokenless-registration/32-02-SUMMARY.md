@@ -100,3 +100,19 @@ None - no external service configuration required.
 ---
 *Phase: 32-tokenless-registration*
 *Completed: 2026-08-30*
+
+## Self-Check: PASSED
+
+All claimed files verified present on disk:
+- FOUND: backend/src/utils/escapeHtml.js
+- FOUND: backend/src/utils/escapeHtml.test.js
+- FOUND: backend/src/services/mailer.js
+- FOUND: backend/src/services/mailer.test.js
+- FOUND: .planning/phases/32-tokenless-registration/32-02-SUMMARY.md
+
+All claimed commit hashes verified present in git log:
+- FOUND: bc20420 (test: escapeHtml RED)
+- FOUND: 1b5c734 (feat: escapeHtml GREEN)
+- FOUND: 3994cc1 (test: mailer.js RED)
+- FOUND: fbdd3ed (feat: mailer.js GREEN)
+- FOUND: 8df9b21 (docs: SUMMARY commit)
