@@ -228,7 +228,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 32-03-PLAN.md — register mutation tokenless branch (D-01, D-02, D-08, D-09, D-10, REG-07) + SEC-02/D-05/D-06 tests
+- [x] 32-03-PLAN.md — register mutation tokenless branch (D-01, D-02, D-08, D-09, D-10, REG-07) + SEC-02/D-05/D-06 tests
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -306,6 +306,6 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
-| 32. Tokenless Registration | v4.1 | 2/4 | In Progress|  |
+| 32. Tokenless Registration | v4.1 | 3/4 | In Progress|  |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
