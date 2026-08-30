@@ -218,7 +218,21 @@ Plans:
   4. Password rules, email normalisation, and verification-token handling on the tokenless path run the same code as the invited path — no second, weaker implementation.
   5. The existing per-IP registration rate limit applies to the tokenless path, and the relationship note is length-capped server-side.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 32-01-PLAN.md — Relationship note migration + model (D-04) + beforeCreate bcrypt double-hash guard fix
+- [ ] 32-02-PLAN.md — Mailer hardening: escapeHtml across all templates (D-07) + sendRegistrationAttemptEmail (D-10)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 32-03-PLAN.md — register mutation tokenless branch (D-01, D-02, D-08, D-09, D-10, REG-07) + SEC-02/D-05/D-06 tests
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 32-04-PLAN.md — verifyEmail admin notification (D-12, D-13) + pendingApprovals query (D-11)
 
 ### Phase 33: Public Signup Form & Approval Queue
 
@@ -292,6 +306,6 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
-| 32. Tokenless Registration | v4.1 | 0/– | Not started | — |
+| 32. Tokenless Registration | v4.1 | 0/4 | Not started | — |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
