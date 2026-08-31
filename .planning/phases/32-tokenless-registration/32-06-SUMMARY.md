@@ -96,3 +96,9 @@ None - no external service configuration required.
 ---
 *Phase: 32-tokenless-registration*
 *Completed: 2026-08-31*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/32-tokenless-registration/32-06-SUMMARY.md`
+- FOUND: commit `e637d2d` (REQUIREMENTS.md correction)
+- FOUND: commit `c0e1bd3` (this summary)
