@@ -4,8 +4,8 @@ milestone: v4.1
 milestone_name: Open Registration with Approval
 status: executing
 stopped_at: Phase 32 context gathered
-last_updated: "2026-08-31T07:38:41.802Z"
-last_activity: 2026-08-31 -- Phase 32 planning complete
+last_updated: "2026-08-31T09:14:33.432Z"
+last_activity: 2026-08-31 -- Phase 32 execution started
 progress:
   total_phases: 5
   completed_phases: 2
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 ## Current Position
 
 Phase: 32 (tokenless-registration) — EXECUTING
-Plan: 1 of 4
-Status: Ready to execute
-Last activity: 2026-08-31 -- Phase 32 planning complete
+Plan: 1 of 6
+Status: Executing Phase 32
+Last activity: 2026-08-31 -- Phase 32 execution started
 
 The original blocking gap (SC-3/INVITE-03 auto-activation keyed on Invitation-row existence
 alone) IS closed by plan 31-04. Two NEW gaps were found in its replacement guard:

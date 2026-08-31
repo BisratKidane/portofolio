@@ -236,8 +236,8 @@ Plans:
 
 **Wave 4** *(gap closure — SEC-01/CR-01 enumeration oracle + REQUIREMENTS.md accuracy, found in 32-VERIFICATION.md)*
 
-- [ ] 32-05-PLAN.md — Close the CR-01 enumeration oracle: pre-lookup name validation, try/catch around the tokenless User.create, MIN_REGISTER_RESPONSE_MS timing floor (closes SEC-01/WR-01/WR-02, RED-then-GREEN regression coverage)
-- [ ] 32-06-PLAN.md — Correct REQUIREMENTS.md's REG-03/SEC-03 tracking to reflect the backend/UI split (Phase 32 backend done, Phase 33 UI pending)
+- [x] 32-05-PLAN.md — Close the CR-01 enumeration oracle: pre-lookup name validation, try/catch around the tokenless User.create, MIN_REGISTER_RESPONSE_MS timing floor (closes SEC-01/WR-01/WR-02, RED-then-GREEN regression coverage)
+- [x] 32-06-PLAN.md — Correct REQUIREMENTS.md's REG-03/SEC-03 tracking to reflect the backend/UI split (Phase 32 backend done, Phase 33 UI pending) (completed 2026-08-31)
 
 ### Phase 33: Public Signup Form & Approval Queue
 
@@ -311,6 +311,6 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
-| 32. Tokenless Registration | v4.1 | 4/4 | Complete   | 2026-08-30 |
+| 32. Tokenless Registration | v4.1 | 6/6 | Complete   | 2026-08-31 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
