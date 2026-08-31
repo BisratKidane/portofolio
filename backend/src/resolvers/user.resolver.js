@@ -617,6 +617,20 @@ export const userResolvers = {
         const normalized = input.email.toLowerCase().trim();
         if (!normalized) throw new Error('Email is required.');
         if (normalized !== target.email) {
+          // CR-01 (Phase 32 gap closure): de-verifying the last verified admin's own email
+          // reopens verifyEmail's zero-admin bootstrap the moment anyone next verifies -- Task
+          // 1's ADMIN_EMAIL gate reduces but does not eliminate this risk on its own (an
+          // operator whose ADMIN_EMAIL no longer matches any account after this exact change
+          // would also be locked out of the legitimate bootstrap path). Mirrors the role-change
+          // guard above: only ever blocks the LAST verified admin, never a safe change.
+          if (target.role === 'ADMIN' && target.emailVerified === true) {
+            const otherVerifiedAdmins = await models.User.count({
+              where: { role: 'ADMIN', emailVerified: true, id: { [Op.ne]: target.id } }
+            });
+            if (otherVerifiedAdmins === 0) {
+              throw new Error("Promote another administrator before changing the last administrator's email.");
+            }
+          }
           rawVerificationToken = createVerificationToken();
           target.email = normalized;
           target.emailVerified = false;
