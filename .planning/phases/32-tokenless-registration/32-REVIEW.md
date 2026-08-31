@@ -1,12 +1,9 @@
 ---
 phase: 32-tokenless-registration
-reviewed: 2026-08-30T19:35:35Z
+reviewed: 2026-08-31T10:13:02Z
 depth: standard
 files_reviewed: 14
 files_reviewed_list:
-  - backend/migrations/manual/020-add-users-relationship-note.sql
-  - backend/src/models/User.js
-  - backend/src/models/User.test.js
   - backend/src/resolvers/pendingApprovals.test.js
   - backend/src/resolvers/rateLimit.test.js
   - backend/src/resolvers/register.test.js
@@ -17,565 +14,502 @@ files_reviewed_list:
   - backend/src/services/mailer.test.js
   - backend/src/utils/escapeHtml.js
   - backend/src/utils/escapeHtml.test.js
+  - backend/src/utils/namePolicy.js
+  - backend/src/utils/namePolicy.test.js
   - backend/src/utils/relationshipNotePolicy.js
+  - backend/src/utils/relationshipNotePolicy.test.js
 findings:
-  critical: 1
-  warning: 12
-  info: 4
+  critical: 3
+  warning: 11
+  info: 3
   total: 17
 status: issues_found
 ---
 
 # Phase 32: Code Review Report
 
-**Reviewed:** 2026-08-30T19:35:35Z
+**Reviewed:** 2026-08-31T10:13:02Z
 **Depth:** standard
 **Files Reviewed:** 14
 **Status:** issues_found
 
 ## Summary
 
-Phase 32 opens `register` to tokenless self-registration. The guards the plan names are
-present and, per the orchestrator's mutation testing, individually test-covered. This review
-therefore concentrated on the gaps mutation testing cannot see: edge cases *inside* the
-guards, side channels other than the response message, and validation the tokenless branch
-never got.
+This review re-examined the tokenless `register` branch after Plan 32-05's CR-01 gap
+closure, treating the fix itself as suspect.
 
-**One claimed invariant is definitively broken.** SEC-01 / D-08 ("enumeration-silent — identical
-response whether the email is free or already taken") does not hold. The taken-email branch
-returns early with a fixed message, but the free-email branch continues into an
-**unguarded `models.User.create`** whose failures propagate to the caller as GraphQL errors.
-Any input that makes the INSERT fail becomes a one-request, deterministic existence oracle.
-I proved this against the live test database (probe removed afterwards; working tree is clean):
+**On the specific questions asked:**
 
-```
-name = 'A'.repeat(300), email = taken@example.com
-  => {"data":{"register":{"message":"Registration received. Verify your email to activate your account."}}}
+1. **Enumeration equivalence — partially closed.** The ordering claim holds:
+   `assertRelationshipNoteLength` / `assertRegistrationName` / `!email` genuinely never read
+   `email`, so their errors are email-independent. The success, duplicate-race, and
+   `create`-failure outcomes do funnel through one message. **But the uniform-response guard
+   stops short**: `models.User.findOne` (line 258) and `createVerificationToken()` (line 270)
+   sit *outside* the `try` and outside the floor. `createVerificationToken()` runs only on the
+   free-email path, so a throw there is a free-path-only divergence, and a `findOne` failure
+   returns raw Sequelize text to an anonymous caller — the exact thing WR-02 was supposed to
+   stop. See CR-03.
+2. **Timing — correct in shape, fragile in practice.** `startedAt` *is* captured before
+   `bcrypt.hash` (line 251 vs. 257), so bcrypt cost is inside the floor; that part is sound.
+   Every *successful* tokenless return does route through `finishTokenlessRegistration`. The
+   floor is nevertheless a floor, not a constant: once real work exceeds 400 ms it silently
+   becomes a no-op and the free/taken delta reappears (WR-01). The validation-throw paths
+   bypass it, but harmlessly (email-independent).
+3. **The catch block — leaks nothing to the client, but is too wide in the other direction.**
+   Nothing from `err` reaches the GraphQL response. However it converts genuine deploy and
+   programming failures (unapplied migration 020, `isEmail` validation) into a *success*
+   message with no account created and no alerting (CR-02, WR-02), and it writes the raw
+   Sequelize error — including `.sql` with the registrant's email and bcrypt hash — to
+   application logs (WR-03).
+4. **Test integrity — weaker than the 32-05 SUMMARY claims.** The CR-01 regression's
+   `expect(takenResult).toEqual(freshResult)` assertion still passes with
+   `assertRegistrationName` deleted (WR-08), and the WR-01 timing test pins `Date.now()` to 0,
+   making its central assertion unfalsifiable (WR-07). Neither is vacuous end-to-end, but
+   neither is the mutation-resistant guard it is described as.
+5. **Known open debt (recorded, not re-litigated):** WR-03's invited-branch half —
+   blank/whitespace-only `name` accepted when a token is supplied — remains open and is
+   documented in-code at `user.resolver.js:246-250`.
 
-name = 'A'.repeat(300), email = free@example.com
-  => {"errors":[{"message":"Data too long for column 'name' at row 1", ... }],"data":null}
-```
-
-The same class also fires on the duplicate-insert race (`"Validation error"`) and, if
-migration 020 has not been applied to a target database, on **every** free-email registration
-(`Unknown column 'relationshipNote'`) — which would turn the entire endpoint into an oracle
-in production while all tests stay green locally.
-
-Secondary results, all measured or executed rather than inferred:
-
-- **D-09 timing-safety is weakened, not absent.** bcrypt genuinely runs before the lookup, but
-  the free path additionally pays a committed INSERT. Measured median 217.2 ms (free) vs
-  215.9 ms (taken) over 12 paired samples, with near-disjoint distributions (WR-01).
-- **The 500-char note cap is safe in the overflow direction.** `note.length` (UTF-16 code
-  units) is always ≥ the MySQL character count, so nothing can exceed `VARCHAR(500)`. It
-  over-rejects instead: 400 astral characters (`.length === 800`) are refused; 250 emoji
-  (`.length === 500`) store as exactly 250 DB characters (WR-08).
-- **`relationshipNote` is not over-exposed.** Every `User`-returning field resolver reachable
-  by a non-admin is admin-or-self gated (`FamilyMember.linkedUser`/`createdBy`/`updatedBy`,
-  `Invitation.inviter`/`registeredUser`), and `pendingApprovals`/`users`/`unlinkedUsers` are
-  `requireAdmin`. No finding.
-- **No email header injection.** I executed nodemailer with `newUserName = "Eve\r\nBcc: …"`;
-  it folds CRLF to a space in the `Subject` header. The unescaped subject interpolation in
-  `mailer.js:115` is safe. No finding.
-- **`escapeHtml` is complete for every current call site.** All eight escaped interpolations
-  land in HTML text nodes. The one attribute sink (`ctaUrl` in `href`) is unescaped, but every
-  caller passes a server-derived URL today — latent only (WR-07).
-
-## Narrative Findings (AI reviewer)
+**Beyond the stated focus**, three larger problems surfaced. `escapeHtml` is applied to every
+raw text-node interpolation in `mailer.js` (verified caller by caller) but `renderHtml` splices
+`ctaUrl` into an `href` attribute unescaped, contradicting `escapeHtml.js`'s own header
+comment. The `passwordAlreadyHashed` control-channel flag is genuinely unspoofable — it is a
+`create` option, never derived from content — and the model hook reads it correctly. But
+opening `register` to anonymous callers newly exposes `verifyEmail`'s zero-admin bootstrap
+promotion to the internet (CR-01), and the resulting Pending self-registrations are invisible
+to every admin surface that exists (WR-04), so the flow dead-ends after it ships.
 
 ## Critical Issues
 
-### CR-01: BLOCKER — Enumeration oracle: unguarded `User.create` failures distinguish a free email from a taken one
+### CR-01: Tokenless registration exposes `verifyEmail`'s zero-admin ADMIN bootstrap to anonymous callers
 
-**File:** `backend/src/resolvers/user.resolver.js:249-260`
-**Also:** `backend/src/resolvers/user.resolver.js:229-241` (the early-return that establishes the asymmetry)
+**File:** `backend/src/resolvers/user.resolver.js:236-313` (tokenless branch), `backend/src/resolvers/user.resolver.js:404-410` (promotion), `backend/src/resolvers/user.resolver.js:604-618` (reachability)
+**Severity:** BLOCKER
 
 **Issue:**
-The taken-email branch returns the fixed success message and performs no writes. The free-email
-branch falls through to `models.User.create(...)` with **no try/catch and no pre-lookup
-validation of `name` or `email`**. Any create failure therefore surfaces as a GraphQL error
-while the taken-email case still returns success — a single-request, no-statistics existence
-oracle that defeats SEC-01 / D-08 outright.
-
-Three confirmed instances, all exploitable by an unauthenticated caller:
-
-1. **Deterministic (verified):** `name` longer than the `VARCHAR(255)` column. MySQL strict
-   mode raises `Data too long for column 'name' at row 1`. `name` is `String!` in the schema
-   and is never trimmed, length-checked, or validated anywhere in `register`.
-2. **Racy (verified):** two concurrent tokenless registrations on the same fresh email — the
-   loser gets `Validation error` from the unique constraint instead of the silent message.
-3. **Environmental:** on any database where manual migration 020 has not been applied, the
-   INSERT fails with `Unknown column 'relationshipNote'` for *every* free email while taken
-   emails still return success (see WR-11).
-
-Note that the pre-lookup checks that *do* exist (`assertPasswordStrength`,
-`assertRelationshipNoteLength`, `if (!email)`) are correctly placed — they run before the
-lookup and so behave identically for both outcomes. The defect is specifically that `name`
-and `email` validity are deferred to the database, i.e. to a point that only the free branch
-ever reaches.
-
-**Fix:** validate every attacker-controlled field *before* the lookup, and make the create
-failure-silent so no future field can reopen the channel.
+`verifyEmail` promotes *whoever verifies next* to `ADMIN` when no email-verified admin exists:
 
 ```js
-// backend/src/utils/registrationPolicy.js (new, mirrors relationshipNotePolicy.js)
-export const MAX_NAME_LENGTH = 255;
-export function assertRegistrationName(name) {
-  const trimmed = typeof name === 'string' ? name.trim() : '';
-  if (!trimmed) throw new Error('Name is required.');
-  if (trimmed.length > MAX_NAME_LENGTH) throw new Error('Name must be 255 characters or fewer.');
-  return trimmed;
+const [{ adminCount }] = await sequelize.query(
+  "SELECT COUNT(*) AS adminCount FROM users WHERE role = 'ADMIN' AND emailVerified = true FOR UPDATE",
+  { transaction: t, type: sequelize.QueryTypes.SELECT }
+);
+if (Number(adminCount) === 0) {
+  await models.User.update({ role: 'ADMIN' }, { where: { id: user.id }, transaction: t });
 }
 ```
 
-```js
-// backend/src/resolvers/user.resolver.js — tokenless branch
-assertRelationshipNoteLength(relationshipNote);
-const cleanName = assertRegistrationName(name);            // BEFORE the lookup
-if (!email) throw new Error('Email is required.');
-const normalizedEmail = email.toLowerCase().trim();
-if (!normalizedEmail || !isEmailShaped(normalizedEmail)) throw new Error('Email is required.');
+There is no condition on how the account was created, on `status`, or on the presence of an
+invitation. Before this phase, reaching `verifyEmail` at all required an admin-issued
+invitation token, so the bootstrap was gated behind an existing admin. The tokenless branch
+removes that gate, and the code explicitly states it is live on deploy with no feature switch
+(`user.resolver.js:167-168`, D-03). Any anonymous person can now register, verify a mailbox
+they control, and take the ADMIN slot.
 
-const passwordHash = await bcrypt.hash(password, 12);
-const existingUser = await models.User.findOne({ where: { email: normalizedEmail } });
-if (existingUser) { /* unchanged */ }
+Two reachable windows:
 
-const verificationToken = createVerificationToken();
-let createdUser;
-try {
-  createdUser = await models.User.create(
-    { name: cleanName, email: normalizedEmail, passwordHash, status: 'Pending', /* … */ },
-    { passwordAlreadyHashed: true }
-  );
-} catch (err) {
-  // D-08: a failed create must be indistinguishable from the taken-email outcome.
-  // Never let an ORM/DB error reach the caller from this branch.
-  console.error('Tokenless registration create failed:', err);
-  return { message: 'Registration received. Verify your email to activate your account.' };
-}
-```
+- **Fresh deployment.** With zero users, the first anonymous verifier becomes ADMIN. An
+  attacker who registers before the operator both steals the role and *denies* it to the
+  operator, since the operator's later verification sees `adminCount = 1`.
+- **Existing deployment, sole-admin email change.** `updateUser` lets a user change their own
+  email and sets `target.emailVerified = false` (lines 611-617) with **no last-administrator
+  guard** — that guard only covers `role` changes (lines 586-593). While the sole admin's new
+  address is unverified, `adminCount` is 0 and the window is open to the internet.
 
-Add a regression test that pins the oracle shut, e.g. assert that
-`register({ name: 'A'.repeat(300), email: <taken> })` and
-`register({ name: 'A'.repeat(300), email: <free> })` produce byte-identical responses.
+The promoted attacker lands `role: ADMIN, status: Pending`, so `getUserFromRequest`
+(`utils/auth.js:33`) blocks the token today. The escalation completes on approval — and
+`pendingApprovals` (`user.schema.js:57`) exposes no `role` in any consuming surface, so an
+admin clicking "approve" on what looks like a routine self-registration activates an ADMIN.
 
-## Warnings
-
-### WR-01: Residual timing oracle — the free path pays a committed INSERT the taken path does not
-
-**File:** `backend/src/resolvers/user.resolver.js:228-275`
-
-**Issue:** D-09 correctly moves `bcrypt.hash` ahead of the lookup, so both outcomes pay the
-~215 ms bcrypt cost. But after that point the branches diverge in *awaited* work: the free
-path awaits `models.User.create` (a committed INSERT), the taken path awaits nothing (both
-`sendRegistrationAttemptEmail` and `writeAuditLog` are fire-and-forget). Measured over 12
-paired samples on the test database:
-
-```
-TAKEN median 215.9 ms  (215,216,216,216,216,216,216,216,216,217,221)
-FREE  median 217.2 ms  (217,217,217,217,217,217,217,217,218,218,218)
-DELTA median   1.3 ms
-```
-
-The distributions barely overlap. Local jitter is sub-millisecond, so a modest sample count
-recovers the signal; over a network it needs more samples but remains recoverable. This is a
-weaker oracle than CR-01, but it independently violates the phase's timing-safety claim.
-
-**Fix:** apply the response-floor pattern this same file already uses for
-`requestPasswordReset` (`MIN_RESET_RESPONSE_MS`, lines 98/294/316-317) to `register`'s
-tokenless branch:
+**Fix:** Never let the bootstrap promotion fire for an account that nobody vouched for.
 
 ```js
-const startedAt = Date.now();
-// … both branches …
-const elapsed = Date.now() - startedAt;
-if (elapsed < MIN_REGISTER_RESPONSE_MS) await delay(MIN_REGISTER_RESPONSE_MS - elapsed);
-return { message: 'Registration received. Verify your email to activate your account.' };
-```
-
-Pick the floor above the observed free-path p99 (bcrypt cost 12 plus INSERT, so ~400 ms is a
-reasonable starting point) and add a test asserting the floor holds for both outcomes.
-
-### WR-02: Raw Sequelize/MySQL error text is returned to unauthenticated callers
-
-**File:** `backend/src/resolvers/user.resolver.js:249-260`
-
-**Issue:** Because the create is unguarded, internal ORM/engine strings reach anonymous
-clients verbatim, with `extensions.code: "INTERNAL_SERVER_ERROR"`:
-
-- `Data too long for column 'name' at row 1` — discloses the physical column name and the
-  storage engine's strict-mode behaviour.
-- `Validation error: Validation isEmail on email failed` — discloses the ORM and validator
-  in use (reproduced with `email: "not-an-email"` and with `email: "   "`).
-- `Validation error` — the unique-constraint path.
-
-Every other user-facing error in this codebase is a hand-written sentence
-(`'Invalid email or password.'`, `'This invitation link is invalid.'`). These three are the
-only ones that leak implementation detail.
-
-**Fix:** covered by CR-01's try/catch plus explicit pre-lookup validation. Additionally
-consider `formatError` on the Apollo server to mask any unexpected error message in
-production as defence in depth.
-
-### WR-03: `name` is accepted blank or whitespace-only on both register branches
-
-**File:** `backend/src/resolvers/user.resolver.js:152`, `:181-189`, `:249-260`
-
-**Issue:** `register` never trims or requires a non-empty `name`. Verified: registering with
-`name: "   "` succeeds and persists `name = "   "`. That row then flows into:
-
-- `pendingApprovals` — an admin sees a blank-named stranger in the approval queue with no
-  way to tell it from a rendering bug;
-- the D-12 admin notification subject — `New account awaiting approval: ` (trailing colon,
-  nothing after it) and the HTML intro `<strong></strong> (…)`.
-
-`updateUser` in this same file (lines 561-565) *does* enforce this
-(`if (!trimmed) throw new Error('Name is required.')`), so the registration path is
-inconsistent with the project's own established rule. `relationshipNote` has the mirror
-problem: `''` becomes `null` (line 257) but `'   '` is stored verbatim.
-
-**Fix:** trim and require `name` in `register` (see CR-01's `assertRegistrationName`), and
-normalise the note the same way:
-
-```js
-const cleanNote = typeof relationshipNote === 'string' && relationshipNote.trim()
-  ? relationshipNote.trim()
-  : null;
-```
-
-### WR-04: The invited branch silently discards `relationshipNote` and skips its 500-char cap
-
-**File:** `backend/src/resolvers/user.resolver.js:152` (arg destructured), `:155-218` (branch)
-
-**Issue:** `relationshipNote` is a top-level `register` argument in the SDL
-(`user.schema.js:61`) but the invited branch never reads it, never validates it, and never
-persists it. Verified: an invited registration carrying a 2000-character note returns success
-and stores `relationshipNote = null` — silent data loss, and the D-05 cap is not applied on
-that path at all. An invitee who fills in the note field gets no feedback that their input
-was thrown away.
-
-**Fix:** decide explicitly and encode the decision. Either persist it on the invited branch
-too (moving `assertRelationshipNoteLength(relationshipNote)` above the `if (token)` check so
-the cap is uniform), or reject it:
-
-```js
-if (token) {
-  if (relationshipNote) throw new Error('A relationship note is not accepted with an invitation link.');
-  …
-}
-```
-
-Add a test pinning whichever behaviour is chosen.
-
-### WR-05: `pendingApprovals` returns every Pending + verified account, not just self-registrations
-
-**File:** `backend/src/resolvers/user.resolver.js:128-140`
-
-**Issue:** The docstring says "self-registrations awaiting an approval decision … Coexists
-with pendingRegistrations for this phase (invitation-flow specific)", but the query is
-`where: { status: 'Pending', emailVerified: true }` with **no filter on the existence of an
-Invitation row**. An invited registrant whose auto-activation was refused (unvouched,
-demoted, disabled, or email-unverified inviter — all five of which `verifyEmail.test.js`
-exercises and leaves in exactly this state) therefore appears in **both**
-`pendingApprovals` and `pendingRegistrations`. The admin queue double-counts them, and the
-two lists disagree about what "pending approval" means.
-
-This is a correctness/spec mismatch rather than a leak (the query is `requireAdmin`, verified
-by test), but it is invisible today because `pendingApprovals.test.js` has no case for a
-Pending + verified user who *does* have an Invitation row.
-
-**Fix:** make the query match its own documentation, or update the documentation to say it
-deliberately supersedes `pendingRegistrations`. If the former:
-
-```js
-pendingApprovals: async (_parent, _args, { models, user }) => {
-  requireAdmin(user);
-  const invited = await models.Invitation.findAll({
-    where: { registeredUserId: { [Op.ne]: null } },
-    attributes: ['registeredUserId']
+// verifyAndPromote, replacing the unconditional promotion
+if (Number(adminCount) === 0) {
+  // Only an invitation-backed registrant may claim the bootstrap ADMIN slot;
+  // a tokenless self-registrant is an anonymous stranger by construction.
+  const bootstrapInvitation = await models.Invitation.findOne({
+    where: { registeredUserId: user.id },
+    transaction: t
   });
-  const invitedIds = invited.map((i) => i.registeredUserId);
-  return models.User.findAll({
-    where: {
-      status: 'Pending',
-      emailVerified: true,
-      ...(invitedIds.length ? { id: { [Op.notIn]: invitedIds } } : {})
-    },
-    order: [['createdAt', 'DESC']]
-  });
-}
-```
-
-Either way, add the missing test case.
-
-### WR-06: Unauthenticated email amplification with attacker-controlled content
-
-**File:** `backend/src/resolvers/user.resolver.js:235-237`, `:38-60`, `:449-453`;
-`backend/src/services/mailer.js:186-199`
-
-**Issue:** Phase 32 adds two anonymous-triggerable outbound email paths with no
-per-recipient throttling or deduplication:
-
-1. `sendRegistrationAttemptEmail` fires at a *victim's real stored address* whenever anyone
-   attempts to register with their email. Rate limiting is per-IP only
-   (`rateLimits.js:7` — `register: { max: 5, windowMs: 3600000 }`), so a rotating-IP attacker
-   can mail-bomb a known account holder without bound. The D-10 rationale is sound; the
-   missing control is a per-recipient cool-down.
-2. The D-12 fan-out mails **every** Active + verified admin on each self-registrant
-   verification, with the attacker's `name` and `relationshipNote` in the body and `name` in
-   the subject. Five registrations per hour per IP, times N admins, times unlimited IPs.
-
-Neither is a confidentiality break — both send only to addresses the server already knows —
-but both are new abuse surface and both can burn the project's Resend sending reputation.
-
-**Fix:** add a per-recipient suppression window alongside the existing per-IP limiter, reusing
-`rateLimitStore.checkAndIncrement` with a recipient-keyed key:
-
-```js
-// e.g. at most one registration-attempt notice per address per 24h
-if (checkAndIncrement(`regattempt:${existingUser.email}`, 1, 24 * 60 * 60 * 1000)) {
-  sendRegistrationAttemptEmail({ to: existingUser.email, name: existingUser.name })
-    .catch((err) => console.error('Failed to send registration-attempt email:', err));
-}
-```
-
-Note the suppression decision must not change the response or its timing (see CR-01/WR-01).
-
-### WR-07: `renderHtml` interpolates `ctaUrl` into an `href` attribute with no escaping
-
-**File:** `backend/src/services/mailer.js:41` (and `:43` for the text-node copy)
-
-**Issue:** `escapeHtml`'s own docstring (`escapeHtml.js:1-5`) states it is for
-"an HTML text node (never an attribute like href)". `renderHtml` has exactly one attribute
-sink, and it is the only interpolation in the whole template that is *not* escaped:
-
-```js
-<a href="${ctaUrl}" style="…">${ctaLabel}</a>
-```
-
-Every current caller passes a server-derived URL (`env.clientUrl` + a fixed path, or a path
-plus a hex token), so this is latent rather than live. But the template is the shared entry
-point for all seven mail types, and the next caller that threads a caller-influenced URL
-through it gets attribute-breakout for free — with no test to catch it.
-
-**Fix:** escape the attribute at the sink and validate the scheme, so the contract is enforced
-by the template rather than by every caller remembering:
-
-```js
-function safeUrl(value) {
-  const url = String(value ?? '');
-  if (!/^https?:\/\//i.test(url)) return env.clientUrl;   // reject javascript:, data:, …
-  return url;
-}
-// …
-<a href="${escapeHtml(safeUrl(ctaUrl))}" …>${ctaLabel}</a>
-```
-
-Add an `escapeHtml.test.js` case documenting attribute-context suitability, and a
-`mailer.test.js` case asserting a hostile `url` cannot break out of the `href`.
-
-### WR-08: The 500-char cap counts UTF-16 code units, not the characters `VARCHAR(500)` stores
-
-**File:** `backend/src/utils/relationshipNotePolicy.js:7`
-
-**Issue:** `note.length > 500` counts UTF-16 code units while the column counts characters.
-The mismatch is *safe in the overflow direction* — for any string, character count ≤
-`.length`, so a note that passes the check can never exceed 500 DB characters. I verified
-both directions:
-
-- 400 astral characters (`'😀'.repeat(400)`, `.length === 800`) → rejected, even though the
-  column would comfortably hold them.
-- 250 astral characters (`.length === 500`) → accepted, stored as 250 DB characters.
-
-So the effective limit is 250 characters for astral input and 500 for BMP input. Ge'ez
-(U+1200–U+137F) is BMP and unaffected, but the cap is not the "500 characters matching the
-column" the comment claims, and users pasting emoji hit an unexplained wall at half the
-advertised length.
-
-**Fix:** count grapheme-ish code points so the check means what it says, and keep the error
-message accurate:
-
-```js
-export function assertRelationshipNoteLength(note) {
-  if (note && [...String(note)].length > 500) {
-    throw new Error('Relationship note must be 500 characters or fewer.');
+  if (bootstrapInvitation) {
+    await models.User.update({ role: 'ADMIN' }, { where: { id: user.id }, transaction: t });
   }
 }
 ```
 
-### WR-09: Enumeration-silence test asserts only the message, not the absence of side effects
-
-**File:** `backend/src/resolvers/register.test.js:179-199`
-
-**Issue:** The test that guards SEC-01 checks three things: the message matches, the user
-count is 1, and `sendRegistrationAttemptEmail` was called. It does **not** assert that the
-free-path side effects are absent on the taken path, so any regression that reopens the
-channel through a *different* signal stays green. Specifically missing:
-
-- `expect(sendVerificationEmail).not.toHaveBeenCalled()` — today the taken path must not send
-  one, and nothing pins that.
-- no `user.self_registered` audit row is written.
-- the existing user's row is unmodified (`passwordHash`, `status`, `emailVerified`,
-  `relationshipNote` all unchanged) — the current `count === 1` assertion would still pass if
-  the resolver overwrote the existing account in place.
-- the response object is byte-identical to the free-email response (not merely
-  `message ===`) — this is what would have caught CR-01.
-
-**Fix:**
+Additionally, extend `updateUser`'s last-administrator guard to the email-change path so the
+sole admin cannot de-verify themselves:
 
 ```js
-const free  = await graphql(REGISTER_MUTATION, { name: 'X', email: 'free@example.com',  password: 'Password123!' });
-const taken = await graphql(REGISTER_MUTATION, { name: 'X', email: 'taken@example.com', password: 'Password123!' });
-expect(taken).toEqual(free);
-
-// and, for the hostile-input variant that reproduces CR-01:
-const longName = 'A'.repeat(300);
-expect(await graphql(REGISTER_MUTATION, { name: longName, email: 'taken2@example.com', password: 'Password123!' }))
-  .toEqual(await graphql(REGISTER_MUTATION, { name: longName, email: 'free2@example.com', password: 'Password123!' }));
-
-expect(sendVerificationEmail).not.toHaveBeenCalled();
-expect(await models.AuditLog.count({ where: { action: 'user.self_registered' } })).toBe(0);
-await existing.reload();
-expect(existing.passwordHash).toBe(originalHash);
-expect(existing.status).toBe('Active');
-```
-
-### WR-10: `relationshipNotePolicy.js` ships with no unit test
-
-**File:** `backend/src/utils/relationshipNotePolicy.js` (no sibling `.test.js`)
-
-**Issue:** Its stated model, `passwordPolicy.js`, has `passwordPolicy.test.js`; so do
-`escapeHtml.js`, `auth.js`, and `rateLimitStore.js`. This new policy module's only coverage
-is one integration case at 501 characters (`register.test.js:247-259`). Untested and
-therefore unpinned:
-
-- the boundary — exactly 500 must be accepted, 501 rejected (only the 501 side exists);
-- `null` / `undefined` / `''` short-circuit through the `note &&` guard (the comment at
-  lines 3-5 calls this guard load-bearing, but nothing asserts it);
-- non-string input — `assertRelationshipNoteLength(12345)` throws
-  `TypeError: note.length is undefined`-style behaviour rather than the intended message
-  (compare `escapeHtml`, which explicitly coerces and has a test for it).
-
-**Fix:** add `backend/src/utils/relationshipNotePolicy.test.js` covering 499/500/501, `null`,
-`undefined`, `''`, an astral string (see WR-08), and a non-string.
-
-### WR-11: Migration 020 is not idempotent, has no down-path, and nothing fails fast if it was skipped
-
-**File:** `backend/migrations/manual/020-add-users-relationship-note.sql:26-27`
-
-**Issue:** `ALTER TABLE users ADD COLUMN relationshipNote VARCHAR(500) NULL DEFAULT NULL;`
-with no `IF NOT EXISTS`, no rollback statement, and no application-level guard. Re-running it
-errors (`Duplicate column name`), which is survivable, but the skipped case is not: on any
-database where it has not been applied, `sequelize.sync()` will not add the column, the app
-boots normally, and **only the free-email tokenless registration** fails —
-`Unknown column 'relationshipNote' in 'field list'` — while taken emails still return the
-success message. That is CR-01's oracle, fully open, on a fresh production deploy.
-
-The file documents the manual step well (better than most), but documentation is not a guard,
-and the failure mode is silent-until-exploited rather than boot-time-loud.
-
-**Fix:** make the DDL re-runnable and add a startup assertion so a missed migration is a boot
-failure rather than a security regression:
-
-```sql
-ALTER TABLE users
-  ADD COLUMN IF NOT EXISTS relationshipNote VARCHAR(500) NULL DEFAULT NULL;
-```
-
-```js
-// backend/src/models/index.js, in initializeDatabase()
-const [cols] = await sequelize.query("SHOW COLUMNS FROM users LIKE 'relationshipNote'");
-if (cols.length === 0) {
-  throw new Error('Migration 020 has not been applied: users.relationshipNote is missing.');
+if (normalized !== target.email && target.role === 'ADMIN' && target.emailVerified) {
+  const otherVerifiedAdmins = await models.User.count({
+    where: { role: 'ADMIN', emailVerified: true, id: { [Op.ne]: target.id } }
+  });
+  if (otherVerifiedAdmins === 0) {
+    throw new Error('Promote another administrator before changing the last administrator\'s email.');
+  }
 }
 ```
 
-(`ADD COLUMN IF NOT EXISTS` is MariaDB/MySQL-8.4-portable, consistent with 018's stated
-portability standard.)
+### CR-02: An invalid or over-length email is reported to the registrant as a successful registration
 
-### WR-12: Partial mailer mocks leave most of the module undefined in two suites
+**File:** `backend/src/resolvers/user.resolver.js:256-312`
+**Severity:** BLOCKER
 
-**File:** `backend/src/resolvers/verifyEmail.test.js:9-11`, `backend/src/resolvers/register.test.js:6-11`
+**Issue:**
+The tokenless branch validates `password`, `relationshipNote`, `name`, and *presence* of
+`email` — but never its **format or length**. `models.User.create` therefore runs against an
+unvalidated value and `User.js:26`'s `validate: { isEmail: true }` throws a
+`SequelizeValidationError`, which the catch-all at line 302 swallows and converts to
+`TOKENLESS_REGISTER_MESSAGE`. An email longer than the `VARCHAR(255)` column produces
+`Data too long` and does exactly the same.
 
-**Issue:** `mailer.js` exports eight functions. `verifyEmail.test.js` mocks exactly one
-(`sendPendingRegistrationEmail`); `register.test.js` mocks four. Because
-`test/helpers.js:4` builds the full schema from `serverConfig.js`, both suites load
-`approval.resolver.js` and `invitation.resolver.js`, which statically import
-`sendAccountApprovedEmail`, `sendAccountRejectedEmail`, and `sendInvitationEmail` — none of
-which exist on either mock. Nothing fails today because no test reaches those resolvers, but
-the failure mode when one eventually does is a Vitest mock-shape error rather than a
-meaningful assertion failure, and the two suites disagree about which subset to stub.
+Result: a registrant who typos their address (`ada@example` , `ada@@example.com`, a pasted
+name field, a 300-char address) receives
+`"Registration received. Verify your email to activate your account."`, no row is created, no
+verification mail is sent, and there is no error, no retry prompt, and no server-side signal
+distinguishing this from success. This is silent loss of a real user's registration on the
+app's only public entry point.
 
-**Fix:** use `importActual` spread so the mock is total and only the intercepted functions
-differ:
+Email *format* validity is entirely independent of whether an account exists, so validating it
+before the existing-user lookup leaks nothing — exactly the argument that already justifies
+`assertRegistrationName` running there.
+
+**Fix:** Add an `emailPolicy.js` sibling to `namePolicy.js` and call it alongside the other
+pre-lookup guards:
 
 ```js
-vi.mock('../services/mailer.js', async (importActual) => ({
-  ...(await importActual()),
-  sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
-  sendPendingRegistrationEmail: vi.fn().mockResolvedValue(undefined),
-  sendRegistrationAttemptEmail: vi.fn().mockResolvedValue(undefined)
-}));
+// backend/src/utils/emailPolicy.js
+export const MAX_EMAIL_LENGTH = 255;
+const EMAIL_RE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+
+export function assertRegistrationEmail(email) {
+  const normalized = String(email ?? '').toLowerCase().trim();
+  if (!normalized) throw new Error('Email is required.');
+  if (normalized.length > MAX_EMAIL_LENGTH) throw new Error('Email must be 255 characters or fewer.');
+  if (!EMAIL_RE.test(normalized)) throw new Error('Enter a valid email address.');
+  return normalized;
+}
+
+// user.resolver.js, replacing lines 254-256
+const normalizedEmail = assertRegistrationEmail(email);
 ```
 
-(Safe here: `buildTransportOptions` already forces `jsonTransport` when `nodeEnv === 'test'`,
-so unmocked senders open no socket.)
+Add a regression test asserting a malformed email is *rejected* (not silently absorbed) and
+that the message is identical whether or not any account exists.
+
+### CR-03: The uniform-response guard does not cover `findOne` or `createVerificationToken` — raw DB errors reach an anonymous caller
+
+**File:** `backend/src/resolvers/user.resolver.js:258`, `backend/src/resolvers/user.resolver.js:270`
+**Severity:** BLOCKER
+
+**Issue:**
+The `try` block starts at line 271, but two email-path-relevant operations run before it:
+
+```js
+const existingUser = await models.User.findOne({ where: { email: normalizedEmail } });   // 258 - unguarded
+...
+const verificationToken = createVerificationToken();                                      // 270 - unguarded, FREE PATH ONLY
+try {
+  const createdUser = await models.User.create(...);                                      // 277 - guarded
+```
+
+Two defects:
+
+- **Information disclosure.** If `findOne` rejects — connection-pool exhaustion, a
+  `SequelizeDatabaseError` on an unmigrated target, `ER_LOCK_WAIT_TIMEOUT` — the raw error
+  propagates through Apollo to an *unauthenticated* caller, message and all. Sequelize's
+  `DatabaseError` carries `.sql`, so table and column names leak. This directly violates the
+  contract stated at lines 302-309 ("never surface raw ORM/DB error text to an unauthenticated
+  caller"). It also skips `finishTokenlessRegistration`, so this outcome is both differently
+  shaped *and* markedly faster than every other one.
+- **Residual enumeration divergence.** `createVerificationToken()` (line 270) executes only
+  when `existingUser` is falsy. A throw there (`crypto.randomBytes` failure) yields an error
+  response on the free path where the taken path returned success — a free/taken divergence
+  that the fix was written to eliminate. Improbable, but it is precisely the class of gap
+  CR-01 was.
+
+The WR-02 regression test mocks `models.User.create`, never `models.User.findOne`, so neither
+path is covered.
+
+**Fix:** Move the whole post-validation body inside one `try` and make
+`finishTokenlessRegistration` the single exit:
+
+```js
+const normalizedEmail = assertRegistrationEmail(email); // see CR-02
+const startedAt = Date.now();
+try {
+  const passwordHash = await bcrypt.hash(password, 12);
+  const existingUser = await models.User.findOne({ where: { email: normalizedEmail } });
+
+  if (existingUser) {
+    sendRegistrationAttemptEmail({ to: existingUser.email, name: existingUser.name })
+      .catch((err) => console.error('Failed to send registration-attempt email:', err));
+  } else {
+    const verificationToken = createVerificationToken();
+    const createdUser = await models.User.create({ /* ... */ }, { passwordAlreadyHashed: true });
+    sendVerificationEmail({ to: normalizedEmail, token: verificationToken })
+      .catch((err) => console.error('Failed to send verification email:', err));
+    writeAuditLog(models, { /* ... */ })
+      .catch((err) => console.error('Failed to write audit log:', err));
+  }
+} catch (err) {
+  console.error('Tokenless registration failed:', err?.name, err?.message);
+}
+return finishTokenlessRegistration(startedAt);
+```
+
+Note `startedAt` must move above `bcrypt.hash` (as it already is) and the single `return`
+guarantees no path can bypass the floor. Add tests for `findOne` rejecting and for
+`createVerificationToken` throwing.
+
+## Warnings
+
+### WR-01: The 400 ms floor silently becomes a no-op once real work exceeds it
+
+**File:** `backend/src/resolvers/user.resolver.js:100-123`
+**Issue:** `finishTokenlessRegistration` only pads *up to* `MIN_REGISTER_RESPONSE_MS`; when
+`elapsed >= 400`, no delay is applied at all. The free path does `bcrypt(12)` + `findOne` +
+`create` + verification-token hashing; the taken path does `bcrypt(12)` + `findOne`. The
+comment cites a measured ~217 ms free-path p99, leaving under 2x headroom. Under DB
+contention, a cold connection pool, a noisy-neighbour VPS, or a future bcrypt cost bump, the
+free path crosses 400 ms while the taken path does not — and the delta the floor exists to mask
+is directly observable again. The floor is also deterministic, so an attacker can average away
+noise across the 5-requests/hour budget from many source IPs.
+**Fix:** Pin the response time rather than flooring it — either raise the floor well above the
+worst observed p99 and add a metric/alert when `elapsed > MIN_REGISTER_RESPONSE_MS`, or add
+randomized jitter on top so the residual is not a stable signal:
+
+```js
+async function finishTokenlessRegistration(startedAt) {
+  const elapsed = Date.now() - startedAt;
+  if (elapsed > MIN_REGISTER_RESPONSE_MS) {
+    console.warn(`Tokenless register exceeded response floor: ${elapsed}ms`);
+  }
+  const jitter = Math.floor(Math.random() * 60);
+  const target = MIN_REGISTER_RESPONSE_MS + jitter;
+  if (elapsed < target) await delay(target - elapsed);
+  return { message: TOKENLESS_REGISTER_MESSAGE };
+}
+```
+
+### WR-02: The catch-all reports success for genuine deploy/programming failures with no alerting
+
+**File:** `backend/src/resolvers/user.resolver.js:302-312`
+**Issue:** Enumeration-silence is achieved by treating *every* `create` failure as success.
+On a target where migration 020 was not applied, `Unknown column 'relationshipNote'` is caught
+and every single registration returns the success message while creating nothing. The only
+signal is one `console.error` line in an app with no structured logging, no log levels, and no
+request logging (per CLAUDE.md). A broken public registration flow is indistinguishable from a
+healthy one from outside *and* from the operator's dashboard.
+**Fix:** Keep the uniform client response, but make the server loud: emit a distinguishable
+counter/log level for "tokenless register create failed", and narrow the swallow to the errors
+that are legitimately expected — `UniqueConstraintError` (the duplicate race) — while
+re-throwing (after the floor, as a generic `Error('Registration could not be completed.')`)
+for anything else, so a deploy failure surfaces instead of masquerading as success.
+
+### WR-03: Raw Sequelize errors containing the registrant's email and bcrypt hash are written to logs
+
+**File:** `backend/src/resolvers/user.resolver.js:310`
+**Issue:** `console.error('Tokenless registration create failed:', err)` serializes the whole
+error object. A Sequelize `DatabaseError` carries `.sql` and `.parameters`; mysql2 inlines
+bound values into `.sql`. On a failed insert this writes the registrant's email address and
+their bcrypt password hash into plaintext application logs (Docker stdout, shipped wherever the
+platform ships it). The same pattern exists for the duplicate-race path, which is expected to
+fire routinely.
+**Fix:** Log only non-sensitive fields:
+
+```js
+console.error('Tokenless registration create failed:', err?.name, err?.message);
+```
+
+### WR-04: Tokenless self-registrations are invisible to every admin surface — the flow dead-ends after deploy
+
+**File:** `backend/src/resolvers/user.resolver.js:145-157`, `backend/src/schemas/user.schema.js:57`
+**Issue:** The new admin-only `pendingApprovals` query has **zero consumers** — nothing in
+`frontend/src` references it. The live admin screen, `frontend/src/pages/ApprovalsPage.jsx:25`,
+queries `pendingRegistrations`, which builds its list from `Invitation` rows
+(`invitation.resolver.js:37-54`). A tokenless self-registrant has no `Invitation` row, so they
+can never appear there. Meanwhile `frontend/src/pages/Register.jsx:29-31` still renders
+"Public self-registration is disabled — Agne is invitation-only" and
+`AuthContext.jsx:18-20` does not even send `email` or `relationshipNote`.
+
+Net effect on deploy (D-03 = no feature switch): an anonymous, publicly reachable endpoint
+creates `Pending` accounts that accumulate forever, receive admin notification emails pointing
+at `/invitations` (`mailer.js:114`) where they are not listed, and can never be approved or
+rejected through any shipped UI.
+**Fix:** Either (a) gate the tokenless branch behind an env flag until the admin UI lands, or
+(b) widen `ApprovalsPage` to consume `pendingApprovals` in the same milestone. If the
+backend/UI split is intentional, the endpoint should not be live: add
+`if (!env.selfRegistrationEnabled) throw new Error('Registration is by invitation only.');`
+before line 251.
+
+### WR-05: `sendRegistrationAttemptEmail` is an unauthenticated email-bombing primitive against a known address
+
+**File:** `backend/src/resolvers/user.resolver.js:260-268`, `backend/src/services/mailer.js:186-199`
+**Issue:** Any anonymous caller who knows a registered address can force a mail to it by
+POSTing `register`. Rate limiting is per-IP only (`config/rateLimits.js:7` — 5/hour), so a
+distributed caller can flood the victim's inbox, burn the Resend sending quota, and damage the
+sending domain's reputation via spam complaints. There is no per-recipient throttle and no
+suppression of repeat notices.
+**Fix:** Add a per-recipient cooldown before sending (e.g. a `lastRegistrationAttemptEmailAt`
+column, or a keyed entry in `rateLimitStore` under `registrationAttempt:${normalizedEmail}`
+with a 24 h window), and skip the send when the cooldown is unexpired. The response must stay
+identical either way — do the check *after* the uniform-response decision, not before it.
+
+### WR-06: `renderHtml` interpolates `ctaUrl` into an `href` attribute unescaped, contradicting `escapeHtml`'s stated contract
+
+**File:** `backend/src/services/mailer.js:41`, `backend/src/services/mailer.js:43`, `backend/src/utils/escapeHtml.js:1-5`
+**Issue:** `escapeHtml.js`'s header states the helper is "for values interpolated into an HTML
+text node (never an attribute like href)". Its only consumer does exactly that:
+`<a href="${ctaUrl}" ...>` and a second bare `${ctaUrl}` in the fallback paragraph. Every text
+node (`heading`/`intro`/`note`/`ctaLabel`) is escaped by callers — I verified all six
+`sendXEmail` functions — but `ctaUrl` never is. Today all callers pass server-built URLs
+(`env.clientUrl` + a hex token, or `sendInvitationEmail`'s `url`), so nothing is exploitable.
+The shape is the hazard: a future caller passing any user-influenced value into `ctaUrl`
+produces attribute-breakout HTML injection with no guard and no test to catch it.
+**Fix:** Escape at the interpolation point inside `renderHtml`, which is also the only place
+that knows it is an attribute context:
+
+```js
+const safeCtaUrl = escapeHtml(ctaUrl);
+// ...
+<a href="${safeCtaUrl}" ...>${ctaLabel}</a>
+// ...
+<br />${safeCtaUrl}
+```
+
+Optionally reject non-`https:`/`http:` schemes before rendering.
+
+### WR-07: The WR-01 timing regression test cannot fail on its central assertion
+
+**File:** `backend/src/resolvers/register.test.js:410-456`
+**Issue:** The test pins `Date.now()` to `0` for the whole run, so inside
+`finishTokenlessRegistration` `elapsed` is always `0 - 0 = 0` and the delay argument is always
+exactly `MIN_REGISTER_RESPONSE_MS`. `expect(ms).toBe(MIN_REGISTER_RESPONSE_MS)` is therefore a
+tautology — it holds for any floor value and any elapsed time. The remaining assertion,
+`expect(shortDelays.length).toBeGreaterThanOrEqual(2)`, does not attribute delays to calls: it
+passes if one path delayed twice and the other zero times, which is the exact bypass the test
+targets. The `elapsed >= floor` branch — where the floor silently does nothing (WR-01) — is
+never exercised.
+**Fix:** Assert per-call, and cover the over-floor branch:
+
+```js
+// per call, not in aggregate
+const before = shortDelays.length;
+await graphql(REGISTER_MUTATION, { name: 'Taken Path', email: 'wr01-taken@example.com', password: 'Password123!' });
+expect(shortDelays.length - before).toBe(1);
+
+// and drive elapsed past the floor with a stepping clock
+let clock = 0;
+vi.spyOn(Date, 'now').mockImplementation(() => (clock += MIN_REGISTER_RESPONSE_MS + 50));
+// -> assert the resolver still returns the uniform message and records the overrun
+```
+
+### WR-08: The CR-01 equivalence assertion still passes with `assertRegistrationName` removed
+
+**File:** `backend/src/resolvers/register.test.js:288-307`
+**Issue:** The regression is framed as proving `assertRegistrationName` closes the enumeration
+oracle, but `expect(takenResult).toEqual(freshResult)` is not the discriminator. Delete
+`assertRegistrationName` and the 300-char name path becomes: taken email → short-circuit →
+uniform success message; fresh email → `create` throws `Data too long` → caught at line 302 →
+*the same* uniform success message. The equality assertion still holds. Only
+`expect(freshResult.errors[0].message).toBe('Name must be 255 characters or fewer.')` fails,
+and that asserts the guard's own message, not attacker-observable divergence. The 32-05 SUMMARY's
+mutation-test claim is therefore weaker than stated — the catch-all, not the name policy, is
+what closes the oracle for this input.
+**Fix:** Keep the test, but add one that fails *only* if the pre-lookup ordering is broken —
+e.g. assert that no `models.User.findOne` call occurs when the name is over-length (spy on
+`findOne` and assert `toHaveBeenCalledTimes(0)`), which is the property `assertRegistrationName`
+actually provides.
+
+### WR-09: The tokenless success message is a named constant; the invited branch hardcodes the same literal
+
+**File:** `backend/src/resolvers/user.resolver.js:98`, `backend/src/resolvers/user.resolver.js:232-234`
+**Issue:** `TOKENLESS_REGISTER_MESSAGE` exists at line 98 and is used at line 122, but the
+invited branch spells the identical string out inline. `register.test.js:23` then asserts both
+against a third copy. Any edit to one of the three silently makes the invited and tokenless
+responses distinguishable — which is exactly the property an attacker probes for when deciding
+whether an address is invitation-bound.
+**Fix:** `return { message: TOKENLESS_REGISTER_MESSAGE };` at line 232 (rename the constant to
+`REGISTER_RECEIVED_MESSAGE`), and import it into the test instead of re-declaring
+`SUCCESS_MESSAGE`.
+
+### WR-10: `relationshipNote` is stored untrimmed, so a whitespace-only note becomes a non-null blank
+
+**File:** `backend/src/resolvers/user.resolver.js:285`, `backend/src/utils/relationshipNotePolicy.js:6-8`
+**Issue:** `relationshipNote: relationshipNote || null` stores `'   '` verbatim. This
+contradicts the phase's own F-01 framing (a note is either present or `null`), diverges from
+`assertRegistrationName`, which trims and returns the cleaned value, and produces a rendered
+`<em>Note:  </em>` block in the admin notification (`mailer.js:131` gates on truthiness, which
+a whitespace string satisfies). `assertRelationshipNoteLength` also measures the *untrimmed*
+length, so 500 characters of content plus surrounding whitespace is rejected while a
+501-character trimmed-to-500 value would have fit.
+**Fix:** Make the policy return the cleaned value, mirroring `namePolicy.js`:
+
+```js
+export function assertRelationshipNoteLength(note) {
+  const trimmed = String(note ?? '').trim();
+  if (!trimmed) return null;
+  if (trimmed.length > 500) throw new Error('Relationship note must be 500 characters or fewer.');
+  return trimmed;
+}
+// caller: const cleanNote = assertRelationshipNoteLength(relationshipNote);  ...  relationshipNote: cleanNote
+```
+
+### WR-11: `verifyEmail` mints a session JWT for accounts that are not `Active`
+
+**File:** `backend/src/resolvers/user.resolver.js:492`, `backend/src/schemas/user.schema.js:66`
+**Issue:** `return { token: signToken(user), user };` runs unconditionally, including for the
+tokenless self-registrant who remains `Pending` (and for `Rejected`/`Disabled` accounts that
+re-verify). The token is inert today because `getUserFromRequest` re-checks
+`status === 'Active'` (`utils/auth.js:33`), but it is a long-lived bearer credential handed to
+an account that was never approved: if the account is later approved, the pre-issued token is
+immediately live and predates the approval decision, and `passwordChangedAt` revocation does
+not apply. `AuthPayload.token: String!` forces the non-null, so the schema is complicit.
+**Fix:** Return a nullable-token payload (or a distinct `VerifyEmailPayload { status, token }`)
+and emit `token: null` unless `user.status === 'Active'`. The
+`verifyEmail.test.js` cases at lines 579-604 assert `status === 'Pending'` already and would
+need only the token assertion updated.
 
 ## Info
 
-### IN-01: Redundant `String()` around an already-coercing escape, on a server-controlled integer
+### IN-01: The duplicate-insert race test contains unreachable assertions
 
-**File:** `backend/src/services/mailer.js:76`
+**File:** `backend/src/resolvers/register.test.js:377-384`
+**Issue:** The `for (const result of [a, b]) { if (result.errors) { ... } }` block is dead:
+both `a` and `b` return the uniform success message (asserted equal two lines above), so
+`result.errors` is always `undefined` and the "no Sequelize text" assertions never execute.
+**Fix:** Assert the positive form directly —
+`expect(a.data.register.message).toBe(SUCCESS_MESSAGE)` and
+`expect(a.errors).toBeUndefined()` — and drop the conditional.
 
-**Issue:** `escapeHtml(String(env.resetTokenExpiresMinutes))` — `escapeHtml` already does
-`String(value ?? '')` (`escapeHtml.js:7`), and the value is an env-derived number that can
-never contain markup. Escaping it is harmless but signals that the D-07 sweep was applied by
-pattern-match rather than by tracing taint, which makes it harder to tell at a glance which
-interpolations are actually attacker-reachable.
+### IN-02: Mailer mocks are partial, so unrelated resolvers in the same file would throw on access
 
-**Fix:** drop the escape (and the `String`) here, or add a one-line comment stating it is
-deliberate uniformity rather than a real taint sink.
+**File:** `backend/src/resolvers/verifyEmail.test.js:9-11`
+**Issue:** The factory returns only `sendPendingRegistrationEmail`, while `user.resolver.js`
+imports four mailer functions and `approval.resolver.js` imports two more. Under Vitest a
+missing named export on a mocked module throws on first access, so any future test added to
+this file that touches `register`, `updateUser`, `resendVerificationEmail`, `approveUser`, or
+`rejectUser` will fail for a reason unrelated to what it is testing.
+**Fix:** Return every export of `mailer.js` from the factory (as `register.test.js` almost
+does — it covers the four `user.resolver.js` uses but omits the approval pair), or use
+`vi.importActual` spread plus targeted overrides.
 
-### IN-02: Redundant empty-collection guard
+### IN-03: The invited branch silently discards `relationshipNote`
 
-**File:** `backend/src/resolvers/user.resolver.js:46`
-
-**Issue:** `if (admins.length === 0) return;` — the following `Promise.all(admins.map(...))`
-already resolves immediately on an empty array.
-
-**Fix:** remove, or keep with a comment explaining it is an intentional readability guard.
-
-### IN-03: `inviterName` / `relationship` parameters of `notifyAdminsOfPendingRegistration` are dead this phase
-
-**File:** `backend/src/resolvers/user.resolver.js:38-59`
-
-**Issue:** The docstring itself concedes that "Only the self-registrant caller … actually
-calls this function this phase", so the `inviterName` and `relationship` parameters (and the
-`inviterName` branch in `sendPendingRegistrationEmail`, `mailer.js:119-126`) have exactly one
-exercising path — `mailer.test.js:115-130`, a direct unit call, never through a resolver.
-Speculative generality that is covered only by the test written for it.
-
-**Fix:** acceptable as documented forward-compatibility. If it is still unused at the end of
-the milestone, delete the parameters and the branch.
-
-### IN-04: `verifyEmail` mints a signed JWT for a still-Pending self-registrant
-
-**File:** `backend/src/resolvers/user.resolver.js:455`
-
-**Issue:** `return { token: signToken(user), user };` runs unconditionally, so an unapproved
-stranger who verifies their email receives a validly signed token. It is inert today —
-`getUserFromRequest` (`utils/auth.js:33`) rejects any non-Active user — so this is not an
-authorization gap, and the behaviour predates Phase 32. But Phase 32 substantially increases
-the population that holds one (previously only invited registrants, now any anonymous
-self-registrant), which raises the blast radius if a future consumer ever trusts a signature
-without re-reading `status`.
-
-**Fix:** consider returning `token: null` when `user.status !== 'Active'` (requires making
-`AuthPayload.token` nullable), or add a comment at the return site recording that
-`getUserFromRequest` is the single enforcement point for this invariant.
+**File:** `backend/src/resolvers/user.resolver.js:169-234`, `backend/src/schemas/user.schema.js:61`
+**Issue:** `relationshipNote` is a schema-level argument on `register`, but the invited branch
+never reads it and never length-validates it. A client supplying both a token and a note gets a
+success response with the note dropped and no indication. Consistent with D-02's "the
+invitation is authoritative" stance, but undocumented at the schema level where a client author
+would look.
+**Fix:** Add an SDL comment on the `register` field noting that `email` and `relationshipNote`
+apply only to the tokenless branch, or reject the combination explicitly.
 
 ---
 
-_Reviewed: 2026-08-30T19:35:35Z_
+_Reviewed: 2026-08-31T10:13:02Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
