@@ -218,7 +218,7 @@ Plans:
   4. Password rules, email normalisation, and verification-token handling on the tokenless path run the same code as the invited path — no second, weaker implementation.
   5. The existing per-IP registration rate limit applies to the tokenless path, and the relationship note is length-capped server-side.
 
-**Plans**: 4 plans
+**Plans**: 6 plans
 
 Plans:
 **Wave 1**
@@ -233,6 +233,11 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 32-04-PLAN.md — verifyEmail admin notification (D-12, D-13) + pendingApprovals query (D-11)
+
+**Wave 4** *(gap closure — SEC-01/CR-01 enumeration oracle + REQUIREMENTS.md accuracy, found in 32-VERIFICATION.md)*
+
+- [ ] 32-05-PLAN.md — Close the CR-01 enumeration oracle: pre-lookup name validation, try/catch around the tokenless User.create, MIN_REGISTER_RESPONSE_MS timing floor (closes SEC-01/WR-01/WR-02, RED-then-GREEN regression coverage)
+- [ ] 32-06-PLAN.md — Correct REQUIREMENTS.md's REG-03/SEC-03 tracking to reflect the backend/UI split (Phase 32 backend done, Phase 33 UI pending)
 
 ### Phase 33: Public Signup Form & Approval Queue
 
