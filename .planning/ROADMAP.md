@@ -218,7 +218,7 @@ Plans:
   4. Password rules, email normalisation, and verification-token handling on the tokenless path run the same code as the invited path — no second, weaker implementation.
   5. The existing per-IP registration rate limit applies to the tokenless path, and the relationship note is length-capped server-side.
 
-**Plans**: 6 plans
+**Plans**: 8 plans
 
 Plans:
 **Wave 1**
@@ -238,6 +238,14 @@ Plans:
 
 - [x] 32-05-PLAN.md — Close the CR-01 enumeration oracle: pre-lookup name validation, try/catch around the tokenless User.create, MIN_REGISTER_RESPONSE_MS timing floor (closes SEC-01/WR-01/WR-02, RED-then-GREEN regression coverage)
 - [x] 32-06-PLAN.md — Correct REQUIREMENTS.md's REG-03/SEC-03 tracking to reflect the backend/UI split (Phase 32 backend done, Phase 33 UI pending) (completed 2026-08-31)
+
+**Wave 5** *(gap closure — CR-01 unauthenticated privilege-escalation blocker, blocked on Wave 4's user.resolver.js changes)*
+
+- [ ] 32-07-PLAN.md — Gate verifyEmail's zero-admin ADMIN bootstrap on ADMIN_EMAIL (Phase 11's deferred VERIFY-F1) + extend updateUser's last-administrator guard to the email-change path (closes CR-01 from 32-REVIEW.md / 32-VERIFICATION.md)
+
+**Wave 6** *(gap closure — CR-03 residual enumeration leak, blocked on Wave 5's user.resolver.js changes)*
+
+- [ ] 32-08-PLAN.md — Widen the tokenless register branch's try/catch to cover models.User.findOne and createVerificationToken (closes CR-03), repair the vacuous timing/name-guard tests (WR-07/WR-08), fail-fast startup column check for migration 020, REQUIREMENTS.md SEC-01 correction
 
 ### Phase 33: Public Signup Form & Approval Queue
 
@@ -311,6 +319,6 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
-| 32. Tokenless Registration | v4.1 | 6/6 | Complete   | 2026-08-31 |
+| 32. Tokenless Registration | v4.1 | 6/8 | gaps_found  | — |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
