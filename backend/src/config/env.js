@@ -24,6 +24,14 @@ export const env = {
   clientOrigins,
   jwtSecret: process.env.JWT_SECRET || 'change-me',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1d',
+  // CR-01 (Phase 32 gap closure): the sole gate for verifyEmail's zero-admin
+  // ADMIN bootstrap. Normalized (lowercase/trim) to match the same
+  // normalization applied to every stored user email. Defaults to null
+  // (fails closed -- nobody is auto-promoted) when unset or blank. This
+  // revives Phase 11's deferred VERIFY-F1 ("env-seeded ADMIN_EMAIL as
+  // belt-and-suspenders"), which Phase 32 opening `register` to anonymous
+  // callers (D-03) made necessary.
+  adminEmail: process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.toLowerCase().trim() : null,
   resetTokenExpiresMinutes: Number(process.env.RESET_TOKEN_EXPIRES_MINUTES || 30),
   // Invitation links expire after this many days (configurable per SEC req).
   inviteExpiresDays: Number(process.env.INVITE_EXPIRES_DAYS || 7),

@@ -1,5 +1,6 @@
 import { Op, UniqueConstraintError } from 'sequelize';
 import bcrypt from 'bcryptjs';
+import { env } from '../config/env.js';
 import {
   createResetToken,
   createVerificationToken,
@@ -405,7 +406,14 @@ export const userResolvers = {
             "SELECT COUNT(*) AS adminCount FROM users WHERE role = 'ADMIN' AND emailVerified = true FOR UPDATE",
             { transaction: t, type: sequelize.QueryTypes.SELECT }
           );
-          if (Number(adminCount) === 0) {
+          // CR-01 (Phase 32 gap closure): this used to promote whoever verified next; that was
+          // safe only while every registration required an admin-issued invitation (Phase 13
+          // through Phase 31). Phase 32 opened `register` to anonymous callers with no feature
+          // flag (D-03), making unconditional "first verified wins" a live privilege-escalation
+          // race. ADMIN_EMAIL (Phase 11's deferred VERIFY-F1, read below via env.js's config
+          // object) is the safe path an operator configures before their first deploy; unset
+          // means nobody is auto-promoted.
+          if (Number(adminCount) === 0 && env.adminEmail && user.email === env.adminEmail) {
             await models.User.update({ role: 'ADMIN' }, { where: { id: user.id }, transaction: t });
           }
 

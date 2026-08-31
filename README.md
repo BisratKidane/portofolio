@@ -10,7 +10,8 @@ A full-stack Node.js 18 application with an Express, MySQL, Sequelize, and Graph
 - GraphQL schemas live in `backend/src/schemas` and resolvers live in `backend/src/resolvers`.
 - User registration, login, logout, password reset token generation, and password reset.
 - Role-based access with `ADMIN` and `USER` roles.
-  - The first registered account becomes `ADMIN`.
+  - The account whose verified email matches `ADMIN_EMAIL` is promoted to `ADMIN` on verification, only while no other verified admin exists.
+  - If `ADMIN_EMAIL` is unset, no account is auto-promoted — an existing admin (or a direct database update) must promote the first one by hand.
   - Later registered accounts become ordinary `USER` accounts.
   - Admins can see system users on the dashboard; ordinary users only see their own dashboard.
 - React Router protected dashboard route.
@@ -180,7 +181,9 @@ If registration shows `Network Error`, the browser could not reach the GraphQL A
 
 ## Authentication workflow
 
-1. Register the first account. It is automatically assigned the `ADMIN` role.
+1. Register the account whose email matches `ADMIN_EMAIL` and verify it. It is automatically assigned the `ADMIN` role.
+
+   `register` no longer requires an invitation (v4.1), so a self-registered account can no longer be trusted to become `ADMIN` just by being first — that would let an anonymous internet caller race for the role. `ADMIN_EMAIL` is an env var an operator sets to their own address before their first deploy; it is the only account the zero-admin bootstrap will ever promote. Leaving it unset is safe by default (nobody is auto-promoted) but means the first admin must be promoted by hand, either by an existing admin via `updateUser`, or with a direct database update if none exists yet.
 2. Register additional accounts. They are assigned the `USER` role.
 3. Login stores a JWT in browser local storage.
 4. The protected dashboard route sends the JWT in the `Authorization: Bearer <token>` header.
