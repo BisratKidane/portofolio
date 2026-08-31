@@ -113,7 +113,7 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
     3. Someone who registers through an admin invitation and verifies their email can sign in with no admin action in between.
     4. The approval queue no longer contains invited registrants — only accounts that still need a judgement.
 
-- [x] **Phase 32: Tokenless Registration** — `register` can create an account with no invitation, safely (completed 2026-08-30)
+- [ ] **Phase 32: Tokenless Registration** — `register` can create an account with no invitation, safely (verification: gaps_found — 2 blockers open, see 32-VERIFICATION.md)
   - Requirements: REG-02, REG-03, REG-05, REG-06, REG-07, SEC-01, SEC-02, SEC-03
   - Success criteria:
     1. `register` with no token creates a `Pending`, unverified account from the user's own email, storing the relationship note.
