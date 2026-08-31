@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import bcrypt from 'bcryptjs';
 import { models } from '../models/index.js';
 import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
+import { MIN_REGISTER_RESPONSE_MS } from './user.resolver.js';
 
 vi.mock('../services/mailer.js', () => ({
   sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
@@ -196,6 +197,18 @@ describe('register (tokenless)', () => {
       to: existing.email,
       name: existing.name
     });
+
+    // WR-09 (well-formed-input half): the same name/password against a distinct
+    // fresh email must produce a byte-identical full response, not just an
+    // equal `.message` string.
+    const second = await graphql(REGISTER_MUTATION, {
+      name: 'Impersonator',
+      email: 'wr09-fresh@example.com',
+      password: 'Password123!'
+    });
+
+    expect(second.errors).toBeUndefined();
+    expect(first).toEqual(second);
   });
 
   it('rejects a tokenless register with no email (email required, no token)', async () => {
@@ -268,5 +281,178 @@ describe('register (tokenless)', () => {
 
     const user = await models.User.findOne({ where: { email: 'eli@example.com' } });
     expect(user.relationshipNote).toBeNull();
+  });
+
+  // 32-VERIFICATION.md gap 1 regression coverage -- closes CR-01, also covers WR-01/WR-02/WR-03(tokenless)/WR-09.
+  describe('enumeration-safety hardening (CR-01, WR-01, WR-02, WR-03, WR-09)', () => {
+    it('returns byte-identical responses for a taken email and a fresh email under a hostile 300-char name payload (CR-01)', async () => {
+      await createTestUser({ email: 'cr01-taken@example.com', name: 'Existing Owner' });
+      const hostileName = 'A'.repeat(300);
+
+      const takenResult = await graphql(REGISTER_MUTATION, {
+        name: hostileName,
+        email: 'cr01-taken@example.com',
+        password: 'Password123!'
+      });
+
+      const freshResult = await graphql(REGISTER_MUTATION, {
+        name: hostileName,
+        email: 'cr01-fresh@example.com',
+        password: 'Password123!'
+      });
+
+      expect(takenResult).toEqual(freshResult);
+      expect(freshResult.errors[0].message).toBe('Name must be 255 characters or fewer.');
+      expect(await models.User.count({ where: { email: 'cr01-fresh@example.com' } })).toBe(0);
+    });
+
+    it('rejects a whitespace-only name on a fresh email (WR-03, tokenless half)', async () => {
+      const { errors } = await graphql(REGISTER_MUTATION, {
+        name: '   ',
+        email: 'wr03-fresh@example.com',
+        password: 'Password123!'
+      });
+
+      expect(errors[0].message).toBe('Name is required.');
+      expect(await models.User.count({ where: { email: 'wr03-fresh@example.com' } })).toBe(0);
+    });
+
+    it('accepts a name exactly at the 255-character cap (boundary)', async () => {
+      const boundaryName = 'B'.repeat(255);
+
+      const { errors } = await graphql(REGISTER_MUTATION, {
+        name: boundaryName,
+        email: 'cap-255@example.com',
+        password: 'Password123!'
+      });
+
+      expect(errors).toBeUndefined();
+      expect(await models.User.count({ where: { email: 'cap-255@example.com' } })).toBe(1);
+    });
+
+    it('rejects a name one character over the 255-character cap (boundary)', async () => {
+      const overCapName = 'B'.repeat(256);
+
+      const { errors } = await graphql(REGISTER_MUTATION, {
+        name: overCapName,
+        email: 'cap-256@example.com',
+        password: 'Password123!'
+      });
+
+      expect(errors[0].message).toBe('Name must be 255 characters or fewer.');
+      expect(await models.User.count({ where: { email: 'cap-256@example.com' } })).toBe(0);
+    });
+
+    it('returns byte-identical responses when two concurrent registrations race on the same fresh email (duplicate-insert race)', async () => {
+      // Racing two real GraphQL calls with a bare Promise.all is flaky: bcrypt's
+      // libuv-threadpool timing can let the second call's existing-user lookup
+      // run AFTER the first call's row has already committed, which resolves
+      // the race via the ordinary "taken email" branch instead of exercising
+      // the unique-constraint collision this test targets. Gate both calls'
+      // `models.User.findOne` on a barrier that only releases once BOTH have
+      // arrived, guaranteeing both see no existing user and both attempt
+      // `models.User.create` concurrently every run.
+      const originalFindOne = models.User.findOne.bind(models.User);
+      let arrivals = 0;
+      let releaseBarrier;
+      const barrier = new Promise((resolve) => {
+        releaseBarrier = resolve;
+      });
+      const findOneSpy = vi.spyOn(models.User, 'findOne').mockImplementation(async (...args) => {
+        arrivals += 1;
+        if (arrivals >= 2) releaseBarrier();
+        await barrier;
+        return originalFindOne(...args);
+      });
+
+      try {
+        const [a, b] = await Promise.all([
+          graphql(REGISTER_MUTATION, { name: 'Racer A', email: 'race-fresh@example.com', password: 'Password123!' }),
+          graphql(REGISTER_MUTATION, { name: 'Racer B', email: 'race-fresh@example.com', password: 'Password123!' })
+        ]);
+
+        expect(a).toEqual(b);
+        expect(await models.User.count({ where: { email: 'race-fresh@example.com' } })).toBe(1);
+
+        for (const result of [a, b]) {
+          if (result.errors) {
+            for (const error of result.errors) {
+              expect(error.message).not.toMatch(/Validation error/i);
+              expect(error.message).not.toMatch(/Sequelize/i);
+            }
+          }
+        }
+      } finally {
+        findOneSpy.mockRestore();
+      }
+    });
+
+    it('never leaks raw ORM/DB error text when models.User.create fails for any other reason (WR-02)', async () => {
+      const createSpy = vi
+        .spyOn(models.User, 'create')
+        .mockRejectedValueOnce(new Error("Unknown column 'relationshipNote' in 'field list'"));
+
+      try {
+        const { errors, data } = await graphql(REGISTER_MUTATION, {
+          name: 'Simulated Failure',
+          email: 'wr02-fresh@example.com',
+          password: 'Password123!'
+        });
+
+        expect(errors).toBeUndefined();
+        expect(data.register.message).toBe(SUCCESS_MESSAGE);
+        expect(await models.User.count({ where: { email: 'wr02-fresh@example.com' } })).toBe(0);
+      } finally {
+        createSpy.mockRestore();
+      }
+    });
+
+    it('applies the same minimum response-time floor to every tokenless outcome (WR-01, shape not wall-clock)', async () => {
+      await createTestUser({ email: 'wr01-taken@example.com', name: 'Existing Owner' });
+
+      // A blanket `setTimeout` mock that always fires `cb()` synchronously
+      // recurses into the Sequelize connection pool's own internal idle-check
+      // timer (which reschedules itself via `setTimeout` every time it fires,
+      // at intervals as short as 1000ms -- too close to plausible response-
+      // floor values to filter by magnitude alone) and blows the call stack.
+      // Filter by call-site instead: only intercept `setTimeout` calls made
+      // from within `user.resolver.js` (i.e. this resolver's own `delay()`
+      // helper) and let every other caller -- the connection pool included --
+      // pass through to the real `setTimeout` completely untouched.
+      const realSetTimeout = global.setTimeout;
+      const shortDelays = [];
+      const setTimeoutSpy = vi.spyOn(global, 'setTimeout').mockImplementation((cb, ms, ...args) => {
+        const stack = new Error().stack || '';
+        if (stack.includes('user.resolver.js')) {
+          shortDelays.push(ms);
+          cb();
+          return 0;
+        }
+        return realSetTimeout(cb, ms, ...args);
+      });
+      const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(0);
+
+      try {
+        await graphql(REGISTER_MUTATION, {
+          name: 'Taken Path',
+          email: 'wr01-taken@example.com',
+          password: 'Password123!'
+        });
+
+        await graphql(REGISTER_MUTATION, {
+          name: 'Free Path',
+          email: 'wr01-fresh@example.com',
+          password: 'Password123!'
+        });
+
+        expect(shortDelays.length).toBeGreaterThanOrEqual(2);
+        for (const ms of shortDelays) {
+          expect(ms).toBe(MIN_REGISTER_RESPONSE_MS);
+        }
+      } finally {
+        setTimeoutSpy.mockRestore();
+        dateNowSpy.mockRestore();
+      }
+    });
   });
 });

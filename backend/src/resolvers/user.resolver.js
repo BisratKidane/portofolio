@@ -15,6 +15,7 @@ import {
   verificationTokenExpiry
 } from '../utils/auth.js';
 import { assertPasswordStrength } from '../utils/passwordPolicy.js';
+import { assertRegistrationName } from '../utils/namePolicy.js';
 import { assertRelationshipNoteLength } from '../utils/relationshipNotePolicy.js';
 import { writeAuditLog } from '../utils/audit.js';
 import {
@@ -94,8 +95,13 @@ export function sanitizeNewMember(newMember) {
 
 const RESET_REQUEST_MESSAGE = 'If the account exists, a password reset link has been sent.';
 const RESEND_VERIFICATION_MESSAGE = 'If an unverified account exists, a verification link has been sent.';
+const TOKENLESS_REGISTER_MESSAGE = 'Registration received. Verify your email to activate your account.';
 
 export const MIN_RESET_RESPONSE_MS = 250;
+// 400ms floor -- comfortably above the 32-VERIFICATION.md review's measured
+// ~217ms free-path p99, so the ~1.3ms measured timing delta (WR-01) between
+// the taken-email and free-email tokenless outcomes is swamped by noise.
+export const MIN_REGISTER_RESPONSE_MS = 400;
 
 function serializeUser(user) {
   return user ? user.get({ plain: true }) : null;
@@ -103,6 +109,17 @@ function serializeUser(user) {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Single exit path for every tokenless register outcome (taken-email,
+// free-email success, free-email create-failure) so the response-time floor
+// and the response message are applied identically regardless of which
+// outcome occurred -- closes WR-01 (timing side channel) the same way
+// MIN_RESET_RESPONSE_MS/delay already closes it for requestPasswordReset.
+async function finishTokenlessRegistration(startedAt) {
+  const elapsed = Date.now() - startedAt;
+  if (elapsed < MIN_REGISTER_RESPONSE_MS) await delay(MIN_REGISTER_RESPONSE_MS - elapsed);
+  return { message: TOKENLESS_REGISTER_MESSAGE };
 }
 
 export const userResolvers = {
@@ -218,10 +235,22 @@ export const userResolvers = {
       }
 
       // Tokenless self-registration (REG-02). Enumeration-silent and
-      // timing-safe (SEC-01, D-08, D-09): the taken/free outcomes below
-      // return the byte-identical message, and the bcrypt hash is computed
-      // BEFORE the existing-user lookup so both outcomes pay the same cost.
+      // timing-safe (SEC-01, D-08, D-09): the taken/free/create-failure
+      // outcomes below all return the byte-identical message via the shared
+      // finishTokenlessRegistration exit path, the bcrypt hash is computed
+      // BEFORE the existing-user lookup so every outcome pays the same base
+      // cost, and MIN_REGISTER_RESPONSE_MS applies a uniform floor on top so
+      // the residual timing side channel (WR-01) is closed too. The invited
+      // branch above is intentionally NOT touched by this hardening: SEC-01/
+      // D-08 scopes enumeration-silence to the tokenless path alone --
+      // reaching the invited branch already requires a valid, unused,
+      // unexpired invitation token, so it is not an equivalent anonymous
+      // oracle. WR-03's residual half (blank/whitespace-only `name` still
+      // accepted on the invited branch) therefore stays open as documented
+      // debt; only the tokenless half is closed here.
+      const startedAt = Date.now();
       assertRelationshipNoteLength(relationshipNote);
+      const cleanName = assertRegistrationName(name);
       if (!email) throw new Error('Email is required.');
 
       const normalizedEmail = email.toLowerCase().trim();
@@ -235,44 +264,52 @@ export const userResolvers = {
         sendRegistrationAttemptEmail({ to: existingUser.email, name: existingUser.name }).catch((err) => {
           console.error('Failed to send registration-attempt email:', err);
         });
-        return {
-          message: 'Registration received. Verify your email to activate your account.'
-        };
+        return finishTokenlessRegistration(startedAt);
       }
 
       const verificationToken = createVerificationToken();
-      // { passwordAlreadyHashed: true } is Plan 32-01's explicit control-channel
-      // flag telling User's beforeCreate hook that passwordHash is already a
-      // bcrypt hash and must not be re-hashed (D-09). It is a caller-set
-      // option on this create call, never derived from inspecting
-      // passwordHash's content, so nothing the registrant supplies can spoof it.
-      const createdUser = await models.User.create(
-        {
-          name,
-          email: normalizedEmail,
-          passwordHash,
-          status: 'Pending',
-          emailVerificationToken: hashVerificationToken(verificationToken),
-          emailVerificationExpiresAt: verificationTokenExpiry(),
-          relationshipNote: relationshipNote || null
-        },
-        { passwordAlreadyHashed: true }
-      );
+      try {
+        // { passwordAlreadyHashed: true } is Plan 32-01's explicit control-channel
+        // flag telling User's beforeCreate hook that passwordHash is already a
+        // bcrypt hash and must not be re-hashed (D-09). It is a caller-set
+        // option on this create call, never derived from inspecting
+        // passwordHash's content, so nothing the registrant supplies can spoof it.
+        const createdUser = await models.User.create(
+          {
+            name: cleanName,
+            email: normalizedEmail,
+            passwordHash,
+            status: 'Pending',
+            emailVerificationToken: hashVerificationToken(verificationToken),
+            emailVerificationExpiresAt: verificationTokenExpiry(),
+            relationshipNote: relationshipNote || null
+          },
+          { passwordAlreadyHashed: true }
+        );
 
-      sendVerificationEmail({ to: normalizedEmail, token: verificationToken }).catch((err) => {
-        console.error('Failed to send verification email:', err);
-      });
+        sendVerificationEmail({ to: normalizedEmail, token: verificationToken }).catch((err) => {
+          console.error('Failed to send verification email:', err);
+        });
 
-      writeAuditLog(models, {
-        action: 'user.self_registered',
-        actorUserId: createdUser.id,
-        targetUserId: createdUser.id,
-        metadata: { email: normalizedEmail }
-      }).catch((err) => console.error('Failed to write audit log:', err));
+        writeAuditLog(models, {
+          action: 'user.self_registered',
+          actorUserId: createdUser.id,
+          targetUserId: createdUser.id,
+          metadata: { email: normalizedEmail }
+        }).catch((err) => console.error('Failed to write audit log:', err));
 
-      return {
-        message: 'Registration received. Verify your email to activate your account.'
-      };
+        return finishTokenlessRegistration(startedAt);
+      } catch (err) {
+        // WR-02/CR-01: never surface raw ORM/DB error text to an
+        // unauthenticated caller. An over-length name that slipped past
+        // assertRegistrationName, a duplicate-insert race lost against a
+        // concurrent registration on the same email, or a missing-column
+        // error on an unmigrated deploy target must all return the
+        // identical success message -- never err.message or any of its
+        // properties.
+        console.error('Tokenless registration create failed:', err);
+        return finishTokenlessRegistration(startedAt);
+      }
     },
     login: async (_parent, { email, password }, { models }) => {
       const user = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
