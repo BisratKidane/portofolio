@@ -113,7 +113,7 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
     3. Someone who registers through an admin invitation and verifies their email can sign in with no admin action in between.
     4. The approval queue no longer contains invited registrants — only accounts that still need a judgement.
 
-- [ ] **Phase 32: Tokenless Registration** — `register` can create an account with no invitation, safely (verification: gaps_found — 2 blockers open, see 32-VERIFICATION.md)
+- [x] **Phase 32: Tokenless Registration** — `register` can create an account with no invitation, safely (verification: gaps_found — 2 blockers open, see 32-VERIFICATION.md) (completed 2026-09-01)
   - Requirements: REG-02, REG-03, REG-05, REG-06, REG-07, SEC-01, SEC-02, SEC-03
   - Success criteria:
     1. `register` with no token creates a `Pending`, unverified account from the user's own email, storing the relationship note.
@@ -245,7 +245,7 @@ Plans:
 
 **Wave 6** *(gap closure — CR-03 residual enumeration leak, blocked on Wave 5's user.resolver.js changes)*
 
-- [ ] 32-08-PLAN.md — Widen the tokenless register branch's try/catch to cover models.User.findOne and createVerificationToken (closes CR-03), repair the vacuous timing/name-guard tests (WR-07/WR-08), fail-fast startup column check for migration 020, REQUIREMENTS.md SEC-01 correction
+- [x] 32-08-PLAN.md — Widen the tokenless register branch's try/catch to cover models.User.findOne and createVerificationToken (closes CR-03), repair the vacuous timing/name-guard tests (WR-07/WR-08), fail-fast startup column check for migration 020, REQUIREMENTS.md SEC-01 correction
 
 ### Phase 33: Public Signup Form & Approval Queue
 
@@ -319,6 +319,6 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
-| 32. Tokenless Registration | v4.1 | 7/8 | In Progress|  |
+| 32. Tokenless Registration | v4.1 | 8/8 | Complete   | 2026-09-01 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |

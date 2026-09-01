@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
-status: executing
-stopped_at: Phase 32 context gathered
-last_updated: "2026-08-31T14:16:12.392Z"
-last_activity: 2026-08-31 -- Phase 32 execution started
+status: verifying
+stopped_at: Completed 32-08-PLAN.md
+last_updated: "2026-09-01T09:43:09.999Z"
+last_activity: "2026-09-01 -- Plan 32-08 executed: closed CR-03 (findOne/createVerificationToken now inside the tokenless register uniform-response guard), repaired WR-07 (unfalsifiable pinned-clock timing test) and WR-08 (vacuous CR-01 credit) test-integrity findings with mutation-tested regression coverage, added a fail-fast boot check for migration 020"
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 17
-  completed_plans: 15
-  percent: 40
+  completed_plans: 17
+  percent: 60
 ---
 
 # Project State
@@ -25,25 +25,11 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 ## Current Position
 
-Phase: 32 (tokenless-registration) — EXECUTING
-Plan: 1 of 8
-Status: Executing Phase 32
-Last activity: 2026-08-31 -- Phase 32 execution started
+Phase: 32 (tokenless-registration) — Plan 08 of 8 complete
+Status: Phase 32 execution complete (all 8 plans committed); SEC-01 left unchecked in REQUIREMENTS.md pending independent re-verification
+Last activity: 2026-09-01 -- Plan 32-08 executed: closed CR-03 (findOne/createVerificationToken now inside the tokenless register uniform-response guard), repaired WR-07 (unfalsifiable pinned-clock timing test) and WR-08 (vacuous CR-01 credit) test-integrity findings with mutation-tested regression coverage, added a fail-fast boot check for migration 020
 
-The original blocking gap (SC-3/INVITE-03 auto-activation keyed on Invitation-row existence
-alone) IS closed by plan 31-04. Two NEW gaps were found in its replacement guard:
-
-1. `verifyAndPromote`'s inviter re-check (`user.resolver.js:287`) is a non-locking `findByPk`,
-   so it is not structurally TOCTOU-safe. It is safe today only as an accidental side effect of
-   `users.role` having no index, which forces an unrelated `COUNT(*) ... FOR UPDATE` to lock the
-   whole table. Adding `KEY idx_users_role (role)` would silently reopen the window.
-   Fix: `lock: t.LOCK.UPDATE` + a lock-contention regression test.
-
-2. `vouchedByAdmin` (`user.resolver.js:288`) omits `emailVerified`, unlike the three other admin
-   guards in this codebase. An admin who changes their own email still silently vouches.
-   Fix: `&& inviter.emailVerified === true` + a regression test.
-
-Next: /gsd:plan-phase 31 --gaps
+Next: /gsd:verify-work 32 (re-verify SEC-01 now that CR-03 is closed, then close the phase)
 
 ## Deferred Items
 
@@ -116,6 +102,7 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 | Phase 29 P04 | 20min | 3 tasks | 2 files |
 | Phase 30 P01 | 25min | 3 tasks | 3 files |
 | Phase 30 P02 | 20min | 2 tasks | 6 files |
+| Phase 32 P08 | 70min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -140,6 +127,8 @@ Decisions are logged in PROJECT.md Key Decisions table. Recent decisions affecti
 - [Phase 30]: Plan 30-01: approvedBy on users is a plain unassociated INTEGER.UNSIGNED column (no FK), matching the 015/018 ALTER-on-existing-table precedent rather than invitations.approvedBy's CREATE-TABLE-time FK
 - [Phase 30]: Migration 019 proven via scratch-DB dry run then human-verified applied to real local dev database (portofolio); production apply explicitly deferred (F-03)
 - [Phase 30]: Plan 30-02: target.update(...) carries status + decision fields together in one call (D-04); now/cleanReason computed once and reused for both the User and Invitation row updates so they share byte-identical values (D-05)
+- [Phase 32]: Plan 32-08: mocked bcrypt.hash to resolve near-instantly in the new WR-01 timing-floor test, isolating findOne latency (the variable under test) from bcrypt's own ~225-235ms real, uncontrolled cost
+- [Phase 32]: Plan 32-08: fixed a stack-frame indexing bug in the WR-01 timing test's setTimeout filter -- vi.spyOn inserts an extra wrapper frame (real caller at index [3], not [1]/[2]) and V8 does not label the resolver's anonymous delay() Promise-executor arrow by name, so filtering must be path-based (user.resolver.js), not name-based
 
 ### Pending Todos
 
@@ -196,9 +185,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-30T16:36:04.455Z
-Stopped at: Phase 32 context gathered
-Resume file: .planning/phases/32-tokenless-registration/32-CONTEXT.md
+Last session: 2026-09-01T09:43:09.993Z
+Stopped at: Completed 32-08-PLAN.md
+Resume file: None
 
 ## Operator Next Steps
 
