@@ -218,7 +218,7 @@ Plans:
   4. Password rules, email normalisation, and verification-token handling on the tokenless path run the same code as the invited path — no second, weaker implementation.
   5. The existing per-IP registration rate limit applies to the tokenless path, and the relationship note is length-capped server-side.
 
-**Plans**: 8 plans
+**Plans**: 10 plans
 
 Plans:
 **Wave 1**
@@ -246,6 +246,14 @@ Plans:
 **Wave 6** *(gap closure — CR-03 residual enumeration leak, blocked on Wave 5's user.resolver.js changes)*
 
 - [x] 32-08-PLAN.md — Widen the tokenless register branch's try/catch to cover models.User.findOne and createVerificationToken (closes CR-03), repair the vacuous timing/name-guard tests (WR-07/WR-08), fail-fast startup column check for migration 020, REQUIREMENTS.md SEC-01 correction
+
+**Wave 7** *(gap closure — Truth 6 blocker: ADMIN_EMAIL bootstrap promotes to ADMIN but never activates the account, found in the 32-08 re-verification pass)*
+
+- [ ] 32-09-PLAN.md — Make verifyAndPromote's ADMIN_EMAIL bootstrap write status: 'Active' alongside role: 'ADMIN' so the documented fresh-deploy bootstrap path is actually usable; full round-trip regression test (status + getUserFromRequest); README accuracy confirmation
+
+**Wave 8** *(gap closure — Truth 7 blocker: updateUser's last-administrator guards are TOCTOU-bypassable, found in the 32-08 re-verification pass; blocked on Wave 7's user.resolver.js changes)*
+
+- [ ] 32-10-PLAN.md — Wrap updateUser's role-change and email-change last-administrator guards in one sequelize.transaction with a locking FOR UPDATE read and deadlock-retry, matching verifyEmail's pattern; Promise.all concurrency regression tests; WR-01 vacuous-test repair
 
 ### Phase 33: Public Signup Form & Approval Queue
 
