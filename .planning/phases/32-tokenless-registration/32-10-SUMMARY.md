@@ -137,3 +137,12 @@ None - no external service configuration required.
 ---
 *Phase: 32-tokenless-registration*
 *Completed: 2026-09-01*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/32-tokenless-registration/32-10-SUMMARY.md`
+- FOUND: `backend/src/resolvers/user.resolver.js`
+- FOUND: `backend/src/resolvers/updateUser.test.js`
+- FOUND: commit `cff4b07` (test: RED regression tests + WR-01 repair)
+- FOUND: commit `b1bd175` (feat: transaction-safe last-administrator guards)
+- FOUND: commit `5b25c41` (docs: plan completion)
