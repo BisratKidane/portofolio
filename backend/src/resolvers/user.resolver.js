@@ -1,4 +1,4 @@
-import { Op, UniqueConstraintError } from 'sequelize';
+import { UniqueConstraintError } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import { env } from '../config/env.js';
 import {
@@ -111,6 +111,13 @@ function serializeUser(user) {
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+// Shared by verifyEmail and updateUser (Plan 32-10): both wrap a locking
+// transaction in a deadlock-detect-and-retry-once pattern, and both need to
+// recognize the same MySQL/MariaDB deadlock error shape to decide whether a
+// retry is safe.
+const isDeadlock = (error) =>
+  error?.original?.code === 'ER_LOCK_DEADLOCK' || error?.parent?.code === 'ER_LOCK_DEADLOCK';
 
 // Single exit path for every tokenless register outcome (taken-email,
 // free-email success, free-email create-failure) so the response-time floor
@@ -498,9 +505,6 @@ export const userResolvers = {
           }
         });
 
-      const isDeadlock = (error) =>
-        error?.original?.code === 'ER_LOCK_DEADLOCK' || error?.parent?.code === 'ER_LOCK_DEADLOCK';
-
       try {
         await verifyAndPromote();
       } catch (error) {
@@ -620,68 +624,101 @@ export const userResolvers = {
       // what non-admins see is not enough (mirrors linkUserToMember/WR-03).
       if (!isSelf) requireAdmin(user);
 
-      const target = await models.User.findByPk(id);
-      if (!target) throw new Error('User not found.');
-
       const isAdmin = user.role === 'ADMIN';
-
-      // Role — admin-only, and never below one verified admin so the app can't
-      // be locked out of its own administration.
-      if (input.role != null && input.role !== target.role) {
-        if (!isAdmin) throw new Error('Only an administrator can change roles.');
-        if (target.role === 'ADMIN' && input.role === 'USER') {
-          const otherVerifiedAdmins = await models.User.count({
-            where: { role: 'ADMIN', emailVerified: true, id: { [Op.ne]: target.id } }
-          });
-          if (otherVerifiedAdmins === 0) throw new Error('Cannot remove the last administrator.');
-        }
-        target.role = input.role;
-      }
-
-      // Name
-      if (input.name != null) {
-        const trimmed = input.name.trim();
-        if (!trimmed) throw new Error('Name is required.');
-        target.name = trimmed;
-      }
-
-      // Email — changing it forces re-verification: the account is de-verified
-      // and a fresh verification link is emailed. The raw token is stashed for
-      // sending only after the row saves successfully.
+      const sequelize = models.User.sequelize;
+      let target;
       let rawVerificationToken = null;
-      if (input.email != null) {
-        const normalized = input.email.toLowerCase().trim();
-        if (!normalized) throw new Error('Email is required.');
-        if (normalized !== target.email) {
-          // CR-01 (Phase 32 gap closure): de-verifying the last verified admin's own email
-          // reopens verifyEmail's zero-admin bootstrap the moment anyone next verifies -- Task
-          // 1's ADMIN_EMAIL gate reduces but does not eliminate this risk on its own (an
-          // operator whose ADMIN_EMAIL no longer matches any account after this exact change
-          // would also be locked out of the legitimate bootstrap path). Mirrors the role-change
-          // guard above: only ever blocks the LAST verified admin, never a safe change.
-          if (target.role === 'ADMIN' && target.emailVerified === true) {
-            const otherVerifiedAdmins = await models.User.count({
-              where: { role: 'ADMIN', emailVerified: true, id: { [Op.ne]: target.id } }
-            });
-            if (otherVerifiedAdmins === 0) {
-              throw new Error("Promote another administrator before changing the last administrator's email.");
+
+      // T-32-10-01 (Phase 32 gap closure): both last-administrator guards below
+      // used to be a non-transactional `count`-then-`save`, unlike verifyEmail's
+      // `sequelize.transaction` + `SELECT ... FOR UPDATE` pattern. Two concurrent
+      // updateUser calls could each observe the OTHER admin as the surviving
+      // verified admin, both pass, both commit, and verified admins drop to
+      // zero. Locking the target row and taking a locking read of the shared
+      // admin-row-set inside one transaction forces concurrent callers to
+      // serialize on that read, closing the TOCTOU. Reuses verifyEmail's exact
+      // transaction + FOR UPDATE + deadlock-retry-once shape (module-scope
+      // isDeadlock) rather than inventing a second pattern.
+      const runUpdate = () =>
+        sequelize.transaction(async (t) => {
+          rawVerificationToken = null;
+          target = await models.User.findByPk(id, { transaction: t, lock: t.LOCK.UPDATE });
+          if (!target) throw new Error('User not found.');
+
+          // Shared locking read: counts OTHER verified admins besides `target`,
+          // taking a row lock on the matching rows so a concurrent transaction
+          // scanning the same set must wait for this one to commit or roll back.
+          const otherVerifiedAdminCount = async () => {
+            const [{ adminCount }] = await sequelize.query(
+              "SELECT COUNT(*) AS adminCount FROM users WHERE role = 'ADMIN' AND emailVerified = true AND id <> :id FOR UPDATE",
+              { transaction: t, type: sequelize.QueryTypes.SELECT, replacements: { id: target.id } }
+            );
+            return Number(adminCount);
+          };
+
+          // Role — admin-only, and never below one verified admin so the app can't
+          // be locked out of its own administration.
+          if (input.role != null && input.role !== target.role) {
+            if (!isAdmin) throw new Error('Only an administrator can change roles.');
+            if (target.role === 'ADMIN' && input.role === 'USER') {
+              if ((await otherVerifiedAdminCount()) === 0) throw new Error('Cannot remove the last administrator.');
+            }
+            target.role = input.role;
+          }
+
+          // Name
+          if (input.name != null) {
+            const trimmed = input.name.trim();
+            if (!trimmed) throw new Error('Name is required.');
+            target.name = trimmed;
+          }
+
+          // Email — changing it forces re-verification: the account is de-verified
+          // and a fresh verification link is emailed. The raw token is stashed for
+          // sending only after the row saves successfully.
+          if (input.email != null) {
+            const normalized = input.email.toLowerCase().trim();
+            if (!normalized) throw new Error('Email is required.');
+            if (normalized !== target.email) {
+              // CR-01 (Phase 32 gap closure): de-verifying the last verified admin's own email
+              // reopens verifyEmail's zero-admin bootstrap the moment anyone next verifies -- Task
+              // 1's ADMIN_EMAIL gate reduces but does not eliminate this risk on its own (an
+              // operator whose ADMIN_EMAIL no longer matches any account after this exact change
+              // would also be locked out of the legitimate bootstrap path). Mirrors the role-change
+              // guard above: only ever blocks the LAST verified admin, never a safe change.
+              if (target.role === 'ADMIN' && target.emailVerified === true) {
+                if ((await otherVerifiedAdminCount()) === 0) {
+                  throw new Error("Promote another administrator before changing the last administrator's email.");
+                }
+              }
+              rawVerificationToken = createVerificationToken();
+              target.email = normalized;
+              target.emailVerified = false;
+              target.emailVerificationToken = hashVerificationToken(rawVerificationToken);
+              target.emailVerificationExpiresAt = verificationTokenExpiry();
             }
           }
-          rawVerificationToken = createVerificationToken();
-          target.email = normalized;
-          target.emailVerified = false;
-          target.emailVerificationToken = hashVerificationToken(rawVerificationToken);
-          target.emailVerificationExpiresAt = verificationTokenExpiry();
-        }
-      }
 
+          try {
+            await target.save({ transaction: t });
+          } catch (error) {
+            if (error instanceof UniqueConstraintError) {
+              throw new Error('A user with this email already exists.');
+            }
+            throw error;
+          }
+        });
+
+      // T-32-10-02: a lock-order deadlock between two racers locking different
+      // target rows while scanning the shared admin-row-set rolls back cleanly
+      // (nothing committed), so it is safe to retry exactly once, matching
+      // verifyEmail's own two-racer scenario. Any other error, or a second
+      // deadlock, propagates unchanged.
       try {
-        await target.save();
+        await runUpdate();
       } catch (error) {
-        if (error instanceof UniqueConstraintError) {
-          throw new Error('A user with this email already exists.');
-        }
-        throw error;
+        if (!isDeadlock(error)) throw error;
+        await runUpdate();
       }
 
       if (rawVerificationToken) {
