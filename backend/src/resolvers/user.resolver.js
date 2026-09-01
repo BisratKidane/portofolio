@@ -428,7 +428,29 @@ export const userResolvers = {
           // object) is the safe path an operator configures before their first deploy; unset
           // means nobody is auto-promoted.
           if (Number(adminCount) === 0 && env.adminEmail && user.email === env.adminEmail) {
-            await models.User.update({ role: 'ADMIN' }, { where: { id: user.id }, transaction: t });
+            // 32-09 (Truth 6 blocker closure): granting `role: 'ADMIN'` alone left the account
+            // permanently locked out -- `login` and `getUserFromRequest` both hard-require
+            // `status === 'Active'` (utils/auth.js), so the one documented "safe" bootstrap path
+            // produced an account nobody could use. `status: 'Active'` is granted in this SAME
+            // write, unconditionally (no `WHERE status = 'Pending'` precondition). That is safe
+            // even if this account also happens to hold an Invitation row: the invitation
+            // auto-activation block below runs its OWN conditional update scoped to
+            // `WHERE ... status = 'Pending'`, which simply matches zero rows once status is
+            // already 'Active' -- no double-processing, no duplicate `invitation.activated`
+            // audit entry. It also cannot resurrect a Rejected or Disabled account: reaching this
+            // block at all requires a live, unconsumed `emailVerificationToken`, but
+            // `assertDispositionable` (approval.resolver.js) only allows Reject on a
+            // still-Pending, already-verified account -- so by the time an account CAN be
+            // Rejected/Disabled, its token has already been consumed (set to null on first
+            // verification) and `resendVerificationEmail` refuses to reissue one for an
+            // already-verified account. No reachable path lets a Rejected/Disabled account
+            // re-enter `verifyEmail` and re-trigger this block. `approvedBy` is deliberately left
+            // unset -- nobody made an approval decision here, this is a self-bootstrap, not an
+            // admin action (migration 019 already allows a nullable, FK-less `approvedBy`).
+            await models.User.update(
+              { role: 'ADMIN', status: 'Active', approvedAt: new Date() },
+              { where: { id: user.id }, transaction: t }
+            );
           }
 
           // Invited-registrant auto-activation (D-04/D-05/D-06/D-07, INVITE-03): the admin who
