@@ -4,13 +4,13 @@ milestone: v4.1
 milestone_name: Open Registration with Approval
 status: executing
 stopped_at: Phase 32 context gathered
-last_updated: "2026-08-31T09:14:33.432Z"
+last_updated: "2026-08-31T14:16:12.392Z"
 last_activity: 2026-08-31 -- Phase 32 execution started
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 15
-  completed_plans: 13
+  total_plans: 17
+  completed_plans: 15
   percent: 40
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 ## Current Position
 
 Phase: 32 (tokenless-registration) — EXECUTING
-Plan: 1 of 6
+Plan: 1 of 8
 Status: Executing Phase 32
 Last activity: 2026-08-31 -- Phase 32 execution started
 

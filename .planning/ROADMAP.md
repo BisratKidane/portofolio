@@ -241,7 +241,7 @@ Plans:
 
 **Wave 5** *(gap closure — CR-01 unauthenticated privilege-escalation blocker, blocked on Wave 4's user.resolver.js changes)*
 
-- [ ] 32-07-PLAN.md — Gate verifyEmail's zero-admin ADMIN bootstrap on ADMIN_EMAIL (Phase 11's deferred VERIFY-F1) + extend updateUser's last-administrator guard to the email-change path (closes CR-01 from 32-REVIEW.md / 32-VERIFICATION.md)
+- [x] 32-07-PLAN.md — Gate verifyEmail's zero-admin ADMIN bootstrap on ADMIN_EMAIL (Phase 11's deferred VERIFY-F1) + extend updateUser's last-administrator guard to the email-change path (closes CR-01 from 32-REVIEW.md / 32-VERIFICATION.md)
 
 **Wave 6** *(gap closure — CR-03 residual enumeration leak, blocked on Wave 5's user.resolver.js changes)*
 
@@ -319,6 +319,6 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
-| 32. Tokenless Registration | v4.1 | 6/8 | gaps_found  | — |
+| 32. Tokenless Registration | v4.1 | 7/8 | In Progress|  |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
