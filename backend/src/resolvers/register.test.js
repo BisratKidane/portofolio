@@ -13,6 +13,7 @@ vi.mock('../services/mailer.js', () => ({
 
 import { sendVerificationEmail, sendPendingRegistrationEmail, sendRegistrationAttemptEmail } from '../services/mailer.js';
 import { createInvitationToken, hashInvitationToken, hashVerificationToken } from '../utils/auth.js';
+import * as authUtils from '../utils/auth.js';
 
 const REGISTER_MUTATION = `
   mutation Register($token: String, $name: String!, $email: String, $password: String!, $relationshipNote: String) {
@@ -404,6 +405,51 @@ describe('register (tokenless)', () => {
         expect(await models.User.count({ where: { email: 'wr02-fresh@example.com' } })).toBe(0);
       } finally {
         createSpy.mockRestore();
+      }
+    });
+
+    it('never leaks raw ORM/DB error text when models.User.findOne rejects (CR-03)', async () => {
+      const injectedMessage = 'SequelizeConnectionError: connection pool exhausted';
+      const findOneSpy = vi.spyOn(models.User, 'findOne').mockRejectedValueOnce(new Error(injectedMessage));
+
+      try {
+        const result = await graphql(REGISTER_MUTATION, {
+          name: 'CR03 FindOne',
+          email: 'cr03-findone@example.com',
+          password: 'Password123!'
+        });
+
+        expect(result.errors).toBeUndefined();
+        expect(result.data.register.message).toBe(SUCCESS_MESSAGE);
+        expect(await models.User.count({ where: { email: 'cr03-findone@example.com' } })).toBe(0);
+
+        // Belt-and-suspenders: the injected error's own message text must not
+        // leak anywhere in the response, not just via `errors`.
+        expect(JSON.stringify(result)).not.toContain(injectedMessage);
+      } finally {
+        findOneSpy.mockRestore();
+      }
+    });
+
+    it('never leaks raw error text when createVerificationToken throws on the free-email path (CR-03)', async () => {
+      const injectedMessage = 'crypto.randomBytes failed';
+      const tokenSpy = vi.spyOn(authUtils, 'createVerificationToken').mockImplementationOnce(() => {
+        throw new Error(injectedMessage);
+      });
+
+      try {
+        const result = await graphql(REGISTER_MUTATION, {
+          name: 'CR03 Token',
+          email: 'cr03-token@example.com',
+          password: 'Password123!'
+        });
+
+        expect(result.errors).toBeUndefined();
+        expect(result.data.register.message).toBe(SUCCESS_MESSAGE);
+        expect(await models.User.count({ where: { email: 'cr03-token@example.com' } })).toBe(0);
+        expect(JSON.stringify(result)).not.toContain(injectedMessage);
+      } finally {
+        tokenSpy.mockRestore();
       }
     });
 

@@ -255,21 +255,33 @@ export const userResolvers = {
       if (!email) throw new Error('Email is required.');
 
       const normalizedEmail = email.toLowerCase().trim();
-      const passwordHash = await bcrypt.hash(password, 12);
-      const existingUser = await models.User.findOne({ where: { email: normalizedEmail } });
 
-      if (existingUser) {
-        // D-10: tell the real account owner, never the caller -- nothing
-        // else changed (no DB write, no audit log), matching D-08's
-        // "identical to the free-email outcome" requirement.
-        sendRegistrationAttemptEmail({ to: existingUser.email, name: existingUser.name }).catch((err) => {
-          console.error('Failed to send registration-attempt email:', err);
-        });
-        return finishTokenlessRegistration(startedAt);
-      }
-
-      const verificationToken = createVerificationToken();
+      // CR-03 (Phase 32 gap closure): the single try/catch below now wraps the
+      // WHOLE post-validation body -- bcrypt.hash, the existing-user lookup,
+      // createVerificationToken, and models.User.create -- not only create.
+      // A findOne rejection (connection-pool exhaustion, a transient DB error,
+      // a SequelizeDatabaseError on an unmigrated target) or a
+      // createVerificationToken throw used to propagate raw ORM/DB error text
+      // and skip finishTokenlessRegistration entirely, making that outcome
+      // both differently shaped AND measurably faster than every other one --
+      // exactly the class of leak WR-02/CR-01 already closed for create,
+      // just reachable one or two statements earlier.
       try {
+        const passwordHash = await bcrypt.hash(password, 12);
+        const existingUser = await models.User.findOne({ where: { email: normalizedEmail } });
+
+        if (existingUser) {
+          // D-10: tell the real account owner, never the caller -- nothing
+          // else changed (no DB write, no audit log), matching D-08's
+          // "identical to the free-email outcome" requirement.
+          sendRegistrationAttemptEmail({ to: existingUser.email, name: existingUser.name }).catch((err) => {
+            console.error('Failed to send registration-attempt email:', err);
+          });
+          return await finishTokenlessRegistration(startedAt);
+        }
+
+        const verificationToken = createVerificationToken();
+
         // { passwordAlreadyHashed: true } is Plan 32-01's explicit control-channel
         // flag telling User's beforeCreate hook that passwordHash is already a
         // bcrypt hash and must not be re-hashed (D-09). It is a caller-set
@@ -299,17 +311,19 @@ export const userResolvers = {
           metadata: { email: normalizedEmail }
         }).catch((err) => console.error('Failed to write audit log:', err));
 
-        return finishTokenlessRegistration(startedAt);
+        return await finishTokenlessRegistration(startedAt);
       } catch (err) {
-        // WR-02/CR-01: never surface raw ORM/DB error text to an
+        // WR-02/CR-01/CR-03: never surface raw ORM/DB error text to an
         // unauthenticated caller. An over-length name that slipped past
         // assertRegistrationName, a duplicate-insert race lost against a
-        // concurrent registration on the same email, or a missing-column
-        // error on an unmigrated deploy target must all return the
-        // identical success message -- never err.message or any of its
-        // properties.
-        console.error('Tokenless registration create failed:', err);
-        return finishTokenlessRegistration(startedAt);
+        // concurrent registration on the same email, a missing-column error
+        // on an unmigrated deploy target, a findOne rejection, or a
+        // createVerificationToken throw must all return the identical
+        // success message -- never log the full error object, since a
+        // Sequelize DatabaseError's .sql/.parameters can contain the
+        // registrant's email and bcrypt hash.
+        console.error('Tokenless registration failed:', err?.name, err?.message);
+        return await finishTokenlessRegistration(startedAt);
       }
     },
     login: async (_parent, { email, password }, { models }) => {
