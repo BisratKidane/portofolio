@@ -307,6 +307,31 @@ describe('register (tokenless)', () => {
       expect(await models.User.count({ where: { email: 'cr01-fresh@example.com' } })).toBe(0);
     });
 
+    it('never reads models.User.findOne when the name fails validation, isolating the pre-lookup guard from the catch-all (WR-08)', async () => {
+      // Pure observation -- no mock implementation. If assertRegistrationName's
+      // pre-lookup guard were removed, execution would reach models.User.findOne
+      // before the eventual create failure, so this assertion is falsifiable in
+      // a way the pre-existing toEqual (CR-01) assertion above is not: that
+      // assertion only compares the taken/fresh outcomes to each other, and
+      // stays green even if BOTH outcomes reach findOne, as long as they reach
+      // it identically.
+      const findOneSpy = vi.spyOn(models.User, 'findOne');
+
+      try {
+        const overLongName = 'C'.repeat(300);
+        const { errors } = await graphql(REGISTER_MUTATION, {
+          name: overLongName,
+          email: 'wr08-isolation@example.com',
+          password: 'Password123!'
+        });
+
+        expect(errors[0].message).toBe('Name must be 255 characters or fewer.');
+        expect(findOneSpy).not.toHaveBeenCalled();
+      } finally {
+        findOneSpy.mockRestore();
+      }
+    });
+
     it('rejects a whitespace-only name on a fresh email (WR-03, tokenless half)', async () => {
       const { errors } = await graphql(REGISTER_MUTATION, {
         name: '   ',
@@ -453,51 +478,127 @@ describe('register (tokenless)', () => {
       }
     });
 
-    it('applies the same minimum response-time floor to every tokenless outcome (WR-01, shape not wall-clock)', async () => {
-      await createTestUser({ email: 'wr01-taken@example.com', name: 'Existing Owner' });
+    it('pads the slower tokenless outcome by less than the faster one, using real elapsed time (WR-01 timing-floor, falsifiable)', async () => {
+      // Real clock throughout -- Date.now is never mocked/pinned anywhere in
+      // this test. WR-07: the prior version pinned Date.now to a constant,
+      // which makes `elapsed` always 0 and every recorded delay always
+      // exactly MIN_REGISTER_RESPONSE_MS -- a tautology that can't
+      // distinguish a real floor from a deleted one.
+      //
+      // bcrypt.hash(password, 12) is mocked to resolve near-instantly for
+      // BOTH calls in this test. This is NOT the variable under test -- real
+      // bcrypt.hash(12) cost (~225-235ms on this hardware) would eat most of
+      // the 400ms floor's headroom on its own, leaving too little margin for
+      // the injected findOne delay below to reliably differentiate the two
+      // calls. Isolating the ONE variable this test actually exercises -- how
+      // much extra time models.User.findOne takes -- keeps the assertion
+      // robust while still measuring genuine, un-pinned Date.now()-driven
+      // elapsed time end to end.
+      //
+      // A genuine ~100ms delay is injected into the SECOND call's
+      // models.User.findOne; the FIRST call's findOne is unmocked (fast). A
+      // deleted floor captures nothing (assertion fails against undefined);
+      // a hardcoded/constant floor makes both calls' delays equal (fails the
+      // strict inequality below) -- both are observably red against this
+      // test.
+      //
+      // Captured setTimeout calls are filtered by the REAL immediate caller's
+      // stack frame only (index [3] of the split stack -- see the inline
+      // comment on the mock below for why), not a whole-stack substring
+      // match: the injected findOne delay further down is itself invoked
+      // FROM user.resolver.js's own call chain (models.User.findOne is
+      // awaited from inside the resolver), so a whole-stack 'user.resolver.js'
+      // match would incorrectly capture it too. Only the resolver's own
+      // delay() helper's direct setTimeout call has user.resolver.js as its
+      // immediate-caller frame.
+      const bcryptSpy = vi.spyOn(bcrypt, 'hash').mockResolvedValue('$2a$12$stubStubStubStubStubStubStubStubStubStu');
 
-      // A blanket `setTimeout` mock that always fires `cb()` synchronously
-      // recurses into the Sequelize connection pool's own internal idle-check
-      // timer (which reschedules itself via `setTimeout` every time it fires,
-      // at intervals as short as 1000ms -- too close to plausible response-
-      // floor values to filter by magnitude alone) and blows the call stack.
-      // Filter by call-site instead: only intercept `setTimeout` calls made
-      // from within `user.resolver.js` (i.e. this resolver's own `delay()`
-      // helper) and let every other caller -- the connection pool included --
-      // pass through to the real `setTimeout` completely untouched.
       const realSetTimeout = global.setTimeout;
-      const shortDelays = [];
+      const capturedDelays = [];
       const setTimeoutSpy = vi.spyOn(global, 'setTimeout').mockImplementation((cb, ms, ...args) => {
-        const stack = new Error().stack || '';
-        if (stack.includes('user.resolver.js')) {
-          shortDelays.push(ms);
-          cb();
-          return 0;
-        }
+        // Stack layout under vi.spyOn: [0] "Error:" header, [1] this mock's own
+        // frame (where `new Error()` is constructed), [2] vitest's internal spy
+        // wrapper (@vitest/spy), [3] the REAL immediate caller of setTimeout.
+        // Index [3], not [1] or [2], is what identifies who actually called
+        // setTimeout. Path-matched (not name-matched): the resolver's delay()
+        // calls setTimeout from inside an anonymous Promise-executor arrow
+        // function, which V8 does not label "at delay" in the trace -- only
+        // the file path is reliably present at that frame.
+        const callerFrame = (new Error().stack || '').split('\n')[3] || '';
+        if (callerFrame.includes('user.resolver.js')) capturedDelays.push(ms);
         return realSetTimeout(cb, ms, ...args);
       });
-      const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(0);
+
+      const originalFindOne = models.User.findOne.bind(models.User);
+      let findOneSpy = null;
 
       try {
         await graphql(REGISTER_MUTATION, {
-          name: 'Taken Path',
-          email: 'wr01-taken@example.com',
+          name: 'Fast Path',
+          email: 'wr01a-fast@example.com',
           password: 'Password123!'
+        });
+        expect(capturedDelays).toHaveLength(1);
+        const fastDelay = capturedDelays[0];
+
+        findOneSpy = vi.spyOn(models.User, 'findOne').mockImplementationOnce(async (...args) => {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          return originalFindOne(...args);
         });
 
         await graphql(REGISTER_MUTATION, {
-          name: 'Free Path',
-          email: 'wr01-fresh@example.com',
+          name: 'Slow Path',
+          email: 'wr01a-slow@example.com',
+          password: 'Password123!'
+        });
+        expect(capturedDelays).toHaveLength(2);
+        const slowDelay = capturedDelays[1];
+
+        expect(slowDelay).toBeGreaterThan(0);
+        expect(fastDelay).toBeGreaterThan(0);
+        expect(slowDelay).toBeLessThanOrEqual(MIN_REGISTER_RESPONSE_MS);
+        expect(fastDelay).toBeLessThanOrEqual(MIN_REGISTER_RESPONSE_MS);
+        expect(slowDelay).toBeLessThan(fastDelay);
+      } finally {
+        setTimeoutSpy.mockRestore();
+        bcryptSpy.mockRestore();
+        if (findOneSpy) findOneSpy.mockRestore();
+      }
+    });
+
+    it('adds no delay once real work already exceeds the response-time floor (WR-01 over-floor branch)', async () => {
+      // Same real-clock, caller-frame-filtered technique as the test above
+      // (see its comment for why index [3], not [1] or [2], is the real
+      // caller), but the injected findOne delay (450ms) exceeds
+      // MIN_REGISTER_RESPONSE_MS (400ms) -- proving the
+      // `elapsed < MIN_REGISTER_RESPONSE_MS` branch is genuinely conditional
+      // (the floor is skipped once real work already exceeds it), not an
+      // unconditional pad applied to every outcome.
+      const realSetTimeout = global.setTimeout;
+      const capturedDelays = [];
+      const setTimeoutSpy = vi.spyOn(global, 'setTimeout').mockImplementation((cb, ms, ...args) => {
+        const callerFrame = (new Error().stack || '').split('\n')[3] || '';
+        if (callerFrame.includes('user.resolver.js')) capturedDelays.push(ms);
+        return realSetTimeout(cb, ms, ...args);
+      });
+
+      const originalFindOne = models.User.findOne.bind(models.User);
+      const findOneSpy = vi.spyOn(models.User, 'findOne').mockImplementationOnce(async (...args) => {
+        await new Promise((resolve) => setTimeout(resolve, MIN_REGISTER_RESPONSE_MS + 50));
+        return originalFindOne(...args);
+      });
+
+      try {
+        await graphql(REGISTER_MUTATION, {
+          name: 'Over Floor',
+          email: 'wr01b-over@example.com',
           password: 'Password123!'
         });
 
-        expect(shortDelays.length).toBeGreaterThanOrEqual(2);
-        for (const ms of shortDelays) {
-          expect(ms).toBe(MIN_REGISTER_RESPONSE_MS);
-        }
+        expect(capturedDelays).toHaveLength(0);
       } finally {
         setTimeoutSpy.mockRestore();
-        dateNowSpy.mockRestore();
+        findOneSpy.mockRestore();
       }
     });
   });
