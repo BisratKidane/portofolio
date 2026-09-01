@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
-status: verifying
+status: gaps_found
 stopped_at: Completed 32-08-PLAN.md
 last_updated: "2026-09-01T09:43:09.999Z"
-last_activity: "2026-09-01 -- Plan 32-08 executed: closed CR-03 (findOne/createVerificationToken now inside the tokenless register uniform-response guard), repaired WR-07 (unfalsifiable pinned-clock timing test) and WR-08 (vacuous CR-01 credit) test-integrity findings with mutation-tested regression coverage, added a fail-fast boot check for migration 020"
+last_activity: "2026-09-01 -- Phase 32 re-verified: gaps_found (2 blockers in the gap-closure fixes). Plan 32-08 executed: closed CR-03 (findOne/createVerificationToken now inside the tokenless register uniform-response guard), repaired WR-07 (unfalsifiable pinned-clock timing test) and WR-08 (vacuous CR-01 credit) test-integrity findings with mutation-tested regression coverage, added a fail-fast boot check for migration 020"
 progress:
   total_phases: 5
   completed_phases: 3
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 ## Current Position
 
 Phase: 32 (tokenless-registration) — Plan 08 of 8 complete
-Status: Phase 32 execution complete (all 8 plans committed); SEC-01 left unchecked in REQUIREMENTS.md pending independent re-verification
+Status: Phase 32 NOT complete — all 8 plans committed, but re-verification found 2 blockers introduced by the 32-07/32-08 gap-closure fixes themselves (dead ADMIN_EMAIL bootstrap path; TOCTOU-bypassable last-admin guard). See 32-VERIFICATION.md / 32-REVIEW.md. Next: /gsd:plan-phase 32 --gaps
 Last activity: 2026-09-01 -- Plan 32-08 executed: closed CR-03 (findOne/createVerificationToken now inside the tokenless register uniform-response guard), repaired WR-07 (unfalsifiable pinned-clock timing test) and WR-08 (vacuous CR-01 credit) test-integrity findings with mutation-tested regression coverage, added a fail-fast boot check for migration 020
 
 Next: /gsd:verify-work 32 (re-verify SEC-01 now that CR-03 is closed, then close the phase)
