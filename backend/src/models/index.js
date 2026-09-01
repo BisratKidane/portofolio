@@ -4,6 +4,7 @@ import { initFamilyMember, FamilyMember } from './FamilyMember.js';
 import { initSpouse, Spouse } from './Spouse.js';
 import { initInvitation, Invitation } from './Invitation.js';
 import { initAuditLog, AuditLog } from './AuditLog.js';
+import { assertRequiredColumns } from '../config/assertRequiredColumns.js';
 
 const User = initUser(sequelize);
 initFamilyMember(sequelize);
@@ -118,6 +119,19 @@ export const models = {
 export async function initializeDatabase() {
   await sequelize.authenticate();
   await sequelize.sync();
+  // Fail fast at boot if a manual migration was never applied to this target
+  // (Plan 32-08 / CR-03 follow-on) -- see assertRequiredColumns.js for why.
+  //
+  // NOTE: this wiring is exercised at real backend boot (server.js) but is
+  // NOT exercised by `npm test`'s integration suite -- backend/test/globalSetup.js
+  // calls sequelize.sync({ force: true, ... }) directly, bypassing
+  // initializeDatabase() entirely, and that same sync({ force: true }) call
+  // creates relationshipNote fresh from the Sequelize model definition
+  // regardless of whether migration 020 was ever run -- so the test database
+  // always has the column and this check can never fail during `npm test`.
+  // Coverage for the check's own logic comes solely from
+  // assertRequiredColumns.test.js's mocked-sequelize unit tests.
+  await assertRequiredColumns(sequelize);
 }
 
 export { sequelize };

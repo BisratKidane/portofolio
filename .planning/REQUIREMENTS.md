@@ -57,7 +57,7 @@ Approval now means exactly one thing: **is this stranger actually family?**
 
 ### Security & Abuse (SEC)
 
-- [x] **SEC-01**: The public signup path gives the same response whether or not that email already has an account, so it cannot be used to discover who has one; the real account owner is told by email that someone tried to register with their address.
+- [ ] **SEC-01**: The public signup path gives the same response whether or not that email already has an account, so it cannot be used to discover who has one; the real account owner is told by email that someone tried to register with their address. *(Partial: the originally-reported CR-01 enumeration oracle was closed by Plan 32-05, but 32-REVIEW.md's CR-03 finding -- models.User.findOne and createVerificationToken() running outside the uniform-response guard -- meant the underlying claim was not yet fully true. Plan 32-08 moves both calls inside the guarded path and adds regression coverage; re-verify via /gsd:verify-work 32 before re-checking this box.)*
 - [x] **SEC-02**: The existing per-IP rate limit on registration covers the tokenless path, so an open form cannot be used to flood the approval queue or probe the system.
 - [ ] **SEC-03**: The relationship note is length-capped on the server and rendered safely everywhere it is shown — the admin UI and the admin notification email included. *(Backend half complete: Phase 32 caps the note's length server-side and escapes it in the admin notification email. The admin UI half ships and is verified in Phase 33.)*
 - [ ] **SEC-04**: Adversarial tests prove the boundaries hold: a non-admin cannot create an invitation, cannot approve or reject an account, and cannot register without a token while public registration is off.
