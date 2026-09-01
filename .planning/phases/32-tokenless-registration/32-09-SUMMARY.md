@@ -100,6 +100,15 @@ None - no external service configuration required.
 - 32-VERIFICATION.md's Truth 6 is closed; only Truth 7 (updateUser TOCTOU guard, addressed in the sibling gap-closure plan 32-10) remains open for phase 32's re-verification pass.
 - Regression gate confirmed at the exact pre-plan baseline (66 passed / 2 skipped across the 4 mandated files) plus a clean `pendingApprovals.test.js` pass — zero regressions to the invited-registrant auto-activation path, the D-12 notifier, or the D-11 pending-approvals queue.
 
+## Self-Check: PASSED
+
+- FOUND: `backend/src/resolvers/user.resolver.js`
+- FOUND: `backend/src/resolvers/verifyEmail.test.js`
+- FOUND: `.planning/phases/32-tokenless-registration/32-09-SUMMARY.md`
+- FOUND commit: `779e328` (RED)
+- FOUND commit: `be100d7` (GREEN)
+- FOUND commit: `8d4e12e` (docs: SUMMARY)
+
 ---
 *Phase: 32-tokenless-registration*
 *Completed: 2026-09-01*
