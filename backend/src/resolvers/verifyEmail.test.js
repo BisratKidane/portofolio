@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import mysql from 'mysql2/promise';
 import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
-import { hashVerificationToken } from '../utils/auth.js';
+import { hashVerificationToken, getUserFromRequest } from '../utils/auth.js';
 import { env } from '../config/env.js';
 import { isMariaDB } from '../../test/dbEngine.js';
 import { models } from '../models/index.js';
@@ -336,6 +336,23 @@ describe('verifyEmail', () => {
 
       expect(response.errors).toBeUndefined();
       expect(response.data.verifyEmail.user.role).toBe('ADMIN');
+      // 32-09 (Truth 6 blocker closure): the bootstrap write must also grant a
+      // USABLE account -- `role` alone is not enough, since both `login` and
+      // `getUserFromRequest` hard-require `status === 'Active'`.
+      expect(response.data.verifyEmail.user.status).toBe('Active');
+
+      const ctxUser = await getUserFromRequest(
+        { headers: { authorization: `Bearer ${response.data.verifyEmail.token}` } },
+        models
+      );
+      expect(ctxUser).toBeTruthy();
+      expect(ctxUser?.role).toBe('ADMIN');
+      expect(ctxUser?.email).toBe('operator-bootstrap@example.com');
+
+      // The bootstrap path must never spuriously fire the D-12 admin-notification
+      // email -- it is a legitimate first-admin activation, not a pending self-
+      // registration awaiting review.
+      expect(sendPendingRegistrationEmail).not.toHaveBeenCalled();
     });
   });
 
