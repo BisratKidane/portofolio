@@ -8,6 +8,7 @@ vi.mock('../services/mailer.js', () => ({
 import { sendVerificationEmail } from '../services/mailer.js';
 import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
 import { hashVerificationToken } from '../utils/auth.js';
+import { models } from '../models/index.js';
 
 const UPDATE_USER_MUTATION = `
   mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
@@ -282,8 +283,14 @@ describe('updateUser — last administrator guard covers email changes (CR-01)',
     });
   });
 
-  it('does not block an already-unverified administrator from changing their own email', async () => {
-    const backupAdmin = await createTestUser({ role: 'ADMIN', email: 'backup-admin@example.com', emailVerified: true });
+  it('does not block the only (unverified) administrator from changing their own email (WR-01 fix)', async () => {
+    // WR-01 fix: the original version of this test also created a verified
+    // `backupAdmin`, which confounded the assertion -- the guard would have
+    // let the change through anyway because a backup verified admin existed,
+    // regardless of whether the `target.emailVerified === true` clause was
+    // present. `unverifiedAdmin` is the ONLY administrator here, so this now
+    // genuinely exercises that clause: the guard must skip the last-admin
+    // count entirely because the target is not currently a verified admin.
     const unverifiedAdmin = await createTestUser({
       role: 'ADMIN',
       email: 'unverified-admin@example.com',
@@ -293,7 +300,7 @@ describe('updateUser — last administrator guard covers email changes (CR-01)',
     const { data, errors } = await graphql(
       UPDATE_USER_MUTATION,
       { id: String(unverifiedAdmin.id), input: { email: 'unverified-admin-new@example.com' } },
-      backupAdmin
+      unverifiedAdmin
     );
 
     expect(errors).toBeUndefined();
@@ -302,6 +309,46 @@ describe('updateUser — last administrator guard covers email changes (CR-01)',
 
     await unverifiedAdmin.reload();
     expect(unverifiedAdmin.email).toBe('unverified-admin-new@example.com');
+  });
+});
+
+describe('updateUser — concurrent last-administrator guard (CR-02, gap-closure)', () => {
+  it('prevents two concurrent email changes on different administrators from both succeeding and driving verified admins to zero (CR-02 concurrency, gap-closure)', async () => {
+    const adminA = await createTestUser({ role: 'ADMIN', email: 'race-admin-a@example.com', emailVerified: true });
+    const adminB = await createTestUser({ role: 'ADMIN', email: 'race-admin-b@example.com', emailVerified: true });
+
+    const [responseA, responseB] = await Promise.all([
+      graphql(UPDATE_USER_MUTATION, { id: String(adminA.id), input: { email: 'race-a-new@example.com' } }, adminA),
+      graphql(UPDATE_USER_MUTATION, { id: String(adminB.id), input: { email: 'race-b-new@example.com' } }, adminB)
+    ]);
+
+    for (const response of [responseA, responseB]) {
+      if (response.errors) {
+        expect(response.errors[0].message).not.toMatch(/Sequelize|ER_LOCK|deadlock/i);
+      }
+    }
+
+    const verifiedAdminCount = await models.User.count({ where: { role: 'ADMIN', emailVerified: true } });
+    expect(verifiedAdminCount).toBeGreaterThanOrEqual(1);
+  });
+
+  it('prevents a concurrent role demotion and a concurrent email change on two different administrators from together driving verified admins to zero (CR-02 mixed-race, gap-closure)', async () => {
+    const adminA = await createTestUser({ role: 'ADMIN', email: 'mix-admin-a@example.com', emailVerified: true });
+    const adminB = await createTestUser({ role: 'ADMIN', email: 'mix-admin-b@example.com', emailVerified: true });
+
+    const [responseA, responseB] = await Promise.all([
+      graphql(UPDATE_USER_MUTATION, { id: String(adminA.id), input: { role: 'USER' } }, adminA),
+      graphql(UPDATE_USER_MUTATION, { id: String(adminB.id), input: { email: 'mix-b-new@example.com' } }, adminB)
+    ]);
+
+    for (const response of [responseA, responseB]) {
+      if (response.errors) {
+        expect(response.errors[0].message).not.toMatch(/Sequelize|ER_LOCK|deadlock/i);
+      }
+    }
+
+    const verifiedAdminCount = await models.User.count({ where: { role: 'ADMIN', emailVerified: true } });
+    expect(verifiedAdminCount).toBeGreaterThanOrEqual(1);
   });
 });
 
