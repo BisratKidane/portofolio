@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import mysql from 'mysql2/promise';
 import { graphql, resetTables, createTestUser } from '../../test/helpers.js';
 import { hashVerificationToken } from '../utils/auth.js';
@@ -49,6 +49,16 @@ async function rawConnection() {
 
 beforeEach(resetTables);
 beforeEach(() => vi.clearAllMocks());
+// CR-01 (Phase 32 gap closure): every test starts from the same fail-closed
+// baseline regardless of execution order, whether or not it explicitly sets
+// env.adminEmail itself. afterEach is defense in depth against a test that
+// sets env.adminEmail and forgets to unset it.
+beforeEach(() => {
+  env.adminEmail = null;
+});
+afterEach(() => {
+  env.adminEmail = null;
+});
 
 describe('verifyEmail', () => {
   it('flips emailVerified, clears the token/expiry, and returns a working session for a valid token', async () => {
@@ -162,14 +172,29 @@ describe('verifyEmail', () => {
     expect(response.data.verifyEmail.token).toEqual(expect.any(String));
   });
 
-  // Test B — real two-racer outcome + no-burned-token guarantee (VERIFY-04). Two real verifiers
-  // are pinned at their admin-count read by a raw connection holding an exclusive lock on a shared
-  // non-admin "anchor" row that both promotion scans must read (but neither primary-key-keyed token
-  // UPDATE touches). Releasing that lock lets both promotions run at the same instant, forcing the
-  // lock-order interleaving. The pre-fix two-statement autocommit shape deadlocks here — one racer
-  // gets an unhandled ER_LOCK_DEADLOCK after its single-use token was already burned. The fix must
-  // make both racers keep a usable session with exactly one ADMIN.
-  it('lets two users racing to verify simultaneously each keep a usable session, with exactly one becoming ADMIN (VERIFY-04)', async (ctx) => {
+  // Test B — real two-racer completion + no-burned-token guarantee (VERIFY-04), narrowed for
+  // CR-01 (Phase 32 gap closure). Two real verifiers are pinned at their admin-count read by a
+  // raw connection holding an exclusive lock on a shared non-admin "anchor" row that both
+  // promotion scans must read (but neither primary-key-keyed token UPDATE touches). Releasing
+  // that lock lets both promotions run at the same instant, forcing the lock-order interleaving.
+  // The pre-fix two-statement autocommit shape deadlocked here -- one racer got an unhandled
+  // ER_LOCK_DEADLOCK after its single-use token was already burned. The fix must make both
+  // racers keep a usable session with no raw deadlock/serialization error.
+  //
+  // IMPORTANT (CR-01 narrowing): before this plan, "exactly one of the two racers becomes ADMIN"
+  // was a meaningful proof of the FOR UPDATE lock's correctness -- both racers were equally
+  // eligible, so the outcome depended on which transaction won the lock. After this plan's gate
+  // (env.adminEmail match required), that is no longer true. racerA is set up with
+  // env.adminEmail === racerA.email BEFORE the race, and racerB's email deliberately does not
+  // match. Because `email` is unique and the gate requires `user.email === env.adminEmail`,
+  // racerB can NEVER be promoted -- whether the lock works, is broken, or is deleted outright --
+  // and racerA IS promoted regardless of which transaction commits first. "Who becomes ADMIN" is
+  // now guaranteed by email-uniqueness plus the gate, INDEPENDENT of the FOR UPDATE lock. This
+  // test therefore no longer proves lock correctness via the role outcome; what it still
+  // meaningfully asserts is narrower: both racers complete without a raw deadlock/serialization
+  // error, and both receive a usable session. (Lock-order contention itself is still proven by
+  // Test A above, which asserts no role.)
+  it('lets two users racing to verify simultaneously each keep a usable session, with racerA (ADMIN_EMAIL match) becoming ADMIN and racerB staying USER (VERIFY-04, narrowed by CR-01)', async (ctx) => {
     ctx.skip(
       await isMariaDB(),
       'MariaDB does not implement the MySQL 8.4 SELECT ... FOR UPDATE lock-wait semantics this ' +
@@ -177,6 +202,7 @@ describe('verifyEmail', () => {
         'and must pass on CI (MySQL 8.4). See KNOWN-ISSUES.md.'
     );
     const future = new Date(Date.now() + 60 * 60 * 1000);
+    env.adminEmail = 'racer-one@example.com';
     const racerA = await createTestUser({
       email: 'racer-one@example.com',
       emailVerified: false,
@@ -227,9 +253,10 @@ describe('verifyEmail', () => {
     expect(responseA.data.verifyEmail.token).toEqual(expect.any(String));
     expect(responseB.data.verifyEmail.token).toEqual(expect.any(String));
 
-    const roles = [responseA.data.verifyEmail.user.role, responseB.data.verifyEmail.user.role];
-    expect(roles.filter((role) => role === 'ADMIN')).toHaveLength(1);
-    expect(roles.filter((role) => role === 'USER')).toHaveLength(1);
+    // Guaranteed by email-uniqueness plus the ADMIN_EMAIL gate, not by the FOR UPDATE lock --
+    // see the comment above this test.
+    expect(responseA.data.verifyEmail.user.role).toBe('ADMIN');
+    expect(responseB.data.verifyEmail.user.role).toBe('USER');
 
     await racerA.reload();
     await racerB.reload();
@@ -252,6 +279,64 @@ describe('verifyEmail', () => {
 
     expect(response.errors).toBeUndefined();
     expect(response.data.verifyEmail.user.role).toBe('USER');
+  });
+
+  // CR-01 (Phase 32 gap closure): Phase 32 opened `register` to anonymous callers with no
+  // feature flag (D-03), removing the only thing that made the zero-admin bootstrap safe --
+  // previously reaching `verifyEmail` at all required an admin-issued invitation. These three
+  // tests prove the bootstrap now only ever promotes the account whose email matches
+  // env.adminEmail, and fails closed (promotes nobody) when it is unset or mismatched.
+  describe('zero-admin ADMIN bootstrap gated on ADMIN_EMAIL (CR-01)', () => {
+    it('does not promote an anonymous self-registrant to ADMIN when ADMIN_EMAIL is unset, even with zero admins (CR-01)', async () => {
+      env.adminEmail = null;
+      await createTestUser({
+        email: 'tokenless-bootstrap-unset@example.com',
+        status: 'Pending',
+        emailVerified: false,
+        role: 'USER',
+        emailVerificationToken: hashVerificationToken('tokenless-bootstrap-unset-token'),
+        emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+
+      const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'tokenless-bootstrap-unset-token' });
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data.verifyEmail.user.role).toBe('USER');
+    });
+
+    it('does not promote an anonymous self-registrant to ADMIN when ADMIN_EMAIL is set to a different address (CR-01)', async () => {
+      env.adminEmail = 'someone-else@example.com';
+      await createTestUser({
+        email: 'tokenless-bootstrap-mismatch@example.com',
+        status: 'Pending',
+        emailVerified: false,
+        role: 'USER',
+        emailVerificationToken: hashVerificationToken('tokenless-bootstrap-mismatch-token'),
+        emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+
+      const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'tokenless-bootstrap-mismatch-token' });
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data.verifyEmail.user.role).toBe('USER');
+    });
+
+    it('promotes the ADMIN_EMAIL-matching registrant to ADMIN on their first verification (legitimate fresh-deploy bootstrap path)', async () => {
+      env.adminEmail = 'operator-bootstrap@example.com';
+      await createTestUser({
+        email: 'operator-bootstrap@example.com',
+        status: 'Pending',
+        emailVerified: false,
+        role: 'USER',
+        emailVerificationToken: hashVerificationToken('operator-bootstrap-token'),
+        emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+
+      const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'operator-bootstrap-token' });
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data.verifyEmail.user.role).toBe('ADMIN');
+    });
   });
 
   // SC-3: an invited, Pending registrant is promoted straight to Active the moment they

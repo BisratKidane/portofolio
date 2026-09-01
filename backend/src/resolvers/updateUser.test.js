@@ -240,6 +240,71 @@ describe('updateUser — email changes trigger re-verification', () => {
   });
 });
 
+describe('updateUser — last administrator guard covers email changes (CR-01)', () => {
+  it('blocks the sole verified administrator from changing their own email', async () => {
+    const onlyAdmin = await createTestUser({ role: 'ADMIN', email: 'sole-admin@example.com', emailVerified: true });
+
+    const { data, errors } = await graphql(
+      UPDATE_USER_MUTATION,
+      { id: String(onlyAdmin.id), input: { email: 'new-sole-admin@example.com' } },
+      onlyAdmin
+    );
+
+    expect(errors[0].message).toBe("Promote another administrator before changing the last administrator's email.");
+    expect(data).toBeNull();
+
+    await onlyAdmin.reload();
+    expect(onlyAdmin.email).toBe('sole-admin@example.com');
+    expect(onlyAdmin.emailVerified).toBe(true);
+    expect(sendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('lets an administrator change their own email when a backup verified administrator exists', async () => {
+    const adminA = await createTestUser({ role: 'ADMIN', email: 'admin-a@example.com', emailVerified: true });
+    await createTestUser({ role: 'ADMIN', email: 'admin-b@example.com', emailVerified: true });
+
+    const { data, errors } = await graphql(
+      UPDATE_USER_MUTATION,
+      { id: String(adminA.id), input: { email: 'admin-a-new@example.com' } },
+      adminA
+    );
+
+    expect(errors).toBeUndefined();
+    expect(data.updateUser.email).toBe('admin-a-new@example.com');
+    expect(data.updateUser.emailVerified).toBe(false);
+
+    await adminA.reload();
+    expect(adminA.email).toBe('admin-a-new@example.com');
+    expect(adminA.emailVerified).toBe(false);
+
+    await vi.waitFor(() => {
+      expect(sendVerificationEmail).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('does not block an already-unverified administrator from changing their own email', async () => {
+    const backupAdmin = await createTestUser({ role: 'ADMIN', email: 'backup-admin@example.com', emailVerified: true });
+    const unverifiedAdmin = await createTestUser({
+      role: 'ADMIN',
+      email: 'unverified-admin@example.com',
+      emailVerified: false
+    });
+
+    const { data, errors } = await graphql(
+      UPDATE_USER_MUTATION,
+      { id: String(unverifiedAdmin.id), input: { email: 'unverified-admin-new@example.com' } },
+      backupAdmin
+    );
+
+    expect(errors).toBeUndefined();
+    expect(data.updateUser.email).toBe('unverified-admin-new@example.com');
+    expect(data.updateUser.emailVerified).toBe(false);
+
+    await unverifiedAdmin.reload();
+    expect(unverifiedAdmin.email).toBe('unverified-admin-new@example.com');
+  });
+});
+
 describe('updateUser — validation', () => {
   it('rejects a blank name', async () => {
     const self = await createTestUser({ role: 'USER', email: 'self@example.com', name: 'Ada' });
