@@ -249,7 +249,7 @@ Plans:
 
 **Wave 7** *(gap closure — Truth 6 blocker: ADMIN_EMAIL bootstrap promotes to ADMIN but never activates the account, found in the 32-08 re-verification pass)*
 
-- [ ] 32-09-PLAN.md — Make verifyAndPromote's ADMIN_EMAIL bootstrap write status: 'Active' alongside role: 'ADMIN' so the documented fresh-deploy bootstrap path is actually usable; full round-trip regression test (status + getUserFromRequest); README accuracy confirmation
+- [x] 32-09-PLAN.md — Make verifyAndPromote's ADMIN_EMAIL bootstrap write status: 'Active' alongside role: 'ADMIN' so the documented fresh-deploy bootstrap path is actually usable; full round-trip regression test (status + getUserFromRequest); README accuracy confirmation
 
 **Wave 8** *(gap closure — Truth 7 blocker: updateUser's last-administrator guards are TOCTOU-bypassable, found in the 32-08 re-verification pass; blocked on Wave 7's user.resolver.js changes)*
 
@@ -327,6 +327,6 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
-| 32. Tokenless Registration | v4.1 | 8/8 | Complete   | 2026-09-01 |
+| 32. Tokenless Registration | v4.1 | 9/10 | In Progress|  |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
