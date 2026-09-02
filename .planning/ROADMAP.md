@@ -113,7 +113,7 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
     3. Someone who registers through an admin invitation and verifies their email can sign in with no admin action in between.
     4. The approval queue no longer contains invited registrants — only accounts that still need a judgement.
 
-- [x] **Phase 32: Tokenless Registration** — `register` can create an account with no invitation, safely (verification: gaps_found — 2 blockers open in the gap-closure fixes themselves, see 32-VERIFICATION.md) (completed 2026-09-01)
+- [ ] **Phase 32: Tokenless Registration** — `register` can create an account with no invitation, safely (verification: gaps_found — re-verified 2026-09-02 after gap-closure plans 32-09/32-10: both prior blockers closed, 3 new blockers opened in those same fixes, see 32-VERIFICATION.md)
   - Requirements: REG-02, REG-03, REG-05, REG-06, REG-07, SEC-01, SEC-02, SEC-03
   - Success criteria:
     1. `register` with no token creates a `Pending`, unverified account from the user's own email, storing the relationship note.
@@ -327,6 +327,6 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
-| 32. Tokenless Registration | v4.1 | 10/10 | Complete   | 2026-09-01 |
+| 32. Tokenless Registration | v4.1 | 10/10 | Gaps Found | 2026-09-02 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
