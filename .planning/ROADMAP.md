@@ -113,7 +113,7 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
     3. Someone who registers through an admin invitation and verifies their email can sign in with no admin action in between.
     4. The approval queue no longer contains invited registrants — only accounts that still need a judgement.
 
-- [ ] **Phase 32: Tokenless Registration** — `register` can create an account with no invitation, safely (verification: gaps_found — re-verified 2026-09-02 after gap-closure plans 32-09/32-10: both prior blockers closed, 3 new blockers opened in those same fixes, see 32-VERIFICATION.md)
+- [ ] **Phase 32: Tokenless Registration** — `register` can create an account with no invitation, safely (verification: gaps_found — re-verified 2026-09-02 after gap-closure plans 32-09/32-10: both prior blockers closed, 3 new blockers opened in those same fixes; gap-closure plans 32-11/32-12/32-13 close them, see 32-VERIFICATION.md)
   - Requirements: REG-02, REG-03, REG-05, REG-06, REG-07, SEC-01, SEC-02, SEC-03
   - Success criteria:
     1. `register` with no token creates a `Pending`, unverified account from the user's own email, storing the relationship note.
@@ -207,7 +207,7 @@ Plans:
 
 ### Phase 32: Tokenless Registration
 
-**Goal**: `register` accepts a call with no invitation token and safely creates a `Pending`, unverified account — reusing the invited path's password rules, email normalisation, and verification-token handling, with enumeration-safe responses, admin notification on verification, and the existing per-IP rate limit applied.
+**Goal**: `register` accepts a call with no invitation token and safely creates a `Pending`, unverified account — reusing the invited path's password rules, email normalisation, and verification-token handling, with enumeration-safe responses, admin notification on verification, and the existing per-IP rate limit applied. (verification: gaps_found — re-verified 2026-09-02 after gap-closure plans 32-09/32-10: 3 new blockers opened in those same fixes; gap-closure plans 32-11/32-12/32-13 close them, see 32-VERIFICATION.md)
 **Depends on**: Phase 31 (the invite path is settled first, so the approval queue has exactly one kind of occupant before the public door opens)
 **Requirements**: REG-02, REG-03, REG-05, REG-06, REG-07, SEC-01, SEC-02, SEC-03
 **Success Criteria** (what must be TRUE):
@@ -218,7 +218,7 @@ Plans:
   4. Password rules, email normalisation, and verification-token handling on the tokenless path run the same code as the invited path — no second, weaker implementation.
   5. The existing per-IP registration rate limit applies to the tokenless path, and the relationship note is length-capped server-side.
 
-**Plans**: 10 plans
+**Plans**: 13 plans
 
 Plans:
 **Wave 1**
@@ -254,6 +254,18 @@ Plans:
 **Wave 8** *(gap closure — Truth 7 blocker: updateUser's last-administrator guards are TOCTOU-bypassable, found in the 32-08 re-verification pass; blocked on Wave 7's user.resolver.js changes)*
 
 - [x] 32-10-PLAN.md — Wrap updateUser's role-change and email-change last-administrator guards in one sequelize.transaction with a locking FOR UPDATE read and deadlock-retry, matching verifyEmail's pattern; Promise.all concurrency regression tests; WR-01 vacuous-test repair
+
+**Wave 9** *(gap closure — Gap 1: ADMIN_EMAIL bootstrap resurrection, found in the 32-08/32-09/32-10 re-verification pass; 32-VERIFICATION.md 3rd round)*
+
+- [ ] 32-11-PLAN.md — Scope verifyAndPromote's bootstrap write to Op.in(['Pending', 'Active']) on status, and independently close the two reissue paths (updateUser refuses to edit a Rejected/Disabled target, resendVerificationEmail silently refuses to reissue a token for one)
+
+**Wave 10** *(gap closure — Gap 2: last-administrator guard counts non-functioning admins, found in the same re-verification pass; blocked on Wave 9's user.resolver.js changes)*
+
+- [ ] 32-12-PLAN.md — Add status = 'Active' to both raw SQL admin counts (verifyEmail's admin-slot count and updateUser's renamed otherFunctioningAdminCount) to match isFunctioningAdmin's definition; correct stale/false comments; sequential (non-concurrent) regression tests
+
+**Wave 11** *(gap closure — Gap 3: tokenless register silently discards malformed emails, found in the same re-verification pass; blocked on Wave 10's user.resolver.js changes)*
+
+- [ ] 32-13-PLAN.md — Add backend/src/utils/emailPolicy.js (assertRegistrationEmail, mirroring namePolicy.js) and call it before the guarded try block on the tokenless register branch
 
 ### Phase 33: Public Signup Form & Approval Queue
 
