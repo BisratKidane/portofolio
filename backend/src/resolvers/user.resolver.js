@@ -1,4 +1,4 @@
-import { UniqueConstraintError } from 'sequelize';
+import { Op, UniqueConstraintError } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import { env } from '../config/env.js';
 import {
@@ -439,24 +439,38 @@ export const userResolvers = {
             // permanently locked out -- `login` and `getUserFromRequest` both hard-require
             // `status === 'Active'` (utils/auth.js), so the one documented "safe" bootstrap path
             // produced an account nobody could use. `status: 'Active'` is granted in this SAME
-            // write, unconditionally (no `WHERE status = 'Pending'` precondition). That is safe
-            // even if this account also happens to hold an Invitation row: the invitation
-            // auto-activation block below runs its OWN conditional update scoped to
-            // `WHERE ... status = 'Pending'`, which simply matches zero rows once status is
+            // write. That is safe even if this account also happens to hold an Invitation row:
+            // the invitation auto-activation block below runs its OWN conditional update scoped
+            // to `WHERE ... status = 'Pending'`, which simply matches zero rows once status is
             // already 'Active' -- no double-processing, no duplicate `invitation.activated`
-            // audit entry. It also cannot resurrect a Rejected or Disabled account: reaching this
-            // block at all requires a live, unconsumed `emailVerificationToken`, but
-            // `assertDispositionable` (approval.resolver.js) only allows Reject on a
-            // still-Pending, already-verified account -- so by the time an account CAN be
-            // Rejected/Disabled, its token has already been consumed (set to null on first
-            // verification) and `resendVerificationEmail` refuses to reissue one for an
-            // already-verified account. No reachable path lets a Rejected/Disabled account
-            // re-enter `verifyEmail` and re-trigger this block. `approvedBy` is deliberately left
-            // unset -- nobody made an approval decision here, this is a self-bootstrap, not an
-            // admin action (migration 019 already allows a nullable, FK-less `approvedBy`).
+            // audit entry.
+            //
+            // Gap 1 (32-VERIFICATION.md, 3rd round / 32-REVIEW.md CR-01, 2nd-round numbering):
+            // 32-09 removed the status precondition entirely instead of scoping it, so this write's
+            // `where: { id: user.id }` unconditionally resurrected ANY account matching
+            // ADMIN_EMAIL to Active ADMIN -- including a Rejected or Disabled one holding a live,
+            // unconsumed verification token. The in-code comment that used to sit here claimed "no
+            // reachable path" could hand such an account a fresh token; that claim was false (see
+            // updateUser and resendVerificationEmail, both of which lacked any Rejected/Disabled
+            // guard before this plan). The fix is two independent layers, so the invariant does not
+            // rest on either one alone:
+            //   (1) THIS write's own WHERE clause is the primary guarantee: `status: { [Op.in]:
+            //       ['Pending', 'Active'] }` means a Rejected/Disabled account's row simply does not
+            //       match, so the write is a structural no-op regardless of how the account came to
+            //       hold a live token. `bootstrapped` (the affected-row count) is intentionally not
+            //       branched on -- 0 affected rows already leaves `role`/`status` exactly as they
+            //       were, which is precisely "promote nobody".
+            //   (2) `updateUser` now refuses to edit a Rejected/Disabled target at all, and
+            //       `resendVerificationEmail` now silently refuses to reissue a token for one --
+            //       independently closing the two paths that could otherwise hand such an account a
+            //       fresh, live token in the first place.
+            // `approvedBy` is deliberately left unset -- nobody made an approval decision here,
+            // this is a self-bootstrap, not an admin action (migration 019 already allows a
+            // nullable, FK-less `approvedBy`).
+            // 0 affected rows is the correct "promote nobody" outcome; no further branching needed.
             await models.User.update(
               { role: 'ADMIN', status: 'Active', approvedAt: new Date() },
-              { where: { id: user.id }, transaction: t }
+              { where: { id: user.id, status: { [Op.in]: ['Pending', 'Active'] } }, transaction: t }
             );
           }
 

@@ -354,6 +354,70 @@ describe('verifyEmail', () => {
       // registration awaiting review.
       expect(sendPendingRegistrationEmail).not.toHaveBeenCalled();
     });
+
+    // Gap 1 (32-VERIFICATION.md, 3rd round): a Rejected/Disabled account whose email
+    // matches ADMIN_EMAIL and which holds a live, unconsumed verification token must
+    // NOT be resurrected to Active ADMIN by this bootstrap. Token consumption itself
+    // still succeeds (emailVerified flips true) -- only promotion is denied. Proven at
+    // the outcome level: the returned token must not authenticate via getUserFromRequest.
+    it('never resurrects a Rejected account through the ADMIN_EMAIL bootstrap even when its email matches ADMIN_EMAIL and it holds a live token (Gap 1, 3rd round)', async () => {
+      env.adminEmail = 'rejected-bootstrap-victim@example.com';
+      await createTestUser({
+        email: 'rejected-bootstrap-victim@example.com',
+        status: 'Rejected',
+        emailVerified: false,
+        role: 'USER',
+        emailVerificationToken: hashVerificationToken('rejected-bootstrap-token'),
+        emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+
+      const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'rejected-bootstrap-token' });
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data.verifyEmail.user.status).toBe('Rejected');
+      expect(response.data.verifyEmail.user.role).toBe('USER');
+
+      const user = await models.User.findOne({ where: { email: 'rejected-bootstrap-victim@example.com' } });
+      expect(user.status).toBe('Rejected');
+      expect(user.role).toBe('USER');
+      expect(user.emailVerified).toBe(true);
+
+      const ctxUser = await getUserFromRequest(
+        { headers: { authorization: `Bearer ${response.data.verifyEmail.token}` } },
+        models
+      );
+      expect(ctxUser).toBeFalsy();
+    });
+
+    // Gap 1 (32-VERIFICATION.md, 3rd round): identical guarantee for a Disabled account.
+    it('never resurrects a Disabled account through the ADMIN_EMAIL bootstrap even when its email matches ADMIN_EMAIL and it holds a live token (Gap 1, 3rd round)', async () => {
+      env.adminEmail = 'disabled-bootstrap-victim@example.com';
+      await createTestUser({
+        email: 'disabled-bootstrap-victim@example.com',
+        status: 'Disabled',
+        emailVerified: false,
+        role: 'USER',
+        emailVerificationToken: hashVerificationToken('disabled-bootstrap-token'),
+        emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+
+      const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'disabled-bootstrap-token' });
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data.verifyEmail.user.status).toBe('Disabled');
+      expect(response.data.verifyEmail.user.role).toBe('USER');
+
+      const user = await models.User.findOne({ where: { email: 'disabled-bootstrap-victim@example.com' } });
+      expect(user.status).toBe('Disabled');
+      expect(user.role).toBe('USER');
+      expect(user.emailVerified).toBe(true);
+
+      const ctxUser = await getUserFromRequest(
+        { headers: { authorization: `Bearer ${response.data.verifyEmail.token}` } },
+        models
+      );
+      expect(ctxUser).toBeFalsy();
+    });
   });
 
   // SC-3: an invited, Pending registrant is promoted straight to Active the moment they
