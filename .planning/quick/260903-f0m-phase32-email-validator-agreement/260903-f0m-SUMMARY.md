@@ -122,3 +122,7 @@ None - no external service configuration required.
 ---
 *Phase: quick/260903-f0m-phase32-email-validator-agreement*
 *Completed: 2026-09-03*
+
+## Self-Check: PASSED
+
+All claimed files verified present on disk (`backend/src/utils/emailPolicy.js`, `backend/src/utils/emailPolicy.test.js`, `backend/src/resolvers/updateUser.test.js`, `backend/src/resolvers/verifyEmail.test.js`, this SUMMARY.md). All claimed commit hashes verified present in `git log` (`a53cc26`, `c613d2a`, `10b7d97`).
