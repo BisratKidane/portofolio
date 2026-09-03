@@ -113,7 +113,7 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
     3. Someone who registers through an admin invitation and verifies their email can sign in with no admin action in between.
     4. The approval queue no longer contains invited registrants — only accounts that still need a judgement.
 
-- [x] **Phase 32: Tokenless Registration** — `register` can create an account with no invitation, safely (verification: gaps_found — re-verified 2026-09-02 after gap-closure plans 32-09/32-10: both prior blockers closed, 3 new blockers opened in those same fixes; gap-closure plans 32-11/32-12/32-13 close them, see 32-VERIFICATION.md) (completed 2026-09-03)
+- [x] **Phase 32: Tokenless Registration** — `register` can create an account with no invitation, safely (verification: passed — 8/8 must-haves, round 4 on 2026-09-03: gap-closure plans 32-11/32-12/32-13 plus quick task 260903-f0m closed all 3 remaining blockers; code-review CR-02 (account pre-hijacking) deferred by decision, tracked in .planning/todos/pending/) (completed 2026-09-03)
   - Requirements: REG-02, REG-03, REG-05, REG-06, REG-07, SEC-01, SEC-02, SEC-03
   - Success criteria:
     1. `register` with no token creates a `Pending`, unverified account from the user's own email, storing the relationship note.
@@ -207,7 +207,7 @@ Plans:
 
 ### Phase 32: Tokenless Registration
 
-**Goal**: `register` accepts a call with no invitation token and safely creates a `Pending`, unverified account — reusing the invited path's password rules, email normalisation, and verification-token handling, with enumeration-safe responses, admin notification on verification, and the existing per-IP rate limit applied. (verification: gaps_found — re-verified 2026-09-02 after gap-closure plans 32-09/32-10: 3 new blockers opened in those same fixes; gap-closure plans 32-11/32-12/32-13 close them, see 32-VERIFICATION.md)
+**Goal**: `register` accepts a call with no invitation token and safely creates a `Pending`, unverified account — reusing the invited path's password rules, email normalisation, and verification-token handling, with enumeration-safe responses, admin notification on verification, and the existing per-IP rate limit applied. (verification: passed — 8/8 must-haves, round 4 on 2026-09-03; see 32-VERIFICATION.md. Deferred: code-review CR-02 account pre-hijacking, tracked in .planning/todos/pending/)
 **Depends on**: Phase 31 (the invite path is settled first, so the approval queue has exactly one kind of occupant before the public door opens)
 **Requirements**: REG-02, REG-03, REG-05, REG-06, REG-07, SEC-01, SEC-02, SEC-03
 **Success Criteria** (what must be TRUE):
