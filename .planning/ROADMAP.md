@@ -257,7 +257,7 @@ Plans:
 
 **Wave 9** *(gap closure — Gap 1: ADMIN_EMAIL bootstrap resurrection, found in the 32-08/32-09/32-10 re-verification pass; 32-VERIFICATION.md 3rd round)*
 
-- [ ] 32-11-PLAN.md — Scope verifyAndPromote's bootstrap write to Op.in(['Pending', 'Active']) on status, and independently close the two reissue paths (updateUser refuses to edit a Rejected/Disabled target, resendVerificationEmail silently refuses to reissue a token for one)
+- [x] 32-11-PLAN.md — Scope verifyAndPromote's bootstrap write to Op.in(['Pending', 'Active']) on status, and independently close the two reissue paths (updateUser refuses to edit a Rejected/Disabled target, resendVerificationEmail silently refuses to reissue a token for one)
 
 **Wave 10** *(gap closure — Gap 2: last-administrator guard counts non-functioning admins, found in the same re-verification pass; blocked on Wave 9's user.resolver.js changes)*
 
@@ -339,6 +339,6 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
-| 32. Tokenless Registration | v4.1 | 10/10 | Gaps Found | 2026-09-02 |
+| 32. Tokenless Registration | v4.1 | 11/13 | In Progress|  |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
