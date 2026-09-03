@@ -118,3 +118,7 @@ Gap 2 is closed at both sites (updateUser's last-administrator guards, verifyEma
 ---
 *Phase: 32-tokenless-registration*
 *Completed: 2026-09-03*
+
+## Self-Check: PASSED
+
+All claimed files exist (`backend/src/resolvers/user.resolver.js`, `backend/src/utils/auth.js`, `backend/src/resolvers/updateUser.test.js`, `backend/src/resolvers/verifyEmail.test.js`, this SUMMARY.md), and all claimed commit hashes (`4e962a0`, `d25358f`, `ceb3b9d`) are present in `git log`.
