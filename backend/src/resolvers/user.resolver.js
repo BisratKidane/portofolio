@@ -424,7 +424,7 @@ export const userResolvers = {
           if (affectedCount === 0) throw new Error('The email verification token is invalid or has expired.');
 
           const [{ adminCount }] = await sequelize.query(
-            "SELECT COUNT(*) AS adminCount FROM users WHERE role = 'ADMIN' AND emailVerified = true FOR UPDATE",
+            "SELECT COUNT(*) AS adminCount FROM users WHERE role = 'ADMIN' AND status = 'Active' AND emailVerified = true FOR UPDATE",
             { transaction: t, type: sequelize.QueryTypes.SELECT }
           );
           // CR-01 (Phase 32 gap closure): this used to promote whoever verified next; that was
@@ -681,9 +681,9 @@ export const userResolvers = {
           // Shared locking read: counts OTHER verified admins besides `target`,
           // taking a row lock on the matching rows so a concurrent transaction
           // scanning the same set must wait for this one to commit or roll back.
-          const otherVerifiedAdminCount = async () => {
+          const otherFunctioningAdminCount = async () => {
             const [{ adminCount }] = await sequelize.query(
-              "SELECT COUNT(*) AS adminCount FROM users WHERE role = 'ADMIN' AND emailVerified = true AND id <> :id FOR UPDATE",
+              "SELECT COUNT(*) AS adminCount FROM users WHERE role = 'ADMIN' AND status = 'Active' AND emailVerified = true AND id <> :id FOR UPDATE",
               { transaction: t, type: sequelize.QueryTypes.SELECT, replacements: { id: target.id } }
             );
             return Number(adminCount);
@@ -694,7 +694,7 @@ export const userResolvers = {
           if (input.role != null && input.role !== target.role) {
             if (!isAdmin) throw new Error('Only an administrator can change roles.');
             if (target.role === 'ADMIN' && input.role === 'USER') {
-              if ((await otherVerifiedAdminCount()) === 0) throw new Error('Cannot remove the last administrator.');
+              if ((await otherFunctioningAdminCount()) === 0) throw new Error('Cannot remove the last administrator.');
             }
             target.role = input.role;
           }
@@ -720,7 +720,7 @@ export const userResolvers = {
               // would also be locked out of the legitimate bootstrap path). Mirrors the role-change
               // guard above: only ever blocks the LAST verified admin, never a safe change.
               if (target.role === 'ADMIN' && target.emailVerified === true) {
-                if ((await otherVerifiedAdminCount()) === 0) {
+                if ((await otherFunctioningAdminCount()) === 0) {
                   throw new Error("Promote another administrator before changing the last administrator's email.");
                 }
               }

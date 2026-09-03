@@ -418,6 +418,35 @@ describe('verifyEmail', () => {
       );
       expect(ctxUser).toBeFalsy();
     });
+
+    // Gap 2 (32-VERIFICATION.md, 3rd round): a stranded Pending ADMIN row must not count
+    // against adminCount === 0 -- the bootstrap's admin-slot count has to match
+    // isFunctioningAdmin's three-part definition (role/status/emailVerified) exactly, the
+    // same fix as updateUser's last-administrator guard.
+    it('promotes the ADMIN_EMAIL-matching registrant even when a Pending, non-functioning ADMIN row already exists (Gap 2, 3rd round)', async () => {
+      await createTestUser({
+        role: 'ADMIN',
+        status: 'Pending',
+        emailVerified: true,
+        email: 'stranded-pending-admin-g2@example.com'
+      });
+
+      env.adminEmail = 'operator-bootstrap-g2@example.com';
+      await createTestUser({
+        email: 'operator-bootstrap-g2@example.com',
+        status: 'Pending',
+        emailVerified: false,
+        role: 'USER',
+        emailVerificationToken: hashVerificationToken('operator-bootstrap-g2-token'),
+        emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+
+      const response = await graphql(VERIFY_EMAIL_MUTATION, { token: 'operator-bootstrap-g2-token' });
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data.verifyEmail.user.role).toBe('ADMIN');
+      expect(response.data.verifyEmail.user.status).toBe('Active');
+    });
   });
 
   // SC-3: an invited, Pending registrant is promoted straight to Active the moment they
