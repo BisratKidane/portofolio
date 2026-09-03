@@ -399,6 +399,86 @@ describe('updateUser — concurrent last-administrator guard (CR-02, gap-closure
   });
 });
 
+describe('updateUser — last-administrator guard counts only FUNCTIONING admins (Gap 2, 3rd round)', () => {
+  it('blocks demoting the sole functioning admin after a Pending, verified user was promoted to ADMIN (Gap 2, sequential reproduction)', async () => {
+    const soleAdmin = await createTestUser({
+      role: 'ADMIN',
+      emailVerified: true,
+      status: 'Active',
+      email: 'sole-admin-g2-demote@example.com'
+    });
+    const promotee = await createTestUser({
+      role: 'USER',
+      emailVerified: true,
+      status: 'Pending',
+      email: 'promotee-g2-demote@example.com'
+    });
+
+    const promoteResponse = await graphql(
+      UPDATE_USER_MUTATION,
+      { id: String(promotee.id), input: { role: 'ADMIN' } },
+      soleAdmin
+    );
+    expect(promoteResponse.errors).toBeUndefined();
+    expect(promoteResponse.data.updateUser.role).toBe('ADMIN');
+
+    const demoteResponse = await graphql(
+      UPDATE_USER_MUTATION,
+      { id: String(soleAdmin.id), input: { role: 'USER' } },
+      soleAdmin
+    );
+
+    expect(demoteResponse.errors?.[0]?.message).toBe('Cannot remove the last administrator.');
+    expect(demoteResponse.data).toBeNull();
+
+    await soleAdmin.reload();
+    expect(soleAdmin.role).toBe('ADMIN');
+    expect(
+      await models.User.count({ where: { role: 'ADMIN', status: 'Active', emailVerified: true } })
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it('blocks the sole functioning admin from changing their own email after a Pending, verified user was promoted to ADMIN (Gap 2, sequential reproduction)', async () => {
+    const soleAdmin = await createTestUser({
+      role: 'ADMIN',
+      emailVerified: true,
+      status: 'Active',
+      email: 'sole-admin-g2-email@example.com'
+    });
+    const promotee = await createTestUser({
+      role: 'USER',
+      emailVerified: true,
+      status: 'Pending',
+      email: 'promotee-g2-email@example.com'
+    });
+
+    const promoteResponse = await graphql(
+      UPDATE_USER_MUTATION,
+      { id: String(promotee.id), input: { role: 'ADMIN' } },
+      soleAdmin
+    );
+    expect(promoteResponse.errors).toBeUndefined();
+    expect(promoteResponse.data.updateUser.role).toBe('ADMIN');
+
+    const emailChangeResponse = await graphql(
+      UPDATE_USER_MUTATION,
+      { id: String(soleAdmin.id), input: { email: 'sole-admin-g2-email-new@example.com' } },
+      soleAdmin
+    );
+
+    expect(emailChangeResponse.errors?.[0]?.message).toBe(
+      "Promote another administrator before changing the last administrator's email."
+    );
+    expect(emailChangeResponse.data).toBeNull();
+
+    await soleAdmin.reload();
+    expect(soleAdmin.email).toBe('sole-admin-g2-email@example.com');
+    expect(
+      await models.User.count({ where: { role: 'ADMIN', status: 'Active', emailVerified: true } })
+    ).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe('updateUser — validation', () => {
   it('rejects a blank name', async () => {
     const self = await createTestUser({ role: 'USER', email: 'self@example.com', name: 'Ada' });
