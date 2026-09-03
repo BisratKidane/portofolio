@@ -312,6 +312,53 @@ describe('updateUser — last administrator guard covers email changes (CR-01)',
   });
 });
 
+describe('updateUser — refuses to edit a non-editable (Rejected/Disabled) account (Gap 1, 3rd round)', () => {
+  it('refuses to change a Rejected target\'s email and leaves the account untouched', async () => {
+    const admin = await createTestUser({ role: 'ADMIN', email: 'admin-rejected-guard@example.com' });
+    const target = await createTestUser({
+      role: 'USER',
+      status: 'Rejected',
+      email: 'rejected-target@example.com'
+    });
+
+    const { data, errors } = await graphql(
+      UPDATE_USER_MUTATION,
+      { id: String(target.id), input: { email: 'rejected-target-new@example.com' } },
+      admin
+    );
+
+    expect(errors[0].message).toBe('This account is not editable.');
+    expect(data).toBeNull();
+
+    await target.reload();
+    expect(target.email).toBe('rejected-target@example.com');
+    expect(sendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  it('refuses to change a Disabled target\'s name and leaves the account untouched', async () => {
+    const admin = await createTestUser({ role: 'ADMIN', email: 'admin-disabled-guard@example.com' });
+    const target = await createTestUser({
+      role: 'USER',
+      status: 'Disabled',
+      email: 'disabled-target@example.com',
+      name: 'Original Name'
+    });
+
+    const { data, errors } = await graphql(
+      UPDATE_USER_MUTATION,
+      { id: String(target.id), input: { name: 'Hacked Name' } },
+      admin
+    );
+
+    expect(errors[0].message).toBe('This account is not editable.');
+    expect(data).toBeNull();
+
+    await target.reload();
+    expect(target.name).toBe('Original Name');
+    expect(sendVerificationEmail).not.toHaveBeenCalled();
+  });
+});
+
 describe('updateUser — concurrent last-administrator guard (CR-02, gap-closure)', () => {
   it('prevents two concurrent email changes on different administrators from both succeeding and driving verified admins to zero (CR-02 concurrency, gap-closure)', async () => {
     const adminA = await createTestUser({ role: 'ADMIN', email: 'race-admin-a@example.com', emailVerified: true });

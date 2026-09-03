@@ -101,6 +101,52 @@ describe('resendVerificationEmail', () => {
     expect(Math.abs(existingMedian - missingMedian)).toBeLessThan(50);
   }, 20000);
 
+  // Gap 1 (32-VERIFICATION.md, 3rd round): a Rejected/Disabled account must not be handed
+  // a fresh, live verification token -- that token is the exact credential the ADMIN_EMAIL
+  // bootstrap (Task 1) would otherwise mistake for a legitimate re-verification. Proven at
+  // the outcome level: the token column is byte-identical before and after the call, not
+  // merely that the email wasn't sent.
+  it('returns the identical generic message and mints no new token for a Rejected, unverified account', async () => {
+    const user = await createTestUser({
+      email: 'rejected-resend@example.com',
+      status: 'Rejected',
+      emailVerified: false,
+      emailVerificationToken: hashVerificationToken('pre-existing-token'),
+      emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    });
+    const tokenBefore = user.emailVerificationToken;
+
+    const response = await graphql(RESEND_VERIFICATION_MUTATION, { email: 'rejected-resend@example.com' });
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data.resendVerificationEmail.message).toBe(RESEND_VERIFICATION_MESSAGE);
+    expect(sendVerificationEmail).not.toHaveBeenCalled();
+
+    await user.reload();
+    expect(user.emailVerificationToken).toBe(tokenBefore);
+  });
+
+  // Gap 1 (32-VERIFICATION.md, 3rd round): identical guarantee for a Disabled account.
+  it('returns the identical generic message and mints no new token for a Disabled, unverified account', async () => {
+    const user = await createTestUser({
+      email: 'disabled-resend@example.com',
+      status: 'Disabled',
+      emailVerified: false,
+      emailVerificationToken: hashVerificationToken('pre-existing-token'),
+      emailVerificationExpiresAt: new Date(Date.now() + 60 * 60 * 1000)
+    });
+    const tokenBefore = user.emailVerificationToken;
+
+    const response = await graphql(RESEND_VERIFICATION_MUTATION, { email: 'disabled-resend@example.com' });
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data.resendVerificationEmail.message).toBe(RESEND_VERIFICATION_MESSAGE);
+    expect(sendVerificationEmail).not.toHaveBeenCalled();
+
+    await user.reload();
+    expect(user.emailVerificationToken).toBe(tokenBefore);
+  });
+
   it('rejects the 6th call from the same IP within the window (D-13)', async () => {
     const clientIp = '10.10.90.1';
     const responses = [];

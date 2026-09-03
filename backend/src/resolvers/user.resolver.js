@@ -559,6 +559,12 @@ export const userResolvers = {
       const issueVerificationToken = async () => {
         const user = await models.User.findOne({ where: { email: email.toLowerCase().trim() } });
         if (!user || user.emailVerified) return;
+        // Gap 1 (32-VERIFICATION.md, 3rd round): a Rejected/Disabled account must never be
+        // handed a fresh, live verification token -- silent no-op, matching this function's
+        // existing enumeration-uniform shape (same generic response either way). Independently
+        // closes the second of the two reissue paths, alongside updateUser's own guard and Task
+        // 1's bootstrap WHERE-clause scoping.
+        if (user.status === 'Rejected' || user.status === 'Disabled') return;
 
         const verificationToken = createVerificationToken();
         user.emailVerificationToken = hashVerificationToken(verificationToken);
@@ -658,6 +664,19 @@ export const userResolvers = {
           rawVerificationToken = null;
           target = await models.User.findByPk(id, { transaction: t, lock: t.LOCK.UPDATE });
           if (!target) throw new Error('User not found.');
+
+          // Gap 1 (32-VERIFICATION.md, 3rd round): a Rejected/Disabled account can only ever be
+          // reached here as the TARGET of an admin's edit -- the account itself cannot
+          // authenticate to self-edit, since getUserFromRequest already hard-requires
+          // status === 'Active'. This is a blanket refusal regardless of which fields `input`
+          // touches: it independently closes one of the two paths that could otherwise hand a
+          // Rejected/Disabled account a live credential (an edited profile with a fresh
+          // verification token), alongside resendVerificationEmail's own guard and Task 1's
+          // bootstrap WHERE-clause scoping -- see the comment above verifyAndPromote's bootstrap
+          // write.
+          if (target.status === 'Rejected' || target.status === 'Disabled') {
+            throw new Error('This account is not editable.');
+          }
 
           // Shared locking read: counts OTHER verified admins besides `target`,
           // taking a row lock on the matching rows so a concurrent transaction
