@@ -26,16 +26,16 @@ describe('assertRegistrationEmail', () => {
     expect(() => assertRegistrationEmail(undefined)).toThrow('Email is required.');
   });
 
-  it('does not throw for a normalized value at exactly 255 characters (upper boundary)', () => {
-    const email = `${'a'.repeat(243)}@example.com`;
-    expect(email).toHaveLength(255);
+  it('does not throw for a normalized value at exactly 254 characters (upper boundary, RFC 5321 practical email length limit -- see emailPolicy.js header comment)', () => {
+    const email = `${'a'.repeat(242)}@example.com`;
+    expect(email).toHaveLength(254);
     expect(() => assertRegistrationEmail(email)).not.toThrow();
   });
 
-  it('throws for a normalized value at 256 characters', () => {
-    const email = `${'a'.repeat(244)}@example.com`;
-    expect(email).toHaveLength(256);
-    expect(() => assertRegistrationEmail(email)).toThrow('Email must be 255 characters or fewer.');
+  it('throws for a normalized value at 255 characters', () => {
+    const email = `${'a'.repeat(243)}@example.com`;
+    expect(email).toHaveLength(255);
+    expect(() => assertRegistrationEmail(email)).toThrow('Email must be 254 characters or fewer.');
   });
 
   it('throws "Enter a valid email address." for a missing-TLD address, not a required/TypeError (32-VERIFICATION.md reproduction)', () => {
@@ -46,7 +46,7 @@ describe('assertRegistrationEmail', () => {
     expect(() => assertRegistrationEmail('adaexample.com')).toThrow('Enter a valid email address.');
   });
 
-  it('exports MAX_EMAIL_LENGTH as 255 to match users.email\'s VARCHAR(255) column', () => {
-    expect(MAX_EMAIL_LENGTH).toBe(255);
+  it('exports MAX_EMAIL_LENGTH as 254, matching validator.isEmail\'s RFC 5321 practical length limit rather than the wider VARCHAR(255) column', () => {
+    expect(MAX_EMAIL_LENGTH).toBe(254);
   });
 });
