@@ -375,8 +375,8 @@ describe('updateUser — concurrent last-administrator guard (CR-02, gap-closure
       }
     }
 
-    const verifiedAdminCount = await models.User.count({ where: { role: 'ADMIN', emailVerified: true } });
-    expect(verifiedAdminCount).toBeGreaterThanOrEqual(1);
+    const functioningAdminCount = await models.User.count({ where: { role: 'ADMIN', status: 'Active', emailVerified: true } });
+    expect(functioningAdminCount).toBeGreaterThanOrEqual(1);
   });
 
   it('prevents a concurrent role demotion and a concurrent email change on two different administrators from together driving verified admins to zero (CR-02 mixed-race, gap-closure)', async () => {
@@ -394,8 +394,8 @@ describe('updateUser — concurrent last-administrator guard (CR-02, gap-closure
       }
     }
 
-    const verifiedAdminCount = await models.User.count({ where: { role: 'ADMIN', emailVerified: true } });
-    expect(verifiedAdminCount).toBeGreaterThanOrEqual(1);
+    const functioningAdminCount = await models.User.count({ where: { role: 'ADMIN', status: 'Active', emailVerified: true } });
+    expect(functioningAdminCount).toBeGreaterThanOrEqual(1);
   });
 });
 

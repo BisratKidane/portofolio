@@ -142,7 +142,7 @@ describe('verifyEmail', () => {
     try {
       await conn.beginTransaction();
       await conn.query(
-        "SELECT COUNT(*) AS adminCount FROM users WHERE role = 'ADMIN' AND emailVerified = true FOR UPDATE"
+        "SELECT COUNT(*) AS adminCount FROM users WHERE role = 'ADMIN' AND status = 'Active' AND emailVerified = true FOR UPDATE"
       );
 
       await Promise.all([
