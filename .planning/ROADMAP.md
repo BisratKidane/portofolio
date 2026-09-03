@@ -261,7 +261,7 @@ Plans:
 
 **Wave 10** *(gap closure — Gap 2: last-administrator guard counts non-functioning admins, found in the same re-verification pass; blocked on Wave 9's user.resolver.js changes)*
 
-- [ ] 32-12-PLAN.md — Add status = 'Active' to both raw SQL admin counts (verifyEmail's admin-slot count and updateUser's renamed otherFunctioningAdminCount) to match isFunctioningAdmin's definition; correct stale/false comments; sequential (non-concurrent) regression tests
+- [x] 32-12-PLAN.md — Add status = 'Active' to both raw SQL admin counts (verifyEmail's admin-slot count and updateUser's renamed otherFunctioningAdminCount) to match isFunctioningAdmin's definition; correct stale/false comments; sequential (non-concurrent) regression tests
 
 **Wave 11** *(gap closure — Gap 3: tokenless register silently discards malformed emails, found in the same re-verification pass; blocked on Wave 10's user.resolver.js changes)*
 
@@ -339,6 +339,6 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 29. Accessibility, Responsive & Quality Gate | v4.0 | 4/4 | Complete    | 2026-08-05 |
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
-| 32. Tokenless Registration | v4.1 | 11/13 | In Progress|  |
+| 32. Tokenless Registration | v4.1 | 12/13 | In Progress|  |
 | 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
