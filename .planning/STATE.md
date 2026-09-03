@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
-status: executing
-stopped_at: Completed 32-08-PLAN.md
-last_updated: "2026-09-02T14:31:50.758Z"
+status: ready_to_plan
+stopped_at: Phase 32 complete (13/13) — ready to discuss Phase 33
+last_updated: 2026-09-03T09:28:33.364Z
 last_activity: 2026-09-02 -- Phase 32 execution started
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 22
-  completed_plans: 19
+  completed_plans: 22
   percent: 40
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 32 — tokenless-registration
+**Current focus:** Phase 33 — public signup form & approval queue
 
 ## Current Position
 
-Phase: 32 (tokenless-registration) — EXECUTING
-Plan: 1 of 13
-Status: Executing Phase 32
-Last activity: 2026-09-02 -- Phase 32 execution started
+Phase: 33
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-03
 
 Next: /gsd:verify-work 32 (re-verify SEC-01 now that CR-03 is closed, then close the phase)
 
@@ -68,7 +68,7 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 
 **Velocity:**
 
-- Total plans completed: 90 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
+- Total plans completed: 103 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
 - Average duration: - min
 - Total execution time: 0 hours (v4.0)
 
@@ -89,6 +89,7 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 | 29 | 4 | - | - |
 | 30 | 4 | - | - |
 | 31 | 5 | - | - |
+| 32 | 13 | - | - |
 
 **Recent Trend:**
 
