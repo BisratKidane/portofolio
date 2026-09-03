@@ -602,4 +602,93 @@ describe('register (tokenless)', () => {
       }
     });
   });
+
+  // Gap 3, 3rd round, gap-closure: closes 32-VERIFICATION.md's Truth 8 --
+  // email format/length used to be left to the model layer, which throws
+  // INSIDE the guarded try/catch and is swallowed into the uniform success
+  // message. These tests prove the new pre-try guard (assertRegistrationEmail)
+  // rejects malformed/over-length email with an actionable error instead.
+  describe('email format/length validation before the guarded try/catch (Gap 3, 3rd round, gap-closure)', () => {
+    it('rejects a missing-TLD email and creates no row (32-VERIFICATION.md Truth 8 reproduction)', async () => {
+      const countBefore = await models.User.count();
+
+      const { errors } = await graphql(REGISTER_MUTATION, {
+        name: 'Frank',
+        email: 'ada@exmaple',
+        password: 'Password123!'
+      });
+
+      expect(errors[0].message).toBe('Enter a valid email address.');
+      expect(await models.User.count()).toBe(countBefore);
+    });
+
+    it('rejects a whitespace-only email with an actionable error, not the uniform success message', async () => {
+      const countBefore = await models.User.count();
+
+      const { errors } = await graphql(REGISTER_MUTATION, {
+        name: 'Grace',
+        email: '   ',
+        password: 'Password123!'
+      });
+
+      expect(errors[0].message).toBe('Email is required.');
+      expect(await models.User.count()).toBe(countBefore);
+    });
+
+    it('rejects an email one character over the 254-character cap and creates no row', async () => {
+      // MAX_EMAIL_LENGTH is 254, not the users.email column's VARCHAR(255)
+      // width -- see emailPolicy.js's header comment: Sequelize's own
+      // isEmail model validator enforces RFC 5321's practical 254-character
+      // total limit regardless of column width.
+      const countBefore = await models.User.count();
+      const overCapEmail = `${'h'.repeat(243)}@example.com`;
+      expect(overCapEmail).toHaveLength(255);
+
+      const { errors } = await graphql(REGISTER_MUTATION, {
+        name: 'Hank',
+        email: overCapEmail,
+        password: 'Password123!'
+      });
+
+      expect(errors[0].message).toBe('Email must be 254 characters or fewer.');
+      expect(await models.User.count()).toBe(countBefore);
+    });
+
+    it('accepts an email exactly at the 254-character cap (boundary)', async () => {
+      // Local part deliberately kept short (10 chars, well under
+      // validator.isEmail's own 64-char local-part limit) with the length
+      // made up entirely in the domain, so this boundary email is accepted
+      // by BOTH assertRegistrationEmail's own cap AND Sequelize's downstream
+      // isEmail validator on models.User.create -- proving the account is
+      // actually created, not just that the pre-validation guard passes.
+      const boundaryEmail = `${'i'.repeat(10)}@${'i.'.repeat(120)}com`;
+      expect(boundaryEmail).toHaveLength(254);
+
+      const { errors } = await graphql(REGISTER_MUTATION, {
+        name: 'Ivy',
+        email: boundaryEmail,
+        password: 'Password123!'
+      });
+
+      expect(errors).toBeUndefined();
+      expect(await models.User.count({ where: { email: boundaryEmail } })).toBe(1);
+    });
+
+    it('never reads models.User.findOne when the email fails format validation, isolating the pre-lookup guard from the catch-all', async () => {
+      const findOneSpy = vi.spyOn(models.User, 'findOne');
+
+      try {
+        const { errors } = await graphql(REGISTER_MUTATION, {
+          name: 'Jack',
+          email: 'jack@exmaple',
+          password: 'Password123!'
+        });
+
+        expect(errors[0].message).toBe('Enter a valid email address.');
+        expect(findOneSpy).not.toHaveBeenCalled();
+      } finally {
+        findOneSpy.mockRestore();
+      }
+    });
+  });
 });

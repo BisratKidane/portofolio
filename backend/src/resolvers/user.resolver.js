@@ -17,6 +17,7 @@ import {
 } from '../utils/auth.js';
 import { assertPasswordStrength } from '../utils/passwordPolicy.js';
 import { assertRegistrationName } from '../utils/namePolicy.js';
+import { assertRegistrationEmail } from '../utils/emailPolicy.js';
 import { assertRelationshipNoteLength } from '../utils/relationshipNotePolicy.js';
 import { writeAuditLog } from '../utils/audit.js';
 import {
@@ -259,9 +260,7 @@ export const userResolvers = {
       const startedAt = Date.now();
       assertRelationshipNoteLength(relationshipNote);
       const cleanName = assertRegistrationName(name);
-      if (!email) throw new Error('Email is required.');
-
-      const normalizedEmail = email.toLowerCase().trim();
+      const normalizedEmail = assertRegistrationEmail(email);
 
       // CR-03 (Phase 32 gap closure): the single try/catch below now wraps the
       // WHOLE post-validation body -- bcrypt.hash, the existing-user lookup,
