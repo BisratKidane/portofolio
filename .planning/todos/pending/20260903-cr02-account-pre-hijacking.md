@@ -5,6 +5,7 @@ source: .planning/phases/32-tokenless-registration/32-REVIEW.md (round 4, Critic
 severity: critical
 status: pending
 deferred_by: user decision 2026-09-03 (fix CR-01 now, defer CR-02)
+decided: 2026-09-04 — Phase 33 discussion folded this in and ACCEPTED the risk (see 33-CONTEXT.md D-01). Still open: a live vulnerability this milestone chose to ship with, NOT completed work.
 ---
 
 ## The defect
@@ -41,3 +42,16 @@ Related open item: registration squatting (WR-04) compounds this — squatting `
 ## Next step
 
 `/gsd:discuss-phase` this before implementing — option 1 likely changes `register`'s contract and would moot part of the current tokenless branch.
+
+---
+
+## Decision — 2026-09-04 (Phase 33 discussion)
+
+**Accepted, not fixed.** Phase 33 D-01 keeps the password typed at registration as the account's working credential: no invalidation, no set-password step after verification.
+
+Both mitigating designs were put to the user and rejected:
+- *Set the password only after verification* — rejected: adds a step for every legitimate registrant, who is almost always the genuine address owner.
+- *Invalidate the password on verification and force a reset* — initially chosen, then reversed for the same reason.
+
+**This entry stays open deliberately.** The attack above is still reachable in shipped code. Do not close this as done, and do not "fix" the credential flow assuming it was an oversight — it was a deliberate, recorded trade-off. Revisit when the registration flow is next touched, or if abuse is observed in practice.
+
