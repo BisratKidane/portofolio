@@ -10,47 +10,70 @@ vi.mock('../api/graphqlClient.js', () => ({
 import { graphqlRequest } from '../api/graphqlClient.js';
 
 const ROW = {
-  id: '5',
-  invitedName: 'Cousin Joe',
-  invitedEmail: 'joe@example.com',
-  relationshipToFamily: 'cousin',
-  invitationNote: 'Met at the reunion',
-  registeredAt: '1700000000000',
-  inviter: { id: '2', name: 'Aunt May' },
-  registeredUser: { id: '9', name: 'Joseph Q', email: 'joe@example.com', emailVerified: true }
+  id: '9',
+  name: 'Joseph Q',
+  email: 'joe@example.com',
+  relationshipNote: 'Met at the reunion',
+  createdAt: '1700000000000'
 };
 
-// fk_invitations_registered_user is ON DELETE SET NULL (migration 016), so an
-// invitation can outlive the account it created and arrive here with a null
-// registeredUser.
-const ORPHANED_ROW = { ...ROW, registeredUser: null };
+// D-08: an empty/null note is a normal state, not an error -- must render
+// "No note provided." rather than an empty gap.
+const ROW_NO_NOTE = { ...ROW, id: '10', relationshipNote: null };
+
+// SEC-03 UI half: the note is attacker-controlled free text up to 500 chars.
+// It must render as literal text, never as markup.
+const HTML_NOTE = '<img src=x onerror=alert(1)>';
+const ROW_HTML_NOTE = { ...ROW, id: '11', relationshipNote: HTML_NOTE };
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
 describe('ApprovalsPage', () => {
-  it('lists pending registrations with inviter, relationship, and note', async () => {
-    graphqlRequest.mockResolvedValueOnce({ pendingRegistrations: [ROW] });
+  it('renders a card with name, email, full relationship note, and registration time', async () => {
+    graphqlRequest.mockResolvedValueOnce({ pendingApprovals: [ROW] });
     render(<ApprovalsPage />);
 
     expect(await screen.findByText('Joseph Q')).toBeInTheDocument();
-    expect(screen.getByText('Aunt May', { exact: false })).toBeInTheDocument();
-    expect(screen.getByText('cousin', { exact: false })).toBeInTheDocument();
-    expect(screen.getByText('Met at the reunion', { exact: false })).toBeInTheDocument();
+    expect(screen.getByText('joe@example.com')).toBeInTheDocument();
+    expect(screen.getByText('Met at the reunion')).toBeInTheDocument();
+    expect(screen.getByText(/Registered/i)).toBeInTheDocument();
+  });
+
+  it('renders "No note provided." for a row with a null relationshipNote', async () => {
+    graphqlRequest.mockResolvedValueOnce({ pendingApprovals: [ROW_NO_NOTE] });
+    render(<ApprovalsPage />);
+
+    await screen.findByText('Joseph Q');
+    expect(screen.getByText('No note provided.')).toBeInTheDocument();
+  });
+
+  it('renders an HTML-bearing note as literal text, never as markup (SEC-03)', async () => {
+    graphqlRequest.mockResolvedValueOnce({ pendingApprovals: [ROW_HTML_NOTE] });
+    render(<ApprovalsPage />);
+
+    await screen.findByText('Joseph Q');
+
+    // The literal string must be visible as text content...
+    expect(screen.getByText(HTML_NOTE)).toBeInTheDocument();
+    // ...and React must never have parsed it into a DOM element: no <img>
+    // was created from the note, proving default child-text escaping was
+    // not bypassed via dangerouslySetInnerHTML or a markdown renderer.
+    expect(document.querySelector('img')).not.toBeInTheDocument();
   });
 
   it('shows the empty state when nothing is pending', async () => {
-    graphqlRequest.mockResolvedValueOnce({ pendingRegistrations: [] });
+    graphqlRequest.mockResolvedValueOnce({ pendingApprovals: [] });
     render(<ApprovalsPage />);
-    expect(await screen.findByText(/No registrations are waiting/i)).toBeInTheDocument();
+    expect(await screen.findByText('Nothing to review')).toBeInTheDocument();
   });
 
-  it('approves a registration and refetches', async () => {
+  it('approves a registration by row.id directly and refetches', async () => {
     graphqlRequest
-      .mockResolvedValueOnce({ pendingRegistrations: [ROW] })
+      .mockResolvedValueOnce({ pendingApprovals: [ROW] })
       .mockResolvedValueOnce({ approveUser: { id: '9', status: 'Active' } })
-      .mockResolvedValueOnce({ pendingRegistrations: [] });
+      .mockResolvedValueOnce({ pendingApprovals: [] });
 
     render(<ApprovalsPage />);
     await screen.findByText('Joseph Q');
@@ -60,19 +83,24 @@ describe('ApprovalsPage', () => {
     await waitFor(() => {
       expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('approveUser'), { id: '9' });
     });
-    expect(await screen.findByText(/No registrations are waiting/i)).toBeInTheDocument();
+    expect(await screen.findByText('Nothing to review')).toBeInTheDocument();
   });
 
-  it('rejects a registration with a reason', async () => {
+  it('rejects a registration by row.id directly with an optional reason', async () => {
     graphqlRequest
-      .mockResolvedValueOnce({ pendingRegistrations: [ROW] })
+      .mockResolvedValueOnce({ pendingApprovals: [ROW] })
       .mockResolvedValueOnce({ rejectUser: { id: '9', status: 'Rejected' } })
-      .mockResolvedValueOnce({ pendingRegistrations: [] });
+      .mockResolvedValueOnce({ pendingApprovals: [] });
 
     render(<ApprovalsPage />);
     await screen.findByText('Joseph Q');
 
     await userEvent.click(screen.getByRole('button', { name: /reject/i }));
+
+    // D-09's locked dialog copy
+    expect(screen.getByText('Reject this request?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Keep pending' })).toBeInTheDocument();
+
     await userEvent.type(screen.getByLabelText('Reason (optional)', { exact: false }), 'Not a relative');
     // The dialog's confirm button
     const dialogReject = screen.getAllByRole('button', { name: /reject/i }).pop();
@@ -86,18 +114,34 @@ describe('ApprovalsPage', () => {
     });
   });
 
-  it('disables Approve and Reject for a row with no registered user (WR-01)', async () => {
-    graphqlRequest.mockResolvedValueOnce({ pendingRegistrations: [ORPHANED_ROW] });
+  it('submits a reject with an empty reason successfully (D-09)', async () => {
+    graphqlRequest
+      .mockResolvedValueOnce({ pendingApprovals: [ROW] })
+      .mockResolvedValueOnce({ rejectUser: { id: '9', status: 'Rejected' } })
+      .mockResolvedValueOnce({ pendingApprovals: [] });
+
+    render(<ApprovalsPage />);
+    await screen.findByText('Joseph Q');
+
+    await userEvent.click(screen.getByRole('button', { name: /reject/i }));
+    const dialogReject = screen.getAllByRole('button', { name: /reject/i }).pop();
+    await userEvent.click(dialogReject);
+
+    await waitFor(() => {
+      expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('rejectUser'), {
+        id: '9',
+        reason: null
+      });
+    });
+  });
+
+  it('shows only the error Alert on a failed initial load -- no spinner, no empty panel, no card list (SC-5)', async () => {
+    graphqlRequest.mockRejectedValueOnce(new Error('Network error'));
     render(<ApprovalsPage />);
 
-    await screen.findByText('Cousin Joe');
-
-    // `row.registeredUser && !row.registeredUser.emailVerified` short-circuits
-    // to null when registeredUser is null -- falsy -- so the buttons rendered
-    // ENABLED and clicking dereferenced row.registeredUser.id. That is the
-    // exact failure D-11 exists to prevent, fixed for emailVerified but not
-    // for the other nullable case.
-    expect(screen.getByRole('button', { name: /approve/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /reject/i })).toBeDisabled();
+    expect(await screen.findByText('Network error')).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Nothing to review')).not.toBeInTheDocument();
+    expect(screen.queryByText('Joseph Q')).not.toBeInTheDocument();
   });
 });
