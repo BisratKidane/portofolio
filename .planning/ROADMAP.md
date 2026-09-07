@@ -280,7 +280,18 @@ Plans:
   4. An approved self-registrant who is not yet linked to a family member lands on the existing `/pending` screen.
   5. Loading, empty, and failed states render through the app's existing components — never a broken or empty panel.
 
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 33-01-PLAN.md — Register.validation.js + cross-workspace agreement test (D-04) + AuthContext.jsx register() widened to a named-object parameter
+- [ ] 33-02-PLAN.md — ApprovalsPage.jsx restructured onto pendingApprovals (D-07/D-08/D-09/D-10 card composition, SC-5 state-machine fix), InvitationsPage.test.jsx mock fix, APPR-06 regression test
+- [ ] 33-03-PLAN.md — Delete the dead pendingRegistrations query, resolver, and its backend test block (D-10)
+
+**Wave 2** *(blocked on 33-01 completion)*
+
+- [ ] 33-04-PLAN.md — Register.jsx public signup form (D-01..D-06) + success panel, invited path preserved
 
 **UI hint**: yes
 
@@ -340,5 +351,5 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
-| 33. Public Signup Form & Approval Queue | v4.1 | 0/– | Not started | — |
+| 33. Public Signup Form & Approval Queue | v4.1 | 0/4 | Not started | — |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
