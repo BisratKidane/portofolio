@@ -18,7 +18,7 @@ export default function Register() {
     setError('');
     setLoading(true);
     try {
-      const data = await register(token, form.name, form.password);
+      const data = await register({ token, name: form.name, password: form.password });
       setResult(data);
     } catch (err) {
       setError(err.message);
