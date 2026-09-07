@@ -41,9 +41,6 @@ export const invitationTypeDefs = `#graphql
   extend type Query {
     myInvitations: [Invitation!]!
     invitations: [Invitation!]!
-    # Admin-only: invitations whose invitee has registered and is awaiting a
-    # decision (status Registered).
-    pendingRegistrations: [Invitation!]!
   }
 
   extend type Mutation {

@@ -17,9 +17,11 @@ const PENDING_APPROVALS_QUERY = `
 beforeEach(resetTables);
 
 // D-11: pendingApprovals is a new, admin-only query returning exactly the
-// Pending+email-verified self-registrations awaiting an admin decision --
-// coexisting with the untouched pendingRegistrations query (invitation-flow
-// specific). REG-05: an unverified self-registration must never appear.
+// Pending+email-verified self-registrations awaiting an admin decision.
+// D-10 (Phase 33) removed the invitation-flow-specific approval query once
+// invited registrants started auto-activating on verification, so this is
+// now the only approval queue query in the backend. REG-05: an unverified
+// self-registration must never appear.
 describe('pendingApprovals (D-11, REG-05)', () => {
   it('returns a Pending, email-verified self-registrant, including one whose relationshipNote is null (F-01)', async () => {
     const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
