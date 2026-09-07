@@ -28,10 +28,21 @@ function renderRegister(token = 'invite-token-123') {
 }
 
 describe('Register page (invitation-only)', () => {
-  it('shows an "invitation required" notice and no form when there is no token', () => {
+  it('renders the public signup form with all four fields, locked AuthShell chrome, and no invitation-only copy', () => {
     renderRegister(null);
-    expect(screen.getByText(/invitation only/i)).toBeInTheDocument();
-    expect(screen.queryByLabelText('Full name', { exact: false })).not.toBeInTheDocument();
+
+    expect(screen.getByText('Request access')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Create your account' })).toBeInTheDocument();
+    expect(
+      screen.getByText("Tell us how you're related to the family — an administrator reviews every request.")
+    ).toBeInTheDocument();
+
+    expect(screen.getByLabelText('Full name', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Email address', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Password', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('How are you related to the family?', { exact: false })).toBeInTheDocument();
+
+    expect(screen.queryByText(/invitation only/i)).not.toBeInTheDocument();
   });
 
   it('registers with the token + name + password (no email field) and shows the confirmation', async () => {
@@ -66,5 +77,65 @@ describe('Register page (invitation-only)', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('This invitation link has expired.');
     expect(screen.getByLabelText('Full name', { exact: false })).toBeInTheDocument();
+  });
+
+  it('shows an inline error on blur for an empty "Full name" field, and clears it live once a valid value is typed', async () => {
+    renderRegister(null);
+
+    const nameField = screen.getByLabelText('Full name', { exact: false });
+    await userEvent.click(nameField);
+    await userEvent.tab();
+
+    expect(await screen.findByText('Enter your name.')).toBeInTheDocument();
+
+    await userEvent.type(nameField, 'Ada');
+
+    expect(screen.queryByText('Enter your name.')).not.toBeInTheDocument();
+  });
+
+  it('submitting the empty tokenless form shows all four inline errors at once and does not call graphqlRequest', async () => {
+    renderRegister(null);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByText('Enter your name.')).toBeInTheDocument();
+    expect(screen.getByText('Enter your email address.')).toBeInTheDocument();
+    expect(screen.getByText('Password must be at least 8 characters.')).toBeInTheDocument();
+    expect(screen.getByText("Tell us how you're related to the family.")).toBeInTheDocument();
+
+    expect(graphqlRequest).not.toHaveBeenCalled();
+  });
+
+  it('submitting a fully valid tokenless form calls register with the correct shape and shows the D-06 success copy, never the server message', async () => {
+    graphqlRequest.mockResolvedValueOnce({
+      register: { message: 'a message the UI must never render on this branch' }
+    });
+
+    renderRegister(null);
+
+    await userEvent.type(screen.getByLabelText('Full name', { exact: false }), 'Ada Lovelace');
+    await userEvent.type(screen.getByLabelText('Email address', { exact: false }), 'ada@example.com');
+    await userEvent.type(screen.getByLabelText('Password', { exact: false }), 'secret123');
+    await userEvent.type(
+      screen.getByLabelText('How are you related to the family?', { exact: false }),
+      'cousin'
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(graphqlRequest).toHaveBeenCalledWith(expect.stringContaining('register(token'), {
+      token: undefined,
+      name: 'Ada Lovelace',
+      email: 'ada@example.com',
+      password: 'secret123',
+      relationshipNote: 'cousin'
+    });
+
+    expect(await screen.findByText('Check ada@example.com for a verification link.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Once you verify your email, an administrator reviews your request. You'll be able to sign in as soon as they approve it."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText('a message the UI must never render on this branch')).not.toBeInTheDocument();
   });
 });
