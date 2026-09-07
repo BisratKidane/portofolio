@@ -1,7 +1,8 @@
 ---
 phase: 33
 slug: public-signup-form-approval-queue
-status: draft
+status: approved
+verified: 2026-09-07 (gsd-ui-checker, 6/6 dimensions PASS after 1 revision)
 shadcn_initialized: false
 preset: none
 created: 2026-09-07
