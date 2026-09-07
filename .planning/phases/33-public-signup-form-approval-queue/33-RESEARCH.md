@@ -411,7 +411,7 @@ No framework/library version changes are relevant to this phase — everything i
 
 **If this table were fully empty:** it isn't — both entries above are genuine `[ASSUMED]`-tagged recommendations (not verified against a locked decision), included for transparency per this agent's provenance rules, though both are low-stakes organizational choices rather than technical or security claims.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `ApprovalsPage.jsx`'s failed state gain a manual "Retry" affordance?**
    - What we know: `33-UI-SPEC.md`'s States section fully specifies the Failed render (`<Alert severity="error">{error}</Alert>` only, no spinner, no card list) but does not mention a retry button; ROADMAP SC-5 only requires the three states to "render through the app's existing components — never a broken or empty panel," which the reorder fix alone satisfies.
