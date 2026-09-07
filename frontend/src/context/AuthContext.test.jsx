@@ -18,7 +18,21 @@ function Probe() {
       <span>user:{user ? user.name : 'none'}</span>
       <button onClick={() => login('ada@example.com', 'secret')}>login</button>
       <button onClick={() => logout()}>logout</button>
-      <button onClick={() => register('Ada', 'ada@example.com', 'secret123')}>register</button>
+      <button onClick={() => register({ name: 'Ada', email: 'ada@example.com', password: 'secret123' })}>
+        register
+      </button>
+      <button
+        onClick={() => register({ token: 't1', name: 'Ada', password: 'secret123' })}
+      >
+        registerInvited
+      </button>
+      <button
+        onClick={() =>
+          register({ name: 'Ada', email: 'ada@example.com', password: 'secret123', relationshipNote: 'cousin' })
+        }
+      >
+        registerTokenless
+      </button>
       <button onClick={() => verifyEmail('sometoken')}>verifyEmail</button>
       <button onClick={() => changePassword('Password123!', 'BrandNewPass1!')}>changePassword</button>
     </div>
@@ -104,6 +118,46 @@ describe('AuthContext', () => {
     expect(localStorage.getItem('authToken')).toBeNull();
     expect(screen.getByText('authed:false')).toBeInTheDocument();
     expect(screen.getByText('user:none')).toBeInTheDocument();
+  });
+
+  it('sends the invited-shaped register() call with the exact token/name/password variables', async () => {
+    graphqlRequest.mockResolvedValueOnce({
+      register: { message: 'Registration received.' }
+    });
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'registerInvited' }));
+
+    expect(graphqlRequest).toHaveBeenCalledWith(
+      expect.stringContaining('register(token: $token'),
+      { token: 't1', name: 'Ada', password: 'secret123' }
+    );
+    expect(graphqlRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends the tokenless-shaped register() call with the exact name/email/password/relationshipNote variables', async () => {
+    graphqlRequest.mockResolvedValueOnce({
+      register: { message: 'Registration received.' }
+    });
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'registerTokenless' }));
+
+    expect(graphqlRequest).toHaveBeenCalledWith(
+      expect.stringContaining('register(token: $token'),
+      { name: 'Ada', email: 'ada@example.com', password: 'secret123', relationshipNote: 'cousin' }
+    );
+    expect(graphqlRequest).toHaveBeenCalledTimes(1);
   });
 
   it('stores the token and exposes the user after a successful verifyEmail', async () => {

@@ -16,8 +16,8 @@ const LOGIN_MUTATION = `
 `;
 
 const REGISTER_MUTATION = `
-  mutation Register($token: String!, $name: String!, $password: String!) {
-    register(token: $token, name: $name, password: $password) { message }
+  mutation Register($token: String, $name: String!, $email: String, $password: String!, $relationshipNote: String) {
+    register(token: $token, name: $name, email: $email, password: $password, relationshipNote: $relationshipNote) { message }
   }
 `;
 
@@ -88,7 +88,18 @@ export function AuthProvider({ children }) {
     loading,
     isAuthenticated: Boolean(user),
     login: (email, password) => authenticate(LOGIN_MUTATION, { email, password }),
-    register: (token, name, password) => graphqlRequest(REGISTER_MUTATION, { token, name, password }).then((data) => data.register),
+    // Named-object parameter (not positional args) so call sites are
+    // self-documenting and an argument-order mistake can't ship silently --
+    // the invited path (Register.jsx) and the public/tokenless path both
+    // call this with different subsets of keys. All five keys are always
+    // passed through to graphqlRequest's variables unconditionally; a key
+    // left `undefined` is dropped on the wire by JSON.stringify and is
+    // treated as absent by Vitest's toHaveBeenCalledWith, so omitting a key
+    // at the call site and explicitly passing `undefined` are equivalent.
+    register: ({ token, name, email, password, relationshipNote }) =>
+      graphqlRequest(REGISTER_MUTATION, { token, name, email, password, relationshipNote }).then(
+        (data) => data.register
+      ),
     verifyEmail,
     // Changing your own password rotates the JWT (the old one is revoked by
     // passwordChangedAt on the backend), so persist the fresh token to stay
