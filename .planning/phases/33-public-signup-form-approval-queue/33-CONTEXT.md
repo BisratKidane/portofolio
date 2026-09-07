@@ -35,7 +35,9 @@ Requirements: REG-01, REG-04, APPR-02, APPR-06.
 
 ### Admin approval queue (APPR-02)
 
-- **D-07:** The queue renders as **cards, one per waiting person** — name and email as the heading, the relationship note as body text, registration time and the approve/reject actions in a footer. This deliberately diverges from the table used by `InvitationsPage`/`ManagePage`: these rows are strangers being judged largely on a free-text note, and the note needs room. `ApprovalsPage.jsx` is currently an MUI `Table` and is being reworked, not extended.
+- **D-07:** The queue renders as **cards, one per waiting person** — name and email as the heading, the relationship note as body text, registration time and the approve/reject actions in a footer.
+
+  **Correction (2026-09-07, found during UI research):** an earlier draft of this decision said `ApprovalsPage.jsx` is currently an MUI `Table`. **That was wrong.** It imports no table primitives at all — it already renders one `<Paper elevation={0}>` per row (`ApprovalsPage.jsx:135`). The only real `Table` in the app is `AdminMemberTable.jsx` (used by `ManagePage`). So this decision is **not** a table→card rewrite; it is a restructuring of the existing per-row `Paper` from a horizontal layout (header and actions side-by-side) to a vertical header/body/footer card that gives the note its own full-width region. Less work than the original framing implied. See `33-UI-SPEC.md` for the composition.
 - **D-08:** The relationship note is **always shown in full** — no truncation, no expander, no scroll cap. It is the only context an admin has to judge a stranger, so it is never hidden behind an interaction. Rows will be variable-height; that is accepted.
 
   **Safety (SEC-03, whose UI half was deferred from Phase 32 to here):** the note is attacker-controlled free text up to 500 chars. React escapes text children by default, so rendering it as a normal string satisfies "rendered safely". Do **not** introduce `dangerouslySetInnerHTML` or any markdown/rich-text rendering for this field. Empty is a normal state, not an edge case (Phase 32 D-06 made the note optional) — render a plain "No note provided" rather than an empty gap or an error.
@@ -95,7 +97,7 @@ ROADMAP.md lists no canonical refs for this phase. The following were establishe
 ### Reusable Assets
 - `frontend/src/components/AuthShell.jsx` — the branded card wrapper every auth page uses (`eyebrow`/`title`/`subtitle`/`footer`/`children`). The signup form and its success panel both render inside it (D-05).
 - `frontend/src/pages/Register.jsx` (107 lines) — already has the `result`-state success-panel pattern on the invited path, and the `!token` branch that currently returns the invitation-only dead end. That branch is what gets replaced.
-- `frontend/src/pages/ApprovalsPage.jsx` (209 lines) — existing `approveUser`/`rejectUser` wiring, loading `CircularProgress`, and empty state. The `Table` is replaced by cards (D-07); the mutation wiring and state shapes carry over.
+- `frontend/src/pages/ApprovalsPage.jsx` (209 lines) — existing `approveUser`/`rejectUser` wiring, loading `CircularProgress`, `Paper`-based empty state (`:120`), and already one `<Paper>` per row (`:135`). D-07 restructures that Paper's internal layout; the mutation wiring and state shapes carry over. Its `orphaned`/`Tooltip`-disabled branch becomes dead once `pendingApprovals` returns flat `User` rows (D-10) — remove it.
 - `frontend/src/pages/Pending.jsx` (21 lines) — the APPR-06 landing screen. Already redirects ADMIN or any user with a `familyMemberId` to `/dashboard`, so an approved-but-unlinked self-registrant already lands here correctly. Likely needs no change beyond confirming copy fits a self-registrant (it currently says "awaiting an admin to link you to your family member").
 - `frontend/src/pages/ResetPassword.jsx`, `ForgotPassword.jsx` — the password-field and form-error idioms to mirror.
 
