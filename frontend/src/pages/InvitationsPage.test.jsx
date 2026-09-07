@@ -17,7 +17,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   graphqlRequest.mockImplementation((query) => {
     if (query.includes('myInvitations')) return Promise.resolve({ myInvitations: [] });
-    if (query.includes('pendingRegistrations')) return Promise.resolve({ pendingRegistrations: [] });
+    if (query.includes('pendingApprovals')) return Promise.resolve({ pendingApprovals: [] });
     return Promise.resolve({});
   });
 });

@@ -38,6 +38,22 @@ describe('Pending page', () => {
     ).toBeInTheDocument();
   });
 
+  it('renders the same awaiting-link message for an approved, unlinked self-registrant (APPR-06 regression)', () => {
+    // AuthContext.jsx's ME_QUERY selects only id/name/email/role/familyMemberId,
+    // so nothing in `user` distinguishes a self-registered account from an
+    // invited one -- Pending.jsx needs no code change, this test exists purely
+    // to make APPR-06's coverage traceable in the suite.
+    useAuthMock.mockReturnValue({ user: { id: 2, role: 'USER', familyMemberId: null } });
+
+    renderPending();
+
+    expect(
+      screen.getByText(
+        "Your account is awaiting an admin to link you to your family member; you'll get access once linked."
+      )
+    ).toBeInTheDocument();
+  });
+
   it('redirects to /dashboard for a linked user', () => {
     useAuthMock.mockReturnValue({ user: { id: 1, role: 'USER', familyMemberId: 5 } });
 
