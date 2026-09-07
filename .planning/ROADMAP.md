@@ -122,7 +122,7 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
     4. Password rules, email normalisation, and verification-token handling on the tokenless path run the same code as the invited path — no second, weaker implementation.
     5. The existing per-IP registration rate limit applies to the tokenless path, and the relationship note is length-capped server-side.
 
-- [ ] **Phase 33: Public Signup Form & Approval Queue** — the two surfaces people actually touch
+- [x] **Phase 33: Public Signup Form & Approval Queue** — the two surfaces people actually touch (completed 2026-09-07)
   - Requirements: REG-01, REG-04, APPR-02, APPR-06
   - Success criteria:
     1. `/register` with no token renders a signup form (name, email, password, required relationship note) instead of the invitation-only dead end.
@@ -280,7 +280,7 @@ Plans:
   4. An approved self-registrant who is not yet linked to a family member lands on the existing `/pending` screen.
   5. Loading, empty, and failed states render through the app's existing components — never a broken or empty panel.
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -291,7 +291,7 @@ Plans:
 
 **Wave 2** *(blocked on 33-01 completion)*
 
-- [ ] 33-04-PLAN.md — Register.jsx public signup form (D-01..D-06) + success panel, invited path preserved
+- [x] 33-04-PLAN.md — Register.jsx public signup form (D-01..D-06) + success panel, invited path preserved
 
 **UI hint**: yes
 
@@ -351,5 +351,5 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
-| 33. Public Signup Form & Approval Queue | v4.1 | 3/4 | In Progress|  |
+| 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete   | 2026-09-07 |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
