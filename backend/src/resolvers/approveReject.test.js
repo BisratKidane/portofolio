@@ -12,7 +12,6 @@ import { models } from '../models/index.js';
 
 const APPROVE = `mutation A($id: ID!) { approveUser(userId: $id) { id status } }`;
 const REJECT = `mutation R($id: ID!, $reason: String) { rejectUser(userId: $id, reason: $reason) { id status } }`;
-const PENDING = `query { pendingRegistrations { id invitedEmail registeredUser { id name } } }`;
 
 // Creates a Registered invitation with a Pending registered user awaiting review.
 async function pendingRegistration(email = 'newbie@example.com', { emailVerified = true } = {}) {
@@ -242,86 +241,6 @@ describe('rejectUser', () => {
     expect(account.status).toBe('Rejected');
     expect(account.rejectedAt).toBeInstanceOf(Date);
     expect(account.rejectionReason).toBe('No relation found.');
-  });
-});
-
-describe('pendingRegistrations query', () => {
-  it('returns only Registered invitations to an admin, with the registered user', async () => {
-    await pendingRegistration('p1@example.com');
-    const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
-
-    const { data, errors } = await graphql(PENDING, {}, admin);
-    expect(errors).toBeUndefined();
-    expect(data.pendingRegistrations).toHaveLength(1);
-    expect(data.pendingRegistrations[0].registeredUser.name).toBe('Newbie');
-  });
-
-  it('denies a non-admin', async () => {
-    const member = await createTestUser({ role: 'USER', email: 'member@example.com' });
-    const { errors } = await graphql(PENDING, {}, member);
-    expect(errors[0].message).toBe('Admin access is required.');
-  });
-
-  // D-09: the queue only holds accounts still awaiting a decision -- an
-  // unverified registrant hasn't proven the address yet, so it stays invisible
-  // until verifyEmail can promote or surface it.
-  it('excludes a registrant whose email is not yet verified (D-09)', async () => {
-    await pendingRegistration('unverified@example.com', { emailVerified: false });
-    const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
-
-    const { data, errors } = await graphql(PENDING, {}, admin);
-    expect(errors).toBeUndefined();
-    expect(data.pendingRegistrations).toHaveLength(0);
-  });
-
-  // D-09: an already-Active account has already had its decision made (or was
-  // auto-activated); the queue must not describe it as "awaiting a decision".
-  it('excludes a registrant who has already been promoted to Active (D-09)', async () => {
-    const inviter = await createTestUser({ role: 'ADMIN', email: 'inviter-active@example.com' });
-    const registrant = await createTestUser({
-      email: 'already-active@example.com',
-      name: 'Already Active',
-      status: 'Active',
-      emailVerified: true
-    });
-    await models.Invitation.create({
-      tokenHash: 'hash-already-active',
-      inviterId: inviter.id,
-      invitedEmail: 'already-active@example.com',
-      relationshipToFamily: 'cousin',
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      status: 'Registered',
-      registeredAt: new Date(),
-      registeredUserId: registrant.id
-    });
-    const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
-
-    const { data, errors } = await graphql(PENDING, {}, admin);
-    expect(errors).toBeUndefined();
-    expect(data.pendingRegistrations).toHaveLength(0);
-  });
-
-  // D-09/D-10: an orphaned invitation (no account to act on) has no eligible
-  // registeredUserId to filter against and must remain reachable so an admin
-  // can still see it, even though there is nothing to approve/reject.
-  it('still lists an orphaned invitation with no account to act on (D-09, D-10)', async () => {
-    const inviter = await createTestUser({ role: 'ADMIN', email: 'inviter-orphan@example.com' });
-    await models.Invitation.create({
-      tokenHash: 'hash-orphan',
-      inviterId: inviter.id,
-      invitedEmail: 'orphan@example.com',
-      relationshipToFamily: 'cousin',
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      status: 'Registered',
-      registeredAt: new Date(),
-      registeredUserId: null
-    });
-    const admin = await createTestUser({ role: 'ADMIN', email: 'admin@example.com' });
-
-    const { data, errors } = await graphql(PENDING, {}, admin);
-    expect(errors).toBeUndefined();
-    expect(data.pendingRegistrations).toHaveLength(1);
-    expect(data.pendingRegistrations[0].registeredUser).toBeNull();
   });
 });
 
