@@ -3,17 +3,48 @@ import { Alert, Box, Button, Link, Stack, TextField, Typography } from '@mui/mat
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import AuthShell from '../components/AuthShell.jsx';
+import {
+  validateFullName,
+  validateEmail,
+  validatePassword,
+  validateRelationshipNote,
+  MAX_RELATIONSHIP_NOTE_LENGTH,
+} from './Register.validation.js';
 
 export default function Register() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  const [form, setForm] = useState({ name: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', relationshipNote: '' });
+  const [touched, setTouched] = useState({ name: false, email: false, password: false, relationshipNote: false });
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
 
-  const handleSubmit = async (event) => {
+  const nameCheck = validateFullName(form.name);
+  const emailCheck = validateEmail(form.email);
+  const passwordCheck = validatePassword(form.password);
+  const noteCheck = validateRelationshipNote(form.relationshipNote);
+
+  // Blur-then-live timing (D-04): a field only shows an error once it has
+  // been touched (blurred, or all-touched-on-submit). Errors are derived
+  // fresh every render from `form` + the validators, never stored
+  // separately, so a touched field's error clears the instant it's fixed.
+  const nameError = touched.name && !nameCheck.valid ? nameCheck.message : null;
+  const emailError = touched.email && !emailCheck.valid ? emailCheck.message : null;
+  const passwordError = touched.password && !passwordCheck.valid ? passwordCheck.message : null;
+  const noteError = touched.relationshipNote && !noteCheck.valid ? noteCheck.message : null;
+
+  const handleFieldChange = (field) => (event) => {
+    const { value } = event.target;
+    setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleFieldBlur = (field) => () => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
+
+  const handleInvitedSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setLoading(true);
@@ -27,14 +58,40 @@ export default function Register() {
     }
   };
 
-  // Public self-registration is disabled — an account can only be created from
-  // a valid invitation link (?token=...).
+  const handlePublicSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+
+    const allValid = nameCheck.valid && emailCheck.valid && passwordCheck.valid && noteCheck.valid;
+    if (!allValid) {
+      // A submit with multiple invalid fields lights all of them up at once
+      // (D-04 / UI-SPEC validation contract) rather than one at a time.
+      setTouched({ name: true, email: true, password: true, relationshipNote: true });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await register({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        relationshipNote: form.relationshipNote,
+      });
+      setResult(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!token) {
     return (
       <AuthShell
-        eyebrow="Invitation required"
-        title="You need an invitation"
-        subtitle="Agne is invitation-only."
+        eyebrow="Request access"
+        title="Create your account"
+        subtitle="Tell us how you're related to the family — an administrator reviews every request."
         footer={
           <Typography variant="body2" color="text.secondary">
             Already have an account?{' '}
@@ -44,9 +101,94 @@ export default function Register() {
           </Typography>
         }
       >
-        <Alert severity="info">
-          Registration is by invitation only. Ask a family member to invite you, then open the link they send.
-        </Alert>
+        <Stack spacing={2.25}>
+          {error && <Alert severity="error">{error}</Alert>}
+          {result ? (
+            <>
+              {/*
+                D-06 / SEC-01 (Phase 32 D-08): this copy is generated
+                entirely from the form's own `form.email` state and never
+                reads `result.message` -- the same text renders whether or
+                not that address already has an account, which is what
+                keeps this branch enumeration-silent. Any future edit that
+                varies this copy by server response would break SEC-01.
+              */}
+              <Alert severity="success">Check {form.email} for a verification link.</Alert>
+              <Typography variant="body2" color="text.secondary">
+                Once you verify your email, an administrator reviews your request. You&apos;ll be able to sign in as
+                soon as they approve it.
+              </Typography>
+            </>
+          ) : (
+            <Box component="form" onSubmit={handlePublicSubmit} noValidate>
+              <Stack spacing={2.25}>
+                <TextField
+                  label="Full name"
+                  value={form.name}
+                  onChange={handleFieldChange('name')}
+                  onBlur={handleFieldBlur('name')}
+                  error={Boolean(nameError)}
+                  helperText={nameError}
+                  required
+                  fullWidth
+                  autoComplete="name"
+                />
+                <TextField
+                  label="Email address"
+                  type="email"
+                  value={form.email}
+                  onChange={handleFieldChange('email')}
+                  onBlur={handleFieldBlur('email')}
+                  error={Boolean(emailError)}
+                  helperText={emailError}
+                  required
+                  fullWidth
+                  autoComplete="email"
+                />
+                <TextField
+                  label="Password"
+                  type="password"
+                  value={form.password}
+                  onChange={handleFieldChange('password')}
+                  onBlur={handleFieldBlur('password')}
+                  error={Boolean(passwordError)}
+                  helperText={passwordError}
+                  required
+                  fullWidth
+                  autoComplete="new-password"
+                />
+                <TextField
+                  label="How are you related to the family?"
+                  value={form.relationshipNote}
+                  onChange={handleFieldChange('relationshipNote')}
+                  onBlur={handleFieldBlur('relationshipNote')}
+                  error={Boolean(noteError)}
+                  helperText={
+                    <Box component="span" sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{noteError || 'e.g. "cousin", "in-law", "family friend"'}</span>
+                      <Typography
+                        component="span"
+                        variant="caption"
+                        color={
+                          form.relationshipNote.length > MAX_RELATIONSHIP_NOTE_LENGTH ? 'error' : 'text.secondary'
+                        }
+                      >
+                        {`${form.relationshipNote.length}/${MAX_RELATIONSHIP_NOTE_LENGTH}`}
+                      </Typography>
+                    </Box>
+                  }
+                  required
+                  fullWidth
+                  multiline
+                  minRows={3}
+                />
+                <Button type="submit" variant="contained" size="large" fullWidth disabled={loading}>
+                  {loading ? 'Creating account…' : 'Create account'}
+                </Button>
+              </Stack>
+            </Box>
+          )}
+        </Stack>
       </AuthShell>
     );
   }
@@ -76,7 +218,7 @@ export default function Register() {
             </Typography>
           </>
         ) : (
-          <Box component="form" onSubmit={handleSubmit} noValidate>
+          <Box component="form" onSubmit={handleInvitedSubmit} noValidate>
             <Stack spacing={2.25}>
               <TextField
                 label="Full name"
