@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
-status: ready_to_plan
-stopped_at: Phase 32 complete (13/13) — ready to discuss Phase 33
-last_updated: 2026-09-03T09:28:33.364Z
-last_activity: 2026-09-03 -- Phase 32 complete (verification passed 8/8); quick task 260903-f0m closed review CR-01
+status: executing
+stopped_at: Completed 32-08-PLAN.md
+last_updated: "2026-09-07T11:49:47.624Z"
+last_activity: 2026-09-07 -- Phase 33 execution started
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 22
+  total_plans: 26
   completed_plans: 22
   percent: 60
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 33 — public signup form & approval queue
+**Current focus:** Phase 33 — public-signup-form-approval-queue
 
 ## Current Position
 
-Phase: 33
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-09-03
+Phase: 33 (public-signup-form-approval-queue) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 33
+Last activity: 2026-09-07 -- Phase 33 execution started
 
 Next: /gsd:verify-work 32 (re-verify SEC-01 now that CR-03 is closed, then close the phase)
 
