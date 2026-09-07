@@ -43,13 +43,13 @@ Base unit: MUI's `theme.spacing(1) = 8px` (unmodified default). Declared values 
 | 2xl | 48px | — |
 | 3xl | 64px | — |
 
-**Exceptions — pre-existing app-wide fractional multiples this phase reuses verbatim (do not invent new ones):**
+**Exceptions — pre-existing app-wide fractional multiples this phase reuses verbatim (do not invent new ones). Every row below is inherited from an existing file, not chosen by this phase; the `1.5` and `2.25` rows carry explicit file:line evidence at the UI-checker's request, but the "inherited, unchanged" classification applies uniformly across the table:**
 
 | Multiple | px | Where it's reused |
 |----------|-----|--------------------|
 | `1.25` | 10px | `AuthShell`'s header `Stack` spacing (unchanged, inherited) |
-| `1.5` | 12px | Gap between Approve/Reject buttons in the card footer; dialog content spacing |
-| `2.25` | 18px | Signup form field-to-field `Stack` spacing — matches `Login.jsx`/`Register.jsx`/`ResetPassword.jsx` exactly; do not use `md`(16px) instead, it would read inconsistent with every other auth form |
+| `1.5` | 12px | Gap between Approve/Reject buttons in the card footer; dialog content spacing (unchanged, inherited) — the exact `Stack ... spacing={1.5}` already wrapping the current Approve/Reject buttons in `frontend/src/pages/ApprovalsPage.jsx:149`, which this phase restructures (horizontal → vertical footer) but does not invent. Reusing `1.5` here is what preserves the existing action-stack rhythm through that restructuring — dropping to `sm`(8px) would be a new value with no antecedent in the file, and is the regression to avoid |
+| `2.25` | 18px | Signup form field-to-field `Stack` spacing (unchanged, inherited) — the app-wide auth-form field rhythm already used by every auth page: `frontend/src/pages/Login.jsx:43`, `frontend/src/pages/ForgotPassword.jsx:47` and `:58`, `frontend/src/pages/ResetPassword.jsx:51`, and — critically — `frontend/src/pages/Register.jsx:68` and `:80`, the very file this phase edits. Adopting `2.25` here is what keeps the signup form's field rhythm consistent with `Login.jsx` sitting beside it and with the invited-path form living in the same file; dropping to `md`(16px) would put two different field rhythms inside `Register.jsx` and make the public form visibly inconsistent with the login form beside it — that is the regression, not a valid alternative |
 | `2.5` | 20px | Queue card `Paper` padding at `xs` breakpoint (matches current `ApprovalsPage.jsx`) |
 | `3.5` | 28px | `AuthShell`'s `mb` after its header block (unchanged, inherited) |
 | `4.5` | 36px | `AuthShell`'s `Paper` padding at `md` breakpoint (unchanged, inherited) |
@@ -60,18 +60,22 @@ Pre-populated from: existing theme + sibling pages (no user input needed).
 
 ## Typography
 
+Exactly 4 distinct font sizes render across every surface this phase creates or restructures — 14 / 16 / 20 / 34:
+
 | Role | Size | Weight | Line Height | Used for |
 |------|------|--------|-------------|----------|
-| Label | 14px (`body2`) | 400 | 1.43 (MUI default) | Card email, "Registered {date}" footer text, note character counter, field default helper text |
+| Label | 14px (`body2`) | 400 | 1.43 (MUI default) | Card email, "Registered {date}" footer text, note character counter, field default helper text, **and the queue card's "Relationship note" section label** (see note below) |
 | Body | 16px (`body1`) | 400 | 1.6 | The relationship note itself (the card's primary reading content); signup form field values |
 | Heading | 20px (`h6`) | 700 | 1.25 | Queue card name (`Typography variant="h6"`) |
 | Display | 34px (`h4`, `2.125rem`) | 700 | 1.15 | Page titles — "Pending approvals", `AuthShell`'s "Create your account" — unchanged, inherited from `AuthShell`/`theme.js` |
 
-Plus one label-scale role already in `theme.js`, reused unchanged: **Overline** — 12px, weight 700, letter-spacing `0.12em` — used for the note's "Relationship note" section label and `AuthShell`'s eyebrow.
+**No 5th size — the "Relationship note" section label uses the Label role, not Overline.** An earlier draft of this contract put that label at Overline (12px) — a 5th size this phase would have introduced net-new to the queue card. Corrected: it now reuses the already-declared 14px **Label** role (`Typography variant="body2" color="text.secondary"`), matching the card's email/footer text exactly — see the Approval Queue Card Composition section below. `theme.js`'s Overline style (12px, weight 700, letter-spacing `0.12em`) still exists in the codebase and remains visible on screen only via `AuthShell`'s pre-existing eyebrow slot (e.g. the "Create your account" screen's "Request access" eyebrow) — that usage is inherited, unchanged chrome this phase does not touch (same "inherited, not chosen" classification as the spacing exceptions above), so it is not counted as a size this phase introduces. This phase's own new/restructured content — the signup form and the queue card — renders only the 4 sizes in the table above.
 
 Two new content weights this phase actually needs: **400 (regular)** for all body/label text, **700 (bold)** for headings/display — both already declared in `theme.js` (`h4`/`h6` fontWeight 700; base body fontWeight 400). No new weight is introduced. (`theme.js` separately uses 500/600 for `MuiInputLabel`/`MuiButton` — those are inherited component-level styles, not a new declaration for this phase.)
 
-**Hierarchy rule for the queue card (design risk #1):** name (Heading, 20/700) outranks the note (Body, 16/400) which outranks metadata — email, registration time (Label, 14/400, `text.secondary`). The note is deliberately typographically *larger* than the metadata around it, because it is the content an admin is actually judging.
+**Hierarchy rule for the queue card (design risk #1):** name (Heading, 20/700) outranks the note (Body, 16/400) which outranks metadata — email, registration time, and the "Relationship note" label itself (Label, 14/400, `text.secondary`). The note is deliberately typographically *larger* than the metadata around it, because it is the content an admin is actually judging.
+
+**Focal point for the signup form:** the accent-colored **"Create account"** button is the single highest-emphasis element on the screen — the only accent-colored element on the page (per the Color contract below) — positioned last in reading order after all four fields, so the downward path through the form ends exactly where the one available action is.
 
 Pre-populated from: `theme.js` (existing declared type scale) + `AuthShell.jsx`/`ApprovalsPage.jsx` (existing usages). No new sizes introduced.
 
@@ -100,7 +104,7 @@ Pre-populated from: `theme.js` `colors` object + `ApprovalsPage.jsx`'s existing 
 | Empty state heading | **"Nothing to review"** |
 | Empty state body | **"No one is waiting for approval right now. New self-registrations will appear here once they verify their email."** |
 | Error state | Render `err.message` verbatim inside `<Alert severity="error">` — matches the app-wide convention (`graphqlClient.js` already substitutes a more actionable message for network failures; do not wrap or replace a real server message with new copy) |
-| Destructive confirmation | Reject: dialog title **"Reject this request?"**; body **"They'll be notified they weren't approved. You can add a reason (optional) — it's kept for auditing but isn't required."**; reason field label **"Reason (optional)"**; confirm button **"Reject"** (filled, error color); escape hatch **"Cancel"** (plain text button) |
+| Destructive confirmation | Reject: dialog title **"Reject this request?"**; body **"They'll be notified they weren't approved. You can add a reason (optional) — it's kept for auditing but isn't required."**; reason field label **"Reason (optional)"**; confirm button **"Reject"** (filled, error color); escape hatch **"Keep pending"** (plain text button) — names the state the account stays in if the admin backs out, rather than a generic "Cancel" |
 
 ### Signup form copy (`/register`, no token) — REG-01 / REG-04
 
@@ -173,7 +177,7 @@ Paper
 2. **Gap:** 16px (`md`) before the note block.
 
 3. **Body — the relationship note** (design risk #2):
-   - Label: `Typography variant="overline" color="text.secondary"` — text **"Relationship note"**
+   - Label: `Typography variant="body2" color="text.secondary"` — text **"Relationship note"** (14px Label role — see Typography section above; not Overline)
    - Panel: `Box sx={{ mt: 0.5, p: 2, borderRadius: 3, backgroundColor: colors.bg, maxWidth: { xs: '100%', sm: 640 } }}` — the page-background tint (`#f5f6fb`) used as an inset "quoted" well, distinguishing free text from the white card surface without inventing a new color token. `maxWidth: 640` (≈65ch at 16px) keeps the paragraph's line length readable regardless of how wide the card itself is.
    - Text: `Typography variant="body1" sx={{ lineHeight: 1.6, whiteSpace: 'pre-wrap' }}` — plain string interpolation only (React's default escaping is sufficient per SEC-03; **never** `dangerouslySetInnerHTML` or markdown rendering on this field). Full text always shown — no truncation, no `noWrap`, no `-webkit-line-clamp`, no "show more" affordance, no `max-height`+`overflow`.
    - **Empty state** (note is null/empty — a normal state per D-08, not an error): same label, same panel styling, text becomes `Typography variant="body1" color="text.secondary"` reading **"No note provided."** — never omit the block entirely (the old `Field` helper in `ApprovalsPage.jsx` returned `null` for falsy values; that pattern must not carry over for this field).
@@ -186,6 +190,8 @@ Paper
      - **Approve** — `Button variant="contained" color="success" startIcon={<CheckCircleRoundedIcon/>}` — text "Approve"
      - **Reject** — `Button variant="outlined" color="error" startIcon={<CancelRoundedIcon/>}` — text "Reject", opens the confirm dialog
 
+     (Bare-verb labels — "Approve"/"Reject", not "Approve this account" — are acceptable here because the person's name sits directly above in the card header, giving the verb unambiguous context without redundant restatement.)
+
 **Card-to-card spacing:** `Stack spacing={3}` (24px) between cards — wider than the current 16px row gap, because these cards are now variable-height (D-08) and need a clearer separation cue than a tight table-row rhythm would give. The `Paper` border+radius already gives each card a hard boundary regardless of height, so 24px is a comfortable, not excessive, gap.
 
 ### Visual weight ladder for the destructive action (design risk #3)
@@ -193,7 +199,7 @@ Paper
 Three escalating tiers, never skip a tier:
 
 1. **At rest:** Approve is `contained` + `success` green (high emphasis, inviting) — Reject is `outlined` + `error` red (present, but visually quieter — an outline, not a fill).
-2. **On Reject click:** opens a dialog (D-09) — no destructive action fires yet. Dialog's own "Cancel" is a plain text button (lowest emphasis, the easy way out); the dialog's "Reject" confirm button is the *only* place `contained` + `error` red (highest emphasis, filled) appears in this whole surface — reserved exclusively for the irreversible commit.
+2. **On Reject click:** opens a dialog (D-09) — no destructive action fires yet. The dialog's escape hatch, **"Keep pending"**, is a plain text button (lowest emphasis, the easy way out — named for the state the account stays in, not a generic "Cancel"); the dialog's "Reject" confirm button is the *only* place `contained` + `error` red (highest emphasis, filled) appears in this whole surface — reserved exclusively for the irreversible commit.
 3. **Reason field** inside the dialog is explicitly optional (D-09) — label reads "Reason (optional)", nothing blocks submission when empty.
 
 ### Scannability at scale (the D-07/D-08 tension)
@@ -233,14 +239,14 @@ Pre-populated from: CONTEXT.md's discretion grant ("carry the established shapes
 
 **Strict separation of concerns:** the top-of-form `<Alert severity="error">` is reserved *exclusively* for server-side errors returned after a submit attempt (network failure, or anything the client-side checks didn't catch). It must never duplicate a message already shown inline on a field — inline = client-side, top `Alert` = server-side backstop. This is the direct interaction-level expression of D-04's "client-side first, server as backstop."
 
-**Per-field rules and exact copy** — copied verbatim from the backend policy modules' own messages where a server equivalent exists, per D-04's constraint that client rules must not be independent, more-permissive approximations of the server's:
+**Per-field rules and exact copy** — D-04's constraint governs the underlying validation *logic* (required/optional, length caps, format checks), not literal message wording. Every threshold and format check below is pinned 1:1 to its backend policy module. Message wording is verbatim where noted below; the two required-field messages are client-only phrasing that reads naturally as inline `helperText` rather than the server's terser wording — both still enforce "must be non-empty" identically to the server, so this is not the drift D-04 warns against (that warning targets logic silently becoming more permissive, not message wording):
 
 | Field | Rule | Error copy | Server source (for parity) |
 |-------|------|-------------|------------------------------|
-| Full name | required; ≤255 chars | "Enter your name." / "Name must be 255 characters or fewer." | `backend/src/utils/namePolicy.js` (`MAX_NAME_LENGTH = 255`) — message copied verbatim |
-| Email address | required; valid format; ≤254 chars | "Enter your email address." / "Enter a valid email address." / "Email must be 254 characters or fewer." | `backend/src/utils/emailPolicy.js` (`MAX_EMAIL_LENGTH = 254`, `isEmail`) — messages copied verbatim |
-| Password | required; ≥8 chars | "Password must be at least 8 characters." | `backend/src/utils/passwordPolicy.js` — message copied verbatim (no strength meter — explicitly deferred, see REQUIREMENTS.md history) |
-| Relationship note | required on the public path only (D-03); ≤500 chars | "Tell us how you're related to the family." / "Relationship note must be 500 characters or fewer." | `backend/src/utils/relationshipNotePolicy.js` (500-char cap only — the "required" rule itself is UI-only, since the backend leaves the note optional per Phase 32 D-06) |
+| Full name | required; ≤255 chars | "Enter your name." (client-only phrasing — server: `namePolicy.js` throws **"Name is required."**) / "Name must be 255 characters or fewer." (verbatim match) | `backend/src/utils/namePolicy.js` (`MAX_NAME_LENGTH = 255`) |
+| Email address | required; valid format; ≤254 chars | "Enter your email address." (client-only phrasing — server: `emailPolicy.js` throws **"Email is required."**) / "Enter a valid email address." (verbatim match) / "Email must be 254 characters or fewer." (verbatim match) | `backend/src/utils/emailPolicy.js` (`MAX_EMAIL_LENGTH = 254`, `isEmail`) |
+| Password | required; ≥8 chars | "Password must be at least 8 characters." (verbatim match — no strength meter, explicitly deferred, see REQUIREMENTS.md history) | `backend/src/utils/passwordPolicy.js` |
+| Relationship note | required on the public path only (D-03); ≤500 chars | "Tell us how you're related to the family." (client-only — the "required" rule itself is UI-only; no server equivalent exists since the backend leaves the note optional per Phase 32 D-06) / "Relationship note must be 500 characters or fewer." (verbatim match) | `backend/src/utils/relationshipNotePolicy.js` (500-char cap only) |
 
 **Constraint the planner/executor MUST honour (repeating D-04's explicit warning):** these four thresholds (255 / 254 / 8 / 500) must stay numerically pinned to the backend policy modules above. Since frontend and backend are separate npm workspaces, a literal cross-workspace `import` may not be practical — at minimum, declare the frontend constants with an inline comment citing the exact backend file, and add a colocated test that fails loudly if the numbers ever drift apart. This is the exact bug class (CR-01, 32-REVIEW.md) that must not repeat.
 
