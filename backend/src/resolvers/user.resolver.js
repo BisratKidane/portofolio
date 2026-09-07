@@ -152,11 +152,11 @@ export const userResolvers = {
       return models.User.findAll({ where: { familyMemberId: null }, order: [['createdAt', 'DESC']] });
     },
     // Admin-only (D-11): self-registrations awaiting an approval decision --
-    // Pending AND email-verified, the same two-condition eligibility rule
-    // invitation.resolver.js's pendingRegistrations already applies to its
-    // own registeredUserId lookup. Coexists with pendingRegistrations for
-    // this phase (invitation-flow specific); a null relationshipNote is a
-    // normal state and is not filtered out (F-01, REG-05).
+    // Pending AND email-verified. This is now the only approval queue query
+    // in the backend (D-10, Phase 33, removed the invitation-flow-specific
+    // one once invited registrants started auto-activating on verification);
+    // a null relationshipNote is a normal state and is not filtered out
+    // (F-01, REG-05).
     pendingApprovals: async (_parent, _args, { models, user }) => {
       requireAdmin(user);
       return models.User.findAll({
