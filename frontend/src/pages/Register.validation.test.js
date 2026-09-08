@@ -82,7 +82,20 @@ describe('client/server validation agreement (D-04)', () => {
   it.each([
     ['ada@example.com', true],
     ['not-an-email', false],
-    [`${'a'.repeat(243)}@example.com`, false]
+    [`${'a'.repeat(243)}@example.com`, false],
+    // CR-01 (33-REVIEW.md): these 9 inputs were empirically confirmed to be
+    // accepted by the old hand-rolled EMAIL_FORMAT regex and rejected by the
+    // real backend assertRegistrationEmail (validator.isEmail). If the client
+    // regressed to a hand-rolled approximation, these rows would go RED.
+    ['ada@gmail..com', false],
+    ['ada..lovelace@gmail.com', false],
+    ['.ada@gmail.com', false],
+    ['ada@gmail.com.', false],
+    ['ada@exam_ple.com', false],
+    ['ada@-example.com', false],
+    ['a@b.c', false],
+    ['ada@[127.0.0.1]', false],
+    [`${'a'.repeat(65)}@gmail.com`, false]
   ])('email %# agrees with emailPolicy.js', (value, expected) => {
     expect(validateEmail(value).valid).toBe(expected);
     expect(backendAccepts(assertRegistrationEmail, value)).toBe(expected);
@@ -98,7 +111,14 @@ describe('client/server validation agreement (D-04)', () => {
 
   it.each([
     ['a'.repeat(500), true],
-    ['a'.repeat(501), false]
+    ['a'.repeat(501), false],
+    // CR-02 (33-REVIEW.md): 500 meaningful characters plus one trailing
+    // space is raw length 501. The old code trimmed before checking the cap,
+    // so this passed client-side and failed server-side (raw, untrimmed
+    // check in relationshipNotePolicy.js). Register.jsx submits the raw
+    // value, so this is the real submitted-vs-checked mismatch, not a
+    // hypothetical one.
+    [`${'a'.repeat(500)} `, false]
   ])('relationship note length %# agrees with relationshipNotePolicy.js', (value, expected) => {
     expect(validateRelationshipNote(value).valid).toBe(expected);
     expect(backendAccepts(assertRelationshipNoteLength, value)).toBe(expected);
