@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
-status: executing
-stopped_at: Completed 32-08-PLAN.md
-last_updated: "2026-09-07T11:49:47.624Z"
-last_activity: 2026-09-07 -- Phase 33 execution started
+status: ready_to_plan
+stopped_at: Phase 33 complete (4/4) — ready to discuss Phase 34
+last_updated: 2026-09-08T11:42:39.553Z
+last_activity: 2026-09-08 -- Phase 33 complete (5/5 must-haves; 2 visual UAT items open); quick task 260908-geq closed review CR-01/CR-02/WR-01
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 26
-  completed_plans: 22
-  percent: 60
+  completed_plans: 26
+  percent: 80
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 33 — public-signup-form-approval-queue
+**Current focus:** Phase 34 — open registration switch & quality gate
 
 ## Current Position
 
-Phase: 33 (public-signup-form-approval-queue) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 33
-Last activity: 2026-09-07 -- Phase 33 execution started
+Phase: 34
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-08
 
 Next: /gsd:verify-work 32 (re-verify SEC-01 now that CR-03 is closed, then close the phase)
 
@@ -68,7 +68,7 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 
 **Velocity:**
 
-- Total plans completed: 103 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
+- Total plans completed: 107 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
 - Average duration: - min
 - Total execution time: 0 hours (v4.0)
 
@@ -90,6 +90,7 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 | 30 | 4 | - | - |
 | 31 | 5 | - | - |
 | 32 | 13 | - | - |
+| 33 | 4 | - | - |
 
 **Recent Trend:**
 

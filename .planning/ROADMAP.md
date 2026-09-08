@@ -122,7 +122,7 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
     4. Password rules, email normalisation, and verification-token handling on the tokenless path run the same code as the invited path — no second, weaker implementation.
     5. The existing per-IP registration rate limit applies to the tokenless path, and the relationship note is length-capped server-side.
 
-- [x] **Phase 33: Public Signup Form & Approval Queue** — the two surfaces people actually touch (completed 2026-09-07)
+- [x] **Phase 33: Public Signup Form & Approval Queue** — the two surfaces people actually touch (verification: 5/5 must-haves passed; 2 visual checks remain in 33-HUMAN-UAT.md — human-approved to close. Code review found 2 Critical + 1 Warning, all closed by quick task 260908-geq) (completed 2026-09-08)
   - Requirements: REG-01, REG-04, APPR-02, APPR-06
   - Success criteria:
     1. `/register` with no token renders a signup form (name, email, password, required relationship note) instead of the invitation-only dead end.
@@ -351,5 +351,5 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 30. Approval Moves to the Account | v4.1 | 4/4 | Complete    | 2026-08-28 |
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
-| 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete   | 2026-09-07 |
+| 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete    | 2026-09-08 |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
