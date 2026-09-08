@@ -125,3 +125,7 @@ None - no external service configuration required.
 ---
 *Phase: quick (260908-geq-p33-validator-parity)*
 *Completed: 2026-09-08*
+
+## Self-Check: PASSED
+
+All created/modified files confirmed present on disk (`frontend/src/pages/Register.validation.js`, `frontend/src/pages/Register.validation.test.js`, `frontend/src/pages/ApprovalsPage.jsx`, `frontend/src/pages/ApprovalsPage.test.jsx`, this SUMMARY.md). All 5 commits confirmed present in `git log --oneline --all`: `f2c05dd`, `b0d9b08`, `e5d6d78`, `edc2e4a`, `93dcfe6`.
