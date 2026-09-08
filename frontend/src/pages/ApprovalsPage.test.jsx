@@ -17,6 +17,16 @@ const ROW = {
   createdAt: '1700000000000'
 };
 
+// WR-01 regression: a second, unrelated pending row used to prove a failed
+// action on ROW never hides ROW2's still-good data.
+const ROW2 = {
+  id: '20',
+  name: 'Ada L',
+  email: 'ada.l@example.com',
+  relationshipNote: 'Cousin on the maternal side',
+  createdAt: '1700000100000'
+};
+
 // D-08: an empty/null note is a normal state, not an error -- must render
 // "No note provided." rather than an empty gap.
 const ROW_NO_NOTE = { ...ROW, id: '10', relationshipNote: null };
@@ -143,5 +153,30 @@ describe('ApprovalsPage', () => {
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
     expect(screen.queryByText('Nothing to review')).not.toBeInTheDocument();
     expect(screen.queryByText('Joseph Q')).not.toBeInTheDocument();
+  });
+
+  it('a failed row action shows a distinct error banner without hiding other populated rows (WR-01)', async () => {
+    graphqlRequest
+      .mockResolvedValueOnce({ pendingApprovals: [ROW, ROW2] })
+      .mockRejectedValueOnce(new Error('This account is not awaiting a decision.'))
+      .mockResolvedValueOnce({ pendingApprovals: [ROW2] });
+
+    render(<ApprovalsPage />);
+    await screen.findByText('Joseph Q');
+    await screen.findByText('Ada L');
+
+    await userEvent.click(screen.getAllByRole('button', { name: /approve/i })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText('This account is not awaiting a decision.')).toBeInTheDocument();
+    });
+    // Joseph Q was refreshed away by the recovery load() -- the row lost the
+    // concurrent-admin race (approveReject.test.js documents this scenario).
+    await waitFor(() => {
+      expect(screen.queryByText('Joseph Q')).not.toBeInTheDocument();
+    });
+    // Ada L's unrelated, still-good row must remain visible throughout --
+    // a failed action must never blank the rest of the populated queue.
+    expect(screen.getByText('Ada L')).toBeInTheDocument();
   });
 });
