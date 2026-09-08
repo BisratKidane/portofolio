@@ -25,10 +25,10 @@ Approval now means exactly one thing: **is this stranger actually family?**
 
 ### Self-Registration (REG)
 
-- [ ] **REG-01**: A visitor can reach `/register` with no invitation token and see a real signup form — name, email, password, and a required "how are you related to the family?" note — instead of today's "Agne is invitation-only" dead end.
+- [x] **REG-01**: A visitor can reach `/register` with no invitation token and see a real signup form — name, email, password, and a required "how are you related to the family?" note — instead of today's "Agne is invitation-only" dead end.
 - [x] **REG-02**: The `register` mutation accepts a request with no invitation token, creating an account from the user's own email with `status: 'Pending'` and email unverified.
-- [x] **REG-03**: The relationship note the self-registrant writes is stored with the account and shown to admins at approval time — it is the only context an admin has to judge a stranger on. *(Backend half complete: Phase 32 stores the note on the account and exposes it via the pendingApprovals query. The UI half — actually showing it to admins — ships in Phase 33.)*
-- [ ] **REG-04**: After submitting, a self-registrant is told plainly what happens next: verify your email, then an administrator reviews your request before you can sign in.
+- [x] **REG-03**: The relationship note the self-registrant writes is stored with the account and shown to admins at approval time — it is the only context an admin has to judge a stranger on. *(Complete: Phase 32 stores the note and exposes it via `pendingApprovals`; Phase 33 renders it in full on each admin queue card — never truncated, since it is the only context an admin has.)*
+- [x] **REG-04**: After submitting, a self-registrant is told plainly what happens next: verify your email, then an administrator reviews your request before you can sign in.
 - [x] **REG-05**: A self-registration whose email is not yet verified never appears in the admin approval queue.
 - [x] **REG-06**: Verifying the email moves a self-registration into the admin approval queue (the account stays `Pending`) and notifies administrators that someone is waiting.
 - [x] **REG-07**: Password strength, email normalisation, and email-verification token handling on the tokenless path behave identically to the existing invited path — no second, weaker implementation.
@@ -43,11 +43,11 @@ Approval now means exactly one thing: **is this stranger actually family?**
 ### Approval (APPR)
 
 - [x] **APPR-01**: An admin can approve or reject a pending account directly, acting on the account itself rather than on an invitation record — a self-registrant has no invitation to act on.
-- [ ] **APPR-02**: The admin approval queue lists every account awaiting a decision with the name, email, relationship note, and when they registered — enough to decide without leaving the page.
+- [x] **APPR-02**: The admin approval queue lists every account awaiting a decision with the name, email, relationship note, and when they registered — enough to decide without leaving the page.
 - [x] **APPR-03**: Approving activates the account and emails the person that they can now sign in; rejecting blocks sign-in and emails them, including the reason when the admin gives one.
 - [x] **APPR-04**: Approve and reject are admin-only, enforced server-side, and written to the audit log with the acting admin and the target account.
 - [x] **APPR-05**: The login gate is unchanged: sign-in still requires a verified email **and** an `Active` account, with the existing distinct messages for pending, rejected, and disabled accounts.
-- [ ] **APPR-06**: An approved self-registrant still has to be linked to a family member before reaching the app — they land on the existing `/pending` screen until an admin links them via the existing `/link-accounts` flow.
+- [x] **APPR-06**: An approved self-registrant still has to be linked to a family member before reaching the app — they land on the existing `/pending` screen until an admin links them via the existing `/link-accounts` flow.
 
 ### Open-Registration Control (ADMIN)
 
@@ -59,7 +59,7 @@ Approval now means exactly one thing: **is this stranger actually family?**
 
 - [x] **SEC-01**: The public signup path gives the same response whether or not that email already has an account, so it cannot be used to discover who has one; the real account owner is told by email that someone tried to register with their address. *(Partial: the originally-reported CR-01 enumeration oracle was closed by Plan 32-05, but 32-REVIEW.md's CR-03 finding -- models.User.findOne and createVerificationToken() running outside the uniform-response guard -- meant the underlying claim was not yet fully true. Plan 32-08 moves both calls inside the guarded path and adds regression coverage; re-verify via /gsd:verify-work 32 before re-checking this box.)*
 - [x] **SEC-02**: The existing per-IP rate limit on registration covers the tokenless path, so an open form cannot be used to flood the approval queue or probe the system.
-- [x] **SEC-03**: The relationship note is length-capped on the server and rendered safely everywhere it is shown — the admin UI and the admin notification email included. *(Backend half complete: Phase 32 caps the note's length server-side and escapes it in the admin notification email. The admin UI half ships and is verified in Phase 33.)*
+- [x] **SEC-03**: The relationship note is length-capped on the server and rendered safely everywhere it is shown — the admin UI and the admin notification email included. *(Complete: Phase 32 caps the note server-side and escapes it in the admin notification email; Phase 33 renders it in the admin UI as a plain React text child — no `dangerouslySetInnerHTML`, no markdown — with a regression test proving an HTML-bearing note renders as literal text.)*
 - [ ] **SEC-04**: Adversarial tests prove the boundaries hold: a non-admin cannot create an invitation, cannot approve or reject an account, and cannot register without a token while public registration is off.
 - [ ] **SEC-05**: A self-registered account cannot reach any authenticated surface before both gates pass — proven against the resolvers, not just the client-side route guard.
 
