@@ -11,22 +11,33 @@ import { isPublicRegistrationEnabled, getPublicRegistrationSettingRow, PUBLIC_RE
 // updatedAt/updatedById attribution, never to recompute `enabled` (that would
 // be a third independent derivation of the predicate, the exact bug class
 // D-07 Layer 1 exists to prevent).
+//
+// Both reads run inside one transaction (34-REVIEW.md WR-01): without it, a
+// flip committed between the `enabled` read and the row read pairs one
+// state's `enabled` with the OTHER state's attribution -- e.g. "Opened by
+// Alice on 9 Sep" when Alice actually closed it. MySQL's REPEATABLE READ
+// gives every statement in this transaction the same snapshot, so no lock
+// is needed on this read-only path.
 async function buildPublicRegistrationSettingPayload(models) {
-  const enabled = await isPublicRegistrationEnabled(models);
-  const row = await getPublicRegistrationSettingRow(models);
+  const sequelize = models.AppSetting.sequelize;
+  return sequelize.transaction(async (t) => {
+    const opts = { transaction: t };
+    const enabled = await isPublicRegistrationEnabled(models, opts);
+    const row = await getPublicRegistrationSettingRow(models, opts);
 
-  if (!row || row.updatedById === null) {
-    // "Not changed since setup." -- either the row is absent (migration 021
-    // never applied) or it still carries the migration-seeded updatedById
-    // IS NULL state.
-    return { enabled, updatedAt: null, updatedByName: null };
-  }
+    if (!row || row.updatedById === null) {
+      // "Not changed since setup." -- either the row is absent (migration 021
+      // never applied) or it still carries the migration-seeded updatedById
+      // IS NULL state.
+      return { enabled, updatedAt: null, updatedByName: null };
+    }
 
-  const actor = await models.User.findByPk(row.updatedById);
-  // Returning the raw Date: GraphQL's String coercion calls valueOf() and
-  // yields an epoch-ms string (e.g. "1757404800000") -- the exact shape
-  // AdminMemberTable.jsx's formatWhen already parses.
-  return { enabled, updatedAt: row.updatedAt, updatedByName: actor?.name ?? null };
+    const actor = await models.User.findByPk(row.updatedById, opts);
+    // Returning the raw Date: GraphQL's String coercion calls valueOf() and
+    // yields an epoch-ms string (e.g. "1757404800000") -- the exact shape
+    // AdminMemberTable.jsx's formatWhen already parses.
+    return { enabled, updatedAt: row.updatedAt, updatedByName: actor?.name ?? null };
+  });
 }
 
 export const settingResolvers = {
