@@ -4,7 +4,8 @@ import {
   sendAccountRejectedEmail,
   sendPendingRegistrationEmail,
   sendInvitationEmail,
-  sendRegistrationAttemptEmail
+  sendRegistrationAttemptEmail,
+  sendVerificationEmail
 } from './mailer.js';
 import { env } from '../config/env.js';
 
@@ -147,6 +148,30 @@ describe('sendInvitationEmail', () => {
     expect(html).toContain('&lt;u&gt;hi&lt;/u&gt;');
     expect(html).not.toContain('<i>Bob</i>');
     expect(html).not.toContain('<u>hi</u>');
+  });
+
+  it('promises "verify then sign in", never a review/approval step (D-08, W-2)', async () => {
+    const { text, html } = await renderedMessage(
+      sendInvitationEmail({ to: 'invitee@example.com', url: 'https://example.com/register?token=abc' })
+    );
+
+    expect(text).toMatch(/sign in right away/i);
+    expect(html).toMatch(/sign in right away/i);
+    expect(text).not.toMatch(/review|approv/i);
+    expect(html).not.toMatch(/review|approv/i);
+  });
+});
+
+describe('sendVerificationEmail', () => {
+  it('is path-neutral: confirms the address without promising activation or a review (D-09, W-2)', async () => {
+    const { text, html } = await renderedMessage(
+      sendVerificationEmail({ to: 'new@example.com', token: 'tok-123' })
+    );
+
+    expect(text).toMatch(/confirm this is your email address/i);
+    expect(html).toMatch(/confirm this is your email address/i);
+    expect(text).not.toMatch(/activate your account/i);
+    expect(html).not.toMatch(/activate your account/i);
   });
 });
 
