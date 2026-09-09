@@ -332,7 +332,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 34-08-PLAN.md — D-13 mutation testing: M1-M8 applied, run, and recorded with verbatim failure messages, then restored
+- [x] 34-08-PLAN.md — D-13 mutation testing: M1-M8 applied, run, and recorded with verbatim failure messages, then restored
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
@@ -380,4 +380,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete    | 2026-09-08 |
-| 34. Open-Registration Switch & Quality Gate | v4.1 | 7/9 | In Progress|  |
+| 34. Open-Registration Switch & Quality Gate | v4.1 | 8/9 | In Progress|  |
