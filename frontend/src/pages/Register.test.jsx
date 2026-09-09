@@ -11,9 +11,23 @@ vi.mock('../api/graphqlClient.js', () => ({
 
 import { graphqlRequest } from '../api/graphqlClient.js';
 
+// Register.jsx will fire `publicRegistrationEnabled` before `register` (plan
+// 34-06). Dispatching on query text -- never on call order -- means
+// inserting that query ahead of the mutation can't shift any assertion in
+// this file onto the wrong response (E-6). The shared default is the door
+// OPEN, so every existing tokenless test keeps describing the same scenario
+// it describes today.
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  graphqlRequest.mockImplementation((query) => {
+    if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+    if (query.includes('register(token'))
+      return Promise.resolve({
+        register: { message: 'Registration received. Verify your email to activate your account.' }
+      });
+    return Promise.resolve({});
+  });
 });
 
 function renderRegister(token = 'invite-token-123') {
@@ -46,8 +60,15 @@ describe('Register page (invitation-only)', () => {
   });
 
   it('registers with the token + name + password (no email field) and shows the confirmation', async () => {
-    graphqlRequest.mockResolvedValueOnce({
-      register: { message: 'Registration received. Verify your email — then an administrator will review your account.' }
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+      if (query.includes('register(token'))
+        return Promise.resolve({
+          register: {
+            message: 'Registration received. Verify your email — then an administrator will review your account.'
+          }
+        });
+      return Promise.resolve({});
     });
 
     renderRegister('tok-abc');
@@ -67,7 +88,11 @@ describe('Register page (invitation-only)', () => {
   });
 
   it('shows an error alert and keeps the form on a rejected registration', async () => {
-    graphqlRequest.mockRejectedValueOnce(new Error('This invitation link has expired.'));
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+      if (query.includes('register(token')) return Promise.reject(new Error('This invitation link has expired.'));
+      return Promise.resolve({});
+    });
 
     renderRegister('tok-expired');
 
@@ -107,8 +132,11 @@ describe('Register page (invitation-only)', () => {
   });
 
   it('submitting a fully valid tokenless form calls register with the correct shape and shows the D-06 success copy, never the server message', async () => {
-    graphqlRequest.mockResolvedValueOnce({
-      register: { message: 'a message the UI must never render on this branch' }
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+      if (query.includes('register(token'))
+        return Promise.resolve({ register: { message: 'a message the UI must never render on this branch' } });
+      return Promise.resolve({});
     });
 
     renderRegister(null);
