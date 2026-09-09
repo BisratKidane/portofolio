@@ -454,3 +454,43 @@ describe('SEC-05 — no Pending self-registrant reaches any authenticated root f
   // without first passing a guarded root field, so root-level coverage is
   // sufficient for SEC-05's claim.
 });
+
+// SEC-05 says "any authenticated surface", not "any GraphQL resolver".
+// backend/src/routes/photo.routes.js mounts three Express routes at
+// /api/family-members/:id/photo that all call getUserFromRequest then
+// requireAuth/requireFamilyAccess and map the throw to a status code -- but
+// nothing before this file asserted a Pending token gets 401 there. The
+// schema-driven sweep above only ever enumerates the GraphQL schema and
+// cannot see this surface by construction.
+describe('SEC-05 — the non-GraphQL authenticated surface', () => {
+  it.each(['get', 'post', 'delete'])(
+    '%s /api/family-members/:id/photo refuses a Pending token with 401',
+    async (method) => {
+      const pending = await createTestUser({
+        status: 'Pending',
+        emailVerified: true,
+        email: `sec05-photo-${method}@example.com`
+      });
+      const token = signToken(pending);
+
+      // No file attached to the POST case: the guard runs before any
+      // multipart handling, and a 401 before upload is exactly the property
+      // being asserted here.
+      const res = await httpClient()
+        [method]('/api/family-members/1/photo')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('You must be logged in to perform this action.');
+    }
+  );
+
+  // Closing note: SEC-05 now covers, end to end -- the GraphQL root-field
+  // sweep above (schema-driven, all 28 non-allowlisted fields), the
+  // null-resolving Query.me case, and these three Express routes
+  // (photo.routes.js), the ONE non-GraphQL authenticated surface in this
+  // codebase today. Any new authenticated surface added later (a new
+  // Express route mounted the way photo.routes.js is, or a new GraphQL root
+  // field) must join one of these three -- the schema-driven sweep only
+  // ever enumerates the GraphQL schema and cannot see a new Express route.
+});
