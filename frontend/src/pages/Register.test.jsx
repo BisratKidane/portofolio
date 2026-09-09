@@ -11,9 +11,23 @@ vi.mock('../api/graphqlClient.js', () => ({
 
 import { graphqlRequest } from '../api/graphqlClient.js';
 
+// Register.jsx will fire `publicRegistrationEnabled` before `register` (plan
+// 34-06). Dispatching on query text -- never on call order -- means
+// inserting that query ahead of the mutation can't shift any assertion in
+// this file onto the wrong response (E-6). The shared default is the door
+// OPEN, so every existing tokenless test keeps describing the same scenario
+// it describes today.
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  graphqlRequest.mockImplementation((query) => {
+    if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+    if (query.includes('register(token'))
+      return Promise.resolve({
+        register: { message: 'Registration received. Verify your email to activate your account.' }
+      });
+    return Promise.resolve({});
+  });
 });
 
 function renderRegister(token = 'invite-token-123') {
@@ -28,10 +42,12 @@ function renderRegister(token = 'invite-token-123') {
 }
 
 describe('Register page (invitation-only)', () => {
-  it('renders the public signup form with all four fields, locked AuthShell chrome, and no invitation-only copy', () => {
+  it('renders the public signup form with all four fields, locked AuthShell chrome, and no invitation-only copy', async () => {
     renderRegister(null);
 
-    expect(screen.getByText('Request access')).toBeInTheDocument();
+    // Awaited: plan 34-06 gates this branch behind a `publicRegistrationEnabled`
+    // round-trip, so the form no longer paints synchronously on mount.
+    expect(await screen.findByText('Request access')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Create your account' })).toBeInTheDocument();
     expect(
       screen.getByText("Tell us how you're related to the family — an administrator reviews every request.")
@@ -46,8 +62,15 @@ describe('Register page (invitation-only)', () => {
   });
 
   it('registers with the token + name + password (no email field) and shows the confirmation', async () => {
-    graphqlRequest.mockResolvedValueOnce({
-      register: { message: 'Registration received. Verify your email — then an administrator will review your account.' }
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+      if (query.includes('register(token'))
+        return Promise.resolve({
+          register: {
+            message: 'Registration received. Verify your email — then an administrator will review your account.'
+          }
+        });
+      return Promise.resolve({});
     });
 
     renderRegister('tok-abc');
@@ -67,7 +90,11 @@ describe('Register page (invitation-only)', () => {
   });
 
   it('shows an error alert and keeps the form on a rejected registration', async () => {
-    graphqlRequest.mockRejectedValueOnce(new Error('This invitation link has expired.'));
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+      if (query.includes('register(token')) return Promise.reject(new Error('This invitation link has expired.'));
+      return Promise.resolve({});
+    });
 
     renderRegister('tok-expired');
 
@@ -79,10 +106,25 @@ describe('Register page (invitation-only)', () => {
     expect(screen.getByLabelText('Full name', { exact: false })).toBeInTheDocument();
   });
 
+  it('D-08: an invited visitor sees the form with zero added latency, and a valid invitation still registers while the public door is closed', () => {
+    renderRegister('tok-invited');
+
+    // SYNCHRONOUS on purpose -- this is the structural proof that no loading
+    // gate was hoisted above `if (!token)` (D-08). If this assertion is ever
+    // made `await`-tolerant, the regression it guards becomes invisible: an
+    // invited visitor would silently start seeing the same added latency as
+    // the public path, even though a valid invitation vouches for them
+    // already and needs no `publicRegistrationEnabled` round-trip.
+    expect(screen.getByLabelText('Full name', { exact: false })).toBeInTheDocument();
+    expect(graphqlRequest).not.toHaveBeenCalledWith(expect.stringContaining('publicRegistrationEnabled'), expect.anything());
+  });
+
   it('shows an inline error on blur for an empty "Full name" field, and clears it live once a valid value is typed', async () => {
     renderRegister(null);
 
-    const nameField = screen.getByLabelText('Full name', { exact: false });
+    // Awaited: plan 34-06 gates this branch behind a `publicRegistrationEnabled`
+    // round-trip, so the form no longer paints synchronously on mount.
+    const nameField = await screen.findByLabelText('Full name', { exact: false });
     await userEvent.click(nameField);
     await userEvent.tab();
 
@@ -96,24 +138,39 @@ describe('Register page (invitation-only)', () => {
   it('submitting the empty tokenless form shows all four inline errors at once and does not call graphqlRequest', async () => {
     renderRegister(null);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    // Awaited: plan 34-06 gates this branch behind a `publicRegistrationEnabled`
+    // round-trip, so the form no longer paints synchronously on mount.
+    const submitButton = await screen.findByRole('button', { name: 'Create account' });
+    await userEvent.click(submitButton);
 
     expect(await screen.findByText('Enter your name.')).toBeInTheDocument();
     expect(screen.getByText('Enter your email address.')).toBeInTheDocument();
     expect(screen.getByText('Password must be at least 8 characters.')).toBeInTheDocument();
     expect(screen.getByText("Tell us how you're related to the family.")).toBeInTheDocument();
 
-    expect(graphqlRequest).not.toHaveBeenCalled();
+    // Scoped to the mutation, not "no network calls at all": once plan 34-06
+    // lands, Register.jsx legitimately fires `publicRegistrationEnabled` on
+    // mount. This test's claim is "an invalid submit does not attempt
+    // registration", not "the page makes no network calls at all".
+    expect(graphqlRequest).not.toHaveBeenCalledWith(expect.stringContaining('register(token'), expect.anything());
   });
 
   it('submitting a fully valid tokenless form calls register with the correct shape and shows the D-06 success copy, never the server message', async () => {
-    graphqlRequest.mockResolvedValueOnce({
-      register: { message: 'a message the UI must never render on this branch' }
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+      if (query.includes('register(token'))
+        return Promise.resolve({ register: { message: 'a message the UI must never render on this branch' } });
+      return Promise.resolve({});
     });
 
     renderRegister(null);
 
-    await userEvent.type(screen.getByLabelText('Full name', { exact: false }), 'Ada Lovelace');
+    // Awaited: plan 34-06 gates this branch behind a `publicRegistrationEnabled`
+    // round-trip, so the form no longer paints synchronously on mount. Once
+    // the first element is found, the tree has settled and remaining
+    // assertions may stay synchronous.
+    const nameField = await screen.findByLabelText('Full name', { exact: false });
+    await userEvent.type(nameField, 'Ada Lovelace');
     await userEvent.type(screen.getByLabelText('Email address', { exact: false }), 'ada@example.com');
     await userEvent.type(screen.getByLabelText('Password', { exact: false }), 'secret123');
     await userEvent.type(
