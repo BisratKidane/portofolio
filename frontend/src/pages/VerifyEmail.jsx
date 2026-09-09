@@ -21,8 +21,10 @@ export default function VerifyEmail() {
     verifyEmail(token)
       .then((user) => {
         // Email verified, but the account may still be awaiting admin approval
-        // (two-gate flow) — route there instead of the dashboard.
-        navigate(user && user.status && user.status !== 'Active' ? '/pending' : '/dashboard');
+        // (two-gate flow) — route to the stateless awaiting-approval landing
+        // instead of the dashboard, so a page refresh never re-fires the
+        // now-consumed verification token.
+        navigate(user && user.status && user.status !== 'Active' ? '/awaiting-approval' : '/dashboard');
       })
       .catch((err) => {
         setError(err.message);
