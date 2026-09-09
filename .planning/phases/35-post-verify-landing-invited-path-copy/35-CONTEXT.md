@@ -133,6 +133,7 @@ Out of scope (from ROADMAP): CR-02 account pre-hijacking (v4.2), W-3 production 
 
 - **Path-aware verification email** — passing a variant into `sendVerificationEmail` so invitees read "activate" and self-registrants read "then an administrator approves". Rejected for this phase in favour of D-09's neutral wording because it changes the mailer signature and both `register` branches (resolver touch). Revisit if the neutral line proves too vague in practice.
 - **Login pending-error linking to the landing page** — when a Pending user attempts sign-in, the server error could point them at the new page. Left alone: APPR-05 locks the login gate and its messages, and the message is server-side.
+- **Admin-facing invite-composer copy** — `frontend/src/pages/InvitePage.jsx:107-108` ("An administrator approves every new account before it becomes active") is shown to the admin while composing an invitation, not to the invitee. Same stale-promise class as W-2 but outside INVITE-03's invited path; surfaced by Phase 35 research, not folded — the user should decide whether to fix it as a quick task.
 - **Inviter-vouch sentence on the invited success state** — "X has already vouched for you" needs the inviter's name on the post-submit screen; not plumbed today.
 
 ### Reviewed Todos (not folded)
