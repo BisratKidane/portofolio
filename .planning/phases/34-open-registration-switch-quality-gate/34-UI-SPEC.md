@@ -1,10 +1,11 @@
 ---
 phase: 34
 slug: open-registration-switch-quality-gate
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-09-09
+reviewed_at: 2026-09-09
 ---
 
 # Phase 34 — UI Design Contract
@@ -59,7 +60,7 @@ Base unit: MUI's `theme.spacing(1) = 8px` (unmodified default — `theme.js` set
 | `3.5` | 28px | `/register` — `AuthShell`'s `mb` after its header block, unchanged. `frontend/src/components/AuthShell.jsx:25` |
 | `4.5` | 36px | `/register` — `AuthShell` `Paper` padding at `md`, unchanged. `frontend/src/components/AuthShell.jsx:17` |
 
-**Border radius:** `borderRadius: 4` (32px per MUI's `shape.borderRadius: 3.5` multiplier — rendered value carried verbatim, not recomputed) on the switch card, matching `ApprovalsPage.jsx:125` exactly. Do not invent a new radius.
+**Border radius:** `borderRadius: 4` on the switch card, matching `ApprovalsPage.jsx:125` exactly. This renders **14px** — `theme.js:48` sets `shape: { borderRadius: 3.5 }`, so the value is a multiplier (4 x 3.5 = 14), not pixels. (An earlier draft of this line said 32px; corrected 2026-09-09 after instantiating the theme. The instruction was never ambiguous — carry `borderRadius: 4` verbatim — but a document that stakes its authority on verified numbers should not carry a wrong one.) Do not invent a new radius.
 
 Pre-populated from: existing theme + `InvitationsPage.jsx` / `InvitePage.jsx` / `ApprovalsPage.jsx` / `AuthShell.jsx`. No user input needed.
 
@@ -67,7 +68,7 @@ Pre-populated from: existing theme + `InvitationsPage.jsx` / `InvitePage.jsx` / 
 
 ## Typography
 
-Exactly **4** distinct sizes render across everything this phase creates — 14 / 16 / 20 / 34. All four already exist in the app; none is new.
+Exactly **4** distinct sizes render across everything this phase creates — 14 / 16 / 20 / 34. All four already exist in the app; none is new. Scoped deliberately to what this phase creates: `/register`'s invitation-only surface also renders `AuthShell`'s own inherited chrome — the `overline` eyebrow (12px, `theme.js:59`) and the 0.975rem subtitle (`AuthShell.jsx:36`) — which this phase does not touch and does not redeclare.
 
 | Role | Size | Weight | Line Height | Used for |
 |------|------|--------|-------------|----------|
