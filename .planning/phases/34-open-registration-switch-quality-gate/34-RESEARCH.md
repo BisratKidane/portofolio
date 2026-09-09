@@ -1087,24 +1087,28 @@ Every "Claude's Discretion" bullet from CONTEXT.md, answered with a recommendati
 
 Everything else in this document is either `[VERIFIED]` by execution in this session (E-1 through E-7, the field lists, the error shapes, the synthesizer, the version numbers) or `[CITED]` to a file:line in this repository or to the MySQL 8.4 keyword reference.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should a boot-time assert guard migration 021, like `assertRequiredColumns` guards 020?**
    - *What we know:* `initializeDatabase()` runs `sequelize.sync()` **before** `assertRequiredColumns` (`models/index.js:120-134`), and `sync()` creates missing tables. So a table-existence assert can never fire. A row-existence assert *would* fire — but it would crash the backend in exactly the state D-02 says should fail closed rather than fail loudly.
    - *What's unclear:* whether the operator's signal (a `console.warn` + the admin UI showing CLOSED) is considered sufficient, or whether a hard boot failure is preferred.
    - *Recommendation:* no boot assert. Warn at read time, document migration 021 in the README with the standard boot-and-verify steps, and rely on ADMIN-03's own surface. Worth one sentence to the user at plan-review, since the 020 precedent makes the opposite choice look like an omission.
+   - **RESOLVED** — see Plan 34-01. No boot-time assert added; `initializeDatabase()` is untouched, `assertRequiredColumns.js` carries no `app_settings` entry, and the accessor's `console.warn` on an absent row plus the README 021 verify steps are the operator signal, exactly as recommended.
 
 2. **Does D-11's "references rather than duplicates" forbid *executing* the already-covered cells?**
    - *What we know:* D-11 wants a matrix readable top-to-bottom as "here is the whole boundary", and says the new file "covers cells they do not, and references rather than duplicates the ones they do".
    - *What's unclear:* whether an executed cell that also names its `coveredBy` counts as duplication.
    - *Recommendation:* execute all cells, carry a `coveredBy` column. A reference that is not executed silently rots when the referenced test is renamed, and each cell costs well under a millisecond. Surface the reading to the user rather than deciding silently.
+   - **RESOLVED** — see Plan 34-07. All cells are executed with a `coveredBy` column naming the pre-existing per-resolver test they overlap, per the recommendation.
 
 3. **Should the SEC-04 matrix include admin positive controls, given the extra runtime?**
    - *What we know:* `errors[0].path === [field]` already proves the resolver ran (E-3), so reachability is covered without a control. A control additionally guards against a broken actor fixture making everything fail for unrelated reasons.
    - *Recommendation:* include them for the SEC-04 matrix (9 cells, cheap, and the failure mode they catch is exactly "the test and the guard shared a blind spot"). Skip them for the 25-field SEC-05 sweep, where `path` plus the exact-message assertion already carries the proof and an admin pass would fire 20 real mutations.
+   - **RESOLVED** — see Plan 34-07. SEC-04 matrix includes admin positive controls; the SEC-05 sweep does not, per the recommendation.
 
 4. **`Register.test.jsx`: migrate the whole file to `mockImplementation`, or only the four tokenless tests?**
    - *Recommendation:* the whole file. Mixing `Once` chains and dispatching mocks in one file is how the next person adds a query and breaks tests they did not touch.
+   - **RESOLVED** — see Plan 34-02. The whole file was migrated to the query-dispatching `mockImplementation`; zero `mockResolvedValueOnce`/`mockRejectedValueOnce` remain, per the recommendation.
 
 ## Environment Availability
 
