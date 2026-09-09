@@ -131,7 +131,7 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
     4. An approved self-registrant who is not yet linked to a family member lands on the existing `/pending` screen.
     5. Loading, empty, and failed states render through the app's existing components — never a broken or empty panel.
 
-- [ ] **Phase 34: Open-Registration Switch & Quality Gate** — the door can be closed, and the boundaries are proven
+- [x] **Phase 34: Open-Registration Switch & Quality Gate** — the door can be closed, and the boundaries are proven (completed 2026-09-09)
   - Requirements: ADMIN-01, ADMIN-02, ADMIN-03, SEC-04, SEC-05
   - Success criteria:
     1. An admin turns public signup off from inside the app and a tokenless `register` call is refused server-side; `/register` returns to the invitation-only message.
@@ -336,7 +336,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 34-09-PLAN.md — SC-5 gate (npm test --workspaces) + human sign-off on migration 021, the switch visuals, and the genuine mid-form race
+- [x] 34-09-PLAN.md — SC-5 gate (npm test --workspaces) + human sign-off on migration 021, the switch visuals, and the genuine mid-form race
 
 **UI hint**: yes
 
@@ -380,4 +380,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete    | 2026-09-08 |
-| 34. Open-Registration Switch & Quality Gate | v4.1 | 8/9 | In Progress|  |
+| 34. Open-Registration Switch & Quality Gate | v4.1 | 9/9 | Complete   | 2026-09-09 |
