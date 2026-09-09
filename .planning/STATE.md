@@ -4,8 +4,8 @@ milestone: v4.1
 milestone_name: Open Registration with Approval
 status: milestone_complete
 stopped_at: Milestone complete (Phase 34 was final phase)
-last_updated: 2026-09-09T15:56:42.100Z
-last_activity: 2026-09-09 -- Phase 34 execution started
+last_updated: 2026-09-09T18:07:30Z
+last_activity: 2026-09-09 -- Phase 34 UAT complete (11/11 passed), threat-secure (61/61 closed)
 progress:
   total_phases: 5
   completed_phases: 4
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 Phase: 34
 Plan: Not started
 Status: Milestone complete
-Last activity: 2026-09-09
+Last activity: 2026-09-09 -- Phase 34 UAT complete (11/11), threat-secure (61/61)
 
-Next: /gsd:execute-phase 34
+Next: /gsd:complete-milestone v4.1 (prerequisite: apply migration 021 to production)
 
 ## Deferred Items
 
@@ -191,8 +191,8 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-09T09:18:20.164Z
-Stopped at: Phase 34 UI-SPEC approved
+Last session: 2026-09-09T18:07:30Z
+Stopped at: Phase 34 verified — UAT 11/11 passed, SECURITY threats_open: 0; milestone v4.1 ready to close
 Resume file: None
 
 ## Operator Next Steps
