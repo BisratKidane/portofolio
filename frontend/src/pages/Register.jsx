@@ -98,6 +98,37 @@ export default function Register() {
       setResult(data);
     } catch (err) {
       setError(err.message);
+      // D-07 / T-34-06-B: never decide the door is closed by inspecting the
+      // rejection's message text. graphqlClient.js:26-28 flattens GraphQL
+      // errors into one joined-string Error, so extensions.code is not
+      // reachable without widening the shared client (do not do that here).
+      // A text match would give this component a second, independently
+      // derived notion of "closed" -- decoupled from the stored value,
+      // silently broken by any rewording of the server's message, and
+      // untestable against the real predicate. That is the precise bug
+      // class that has hit this project across Phases 14, 15, 30, 31, 32
+      // and 33. Instead, re-run the same query the mount effect uses and
+      // let the single invitation-only definition above pick it up.
+      //
+      // The swapped view must stay byte-identical to the initial-closed
+      // view: no "the door just closed while you were filling this in"
+      // line, no "your details weren't saved" line, no distinguishing
+      // severity. A second variant is copy that must be kept in sync by
+      // hand and will not be; and a message that differs by how the
+      // visitor arrived leaks that an admin closed the door in the last
+      // few seconds -- timing information about an administrative action,
+      // on a public unauthenticated page. Losing what the visitor typed is
+      // accepted: there is nothing left to submit it to.
+      try {
+        const stillOpen = await graphqlRequest(PUBLIC_REGISTRATION_ENABLED_QUERY);
+        if (!stillOpen.publicRegistrationEnabled) {
+          setPublicOpen(false);
+          setError('');
+        }
+      } catch {
+        // The re-query itself failed: leave the original error rendered
+        // rather than guessing at the door state from a network failure.
+      }
     } finally {
       setLoading(false);
     }
