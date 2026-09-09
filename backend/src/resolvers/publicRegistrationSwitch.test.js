@@ -17,11 +17,19 @@ import * as appSettings from '../utils/appSettings.js';
 // mutation, so the mailer needs the same mock register.test.js's own
 // preamble uses -- never a real SMTP socket, and a call-count surface for
 // the D-09 "no owner-notification email" control.
+// sendAccountApprovedEmail is mocked alongside register.test.js's own four
+// senders (not merely those four): vi.mock replaces the WHOLE module, so any
+// mailer export this file's resolvers call and this factory omits comes
+// back undefined -- the D-10 control below calls the real approveUser
+// mutation, which fires sendAccountApprovedEmail fire-and-forget, and an
+// undefined export there throws synchronously before the resolver's own
+// .catch can attach, turning a passing control into a crashed mutation.
 vi.mock('../services/mailer.js', () => ({
   sendVerificationEmail: vi.fn().mockResolvedValue(undefined),
   sendPendingRegistrationEmail: vi.fn().mockResolvedValue(undefined),
   sendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
-  sendRegistrationAttemptEmail: vi.fn().mockResolvedValue(undefined)
+  sendRegistrationAttemptEmail: vi.fn().mockResolvedValue(undefined),
+  sendAccountApprovedEmail: vi.fn().mockResolvedValue(undefined)
 }));
 
 import {
@@ -62,6 +70,23 @@ const SET_PUBLIC_REGISTRATION = `
 const REGISTER_MUTATION = `
   mutation Register($token: String, $name: String!, $email: String, $password: String!, $relationshipNote: String) {
     register(token: $token, name: $name, email: $email, password: $password, relationshipNote: $relationshipNote) { message }
+  }
+`;
+
+// D-10 control fixtures -- pendingApprovals/approveUser must stay unaffected
+// by the switch (nothing in this plan touches either).
+const PENDING_APPROVALS_QUERY = `
+  query {
+    pendingApprovals {
+      id
+      status
+    }
+  }
+`;
+
+const APPROVE_USER_MUTATION = `
+  mutation Approve($id: ID!) {
+    approveUser(userId: $id) { id status }
   }
 `;
 
@@ -376,5 +401,120 @@ describe('client/server guard agreement (D-07)', () => {
         }
       });
     });
+  });
+});
+
+// D-08 / D-09 / D-10: proves the switch does not break anything it must
+// not. A matrix that only exercises the closed-door refusal could go green
+// while the switch silently breaks invitations, taxes the refusal with real
+// side effects, moves the check below a validator without anyone noticing,
+// grants admins a bypass, or strands the approval queue -- none of which
+// ADMIN-02/D-07/D-08/D-09/D-10 permit.
+describe('controls the switch must NOT break (D-08 / D-09 / D-10)', () => {
+  beforeEach(async () => {
+    // Door closed for every test in this block.
+    await models.AppSetting.update({ value: 'false' }, { where: { settingKey: PUBLIC_REGISTRATION_KEY } });
+  });
+
+  it('D-08: a valid invitation still registers normally while the door is closed -- closing stops new arrivals, it does not void invitations already issued', async () => {
+    const { rawToken } = await makeInvitation({ invitedEmail: 'invited-while-closed@example.com' });
+
+    const { data, errors } = await graphql(REGISTER_MUTATION, {
+      token: rawToken,
+      name: 'Invited While Closed',
+      password: 'Password123!'
+    });
+
+    expect(errors).toBeUndefined();
+    expect(data.register.message).toBe('Registration received. Verify your email to activate your account.');
+    const user = await models.User.findOne({ where: { email: 'invited-while-closed@example.com' } });
+    expect(user).not.toBeNull();
+  });
+
+  it('D-09: the refusal is cheap and side-effect free -- no lookup, no write, no email', async () => {
+    const findOneSpy = vi.spyOn(models.User, 'findOne');
+    const createSpy = vi.spyOn(models.User, 'create');
+
+    try {
+      const { errors } = await graphql(REGISTER_MUTATION, {
+        ...TOKENLESS_VARS,
+        email: 'd09-refusal@example.com'
+      });
+
+      expect(errors[0].message).toBe(PUBLIC_REGISTRATION_CLOSED_MESSAGE);
+      expect(findOneSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(await models.User.count()).toBe(0);
+      expect(sendVerificationEmail).not.toHaveBeenCalled();
+      expect(sendPendingRegistrationEmail).not.toHaveBeenCalled();
+      expect(sendPasswordResetEmail).not.toHaveBeenCalled();
+      expect(sendRegistrationAttemptEmail).not.toHaveBeenCalled();
+    } finally {
+      findOneSpy.mockRestore();
+      createSpy.mockRestore();
+    }
+  });
+
+  it('D-09 ordering: the door check runs before the relationship-note/name/email validators', async () => {
+    const { errors } = await graphql(REGISTER_MUTATION, {
+      name: 'Ordering Test',
+      email: 'not-an-email',
+      password: 'Password123!',
+      relationshipNote: 'x'.repeat(501)
+    });
+
+    // This ordering claim is trivially true given where the guard was
+    // placed in Task 1, but the test still has value as a pin: it stops a
+    // future refactor from re-inserting the guard lower in the function
+    // without anyone noticing.
+    expect(errors[0].message).toBe(PUBLIC_REGISTRATION_CLOSED_MESSAGE);
+  });
+
+  it('door check precedes assertPasswordStrength for a tokenless call (the blocker fix)', async () => {
+    // If this test is ever made to assert the password-policy error
+    // instead, the door check has been moved after assertPasswordStrength
+    // by accident. This is a POSITIVE proof of ordering, not an accepted
+    // exception: D-09 is locked verbatim as "checked first," and there is
+    // no longer any statement in the tokenless path that runs before it.
+    const { errors } = await graphql(REGISTER_MUTATION, {
+      name: 'Weak Password Test',
+      email: 'weak-password-ordering@example.com',
+      password: 'weak1',
+      relationshipNote: 'Cousin'
+    });
+
+    expect(errors[0].message).toBe(PUBLIC_REGISTRATION_CLOSED_MESSAGE);
+  });
+
+  it('being an admin does not reopen the door for yourself -- the switch is not a permission', async () => {
+    const admin = await createTestUser({ role: 'ADMIN', email: 'self-registering-admin@example.com' });
+
+    const { errors } = await graphql(
+      REGISTER_MUTATION,
+      { ...TOKENLESS_VARS, email: 'admin-attempts-self-register@example.com' },
+      admin
+    );
+
+    expect(errors[0].message).toBe(PUBLIC_REGISTRATION_CLOSED_MESSAGE);
+  });
+
+  it('D-10: the approval queue is untouched -- a Pending, verified user created before the close stays visible and approvable after it', async () => {
+    const admin = await createTestUser({ role: 'ADMIN', email: 'd10-admin@example.com' });
+    const pendingUser = await createTestUser({
+      email: 'd10-pending@example.com',
+      status: 'Pending',
+      emailVerified: true
+    });
+
+    // The door is already closed via this block's beforeEach -- closing
+    // stops new arrivals, it does not void people who already registered
+    // and verified before the close.
+    const pending = await graphql(PENDING_APPROVALS_QUERY, {}, admin);
+    expect(pending.errors).toBeUndefined();
+    expect(pending.data.pendingApprovals.map((row) => row.id)).toContain(String(pendingUser.id));
+
+    const approved = await graphql(APPROVE_USER_MUTATION, { id: String(pendingUser.id) }, admin);
+    expect(approved.errors).toBeUndefined();
+    expect(approved.data.approveUser.status).toBe('Active');
   });
 });
