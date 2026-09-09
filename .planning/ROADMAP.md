@@ -7,7 +7,7 @@
 - ✅ **v2.0 Collaborative Family Tree** — Phases 12–17 (shipped 2026-07-25)
 - ✅ **v3.0 Ge'ez Native-Script Names** — Phases 18–23 (shipped 2026-07-31)
 - ✅ **v4.0 Family Detail & Descendant Navigation** — Phases 24–29 (shipped 2026-08-05)
-- 🔨 **v4.1 Open Registration with Approval** — Phases 30–34 (in progress)
+- 🔨 **v4.1 Open Registration with Approval** — Phases 30–35 (in progress)
 
 ## Phases
 
@@ -139,6 +139,15 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
     3. Adversarial tests prove a non-admin cannot invite, approve, or reject, and cannot register tokenless while the switch is off.
     4. A self-registered account cannot reach any authenticated resolver until both gates pass — proven against the resolvers, not just the client-side route guard.
     5. `npm test --workspaces` is green.
+
+- [ ] **Phase 35: Post-Verify Landing & Invited-Path Copy** — a self-registrant who verifies sees where they stand, and an invitee is never promised a review that no longer happens
+  - Requirements: REG-04, REG-06, INVITE-03 (closure of v4.1 audit W-1 / W-2)
+  - Success criteria:
+    1. A self-registrant who clicks their verification link lands on a page that says their email is verified and an administrator now has to approve them — not on the login form with no explanation.
+    2. That landing works with no session: the still-Pending account is never given a stored token, exactly as today.
+    3. The invited-path copy on `/register?token=…` and in the invitation email no longer promises an admin review; it says the person can sign in as soon as they verify.
+    4. The `/pending` copy distinguishes "waiting for approval" from "waiting to be linked to a family member", and a signed-in approved-but-unlinked user still sees the linking message.
+    5. A test covers the composed path (verify → landing) that the two isolated tests missed; the full workspace suite stays green.
 
 ## Phase Details
 
@@ -340,10 +349,33 @@ Plans:
 
 **UI hint**: yes
 
+### Phase 35: Post-Verify Landing & Invited-Path Copy
+
+**Goal**: The first thing a self-registrant sees after verifying their email is an honest account of where they stand — verified, now awaiting an administrator — instead of an unexplained login form; and nobody on the invited path is told to expect a review that Phase 31 removed.
+**Depends on**: Phase 34 (closure phase for v4.1 milestone-audit warnings W-1 and W-2; touches only frontend routing/copy and one mailer template — no schema or resolver changes)
+**Requirements**: REG-04, REG-06, INVITE-03
+**Origin**: `.planning/v4.1-MILESTONE-AUDIT.md` — integration checker W-1 (`VerifyEmail.jsx:25` → `/pending`, `AuthContext.jsx:78-80` withholds the session, `Pending.jsx:9` bounces `!user` to `/login` with no message; also 31-REVIEW.md CR-02) and W-2 (`Register.jsx:310-313`, `mailer.js:149,160` still promise an admin review for invitees).
+**Success Criteria** (what must be TRUE):
+
+  1. A self-registrant who clicks their verification link lands on a page that says their email is verified and an administrator now has to approve them — not on the login form with no explanation.
+  2. That landing works with no session: the still-Pending account is never given a stored token, exactly as today (`AuthContext` behaviour unchanged).
+  3. The invited-path copy on `/register?token=…` and in the invitation email no longer promises an admin review; it says the person can sign in as soon as they verify.
+  4. The `/pending` copy distinguishes "waiting for approval" from "waiting to be linked to a family member", and a signed-in approved-but-unlinked user still sees the linking message.
+  5. A test covers the composed path (verify → landing) that `VerifyEmail.test.jsx` and `Pending.test.jsx` each miss in isolation; `npm test --workspaces` stays green.
+
+**Out of scope**: CR-02 account pre-hijacking (own design decision, v4.2); W-3 production migrations (operator step); W-4 status-blind link list.
+
+**Plans**: 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 35 to break down)
+
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order (v4.1):**
-Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
+Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -381,3 +413,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete    | 2026-09-08 |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 9/9 | Complete    | 2026-09-09 |
+| 35. Post-Verify Landing & Invited-Path Copy | v4.1 | 0/? | Not started | - |

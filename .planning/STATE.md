@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
-status: milestone_complete
-stopped_at: Milestone complete (Phase 34 was final phase)
-last_updated: 2026-09-09T18:07:30Z
-last_activity: 2026-09-09 -- Phase 34 UAT complete (11/11 passed), threat-secure (61/61 closed)
+status: planning
+stopped_at: v4.1 audit done; Phase 35 added, not yet planned
+last_updated: "2026-09-09T18:37:55.924Z"
+last_activity: 2026-09-09 -- v4.1 milestone audit (tech_debt, 25/25 reqs); Phase 35 added to close W-1/W-2
 progress:
-  total_phases: 5
-  completed_phases: 4
+  total_phases: 6
+  completed_phases: 5
   total_plans: 35
   completed_plans: 35
-  percent: 80
+  percent: 83
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Milestone complete
+**Current focus:** Phase 35 — close audit W-1/W-2 before v4.1 milestone close
 
 ## Current Position
 
-Phase: 34
+Phase: 35
 Plan: Not started
-Status: Milestone complete
-Last activity: 2026-09-09 -- Phase 34 UAT complete (11/11), threat-secure (61/61)
+Status: Ready to plan
+Last activity: 2026-09-09 -- v4.1 milestone audit (tech_debt, 25/25 reqs); Phase 35 added to close W-1/W-2
 
-Next: /gsd:complete-milestone v4.1 (prerequisite: apply migration 021 to production)
+Next: /gsd-plan-phase 35
 
 ## Deferred Items
 
@@ -109,6 +109,10 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 | Phase 32 P08 | 70min | 3 tasks | 6 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 35 added: Post-Verify Landing & Invited-Path Copy — closes v4.1 milestone-audit W-1 (silent post-verify bounce to /login) and W-2 (stale 'admin will review' copy on the invited path)
 
 ### Decisions
 
@@ -192,7 +196,7 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-09-09T18:07:30Z
-Stopped at: Phase 34 verified — UAT 11/11 passed, SECURITY threats_open: 0; milestone v4.1 ready to close
+Stopped at: v4.1 audit done; Phase 35 added, not yet planned
 Resume file: None
 
 ## Operator Next Steps
