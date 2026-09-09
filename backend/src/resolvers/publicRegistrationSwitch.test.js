@@ -261,6 +261,25 @@ describe('settings layer (ADMIN-01 / ADMIN-03 / D-03)', () => {
         spy.mockRestore();
       }
     });
+
+    it('rolls the flip back if the in-transaction "from" read fails, writing NO audit row rather than a fabricated from:false (CR-01 error path, 34-REVIEW.md)', async () => {
+      const admin = await createTestUser({ role: 'ADMIN', name: 'Bisrat', email: 'admin-readfail@example.com' });
+      // The flip's first statement is the locked findByPk. Before CR-01 the
+      // predicate swallowed this failure to `false` and the flip went on to
+      // commit an audit row claiming from:false -- a wrong entry in the ONLY
+      // history of this value (D-03). Now the failure must abort the flip.
+      const spy = vi.spyOn(models.AppSetting, 'findByPk').mockRejectedValueOnce(new Error('read failed'));
+
+      try {
+        const { errors } = await graphql(SET_PUBLIC_REGISTRATION, { enabled: false }, admin);
+        expect(errors).toBeDefined();
+        expect(await isPublicRegistrationEnabled(models)).toBe(true);
+        const count = await models.AuditLog.count({ where: { action: 'setting.public_registration_changed' } });
+        expect(count).toBe(0);
+      } finally {
+        spy.mockRestore();
+      }
+    });
   });
 
   describe('attribution payload (D-06 variants)', () => {
