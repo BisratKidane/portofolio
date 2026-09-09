@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 Phase: 34 (open-registration-switch-quality-gate) — EXECUTING
 Plan: 9 of 9
 Status: Executing Phase 34
-Last activity: 2026-09-09 -- Phase 34 all 9 plans executed; running phase-close gates (code review, regression, drift, verifier)
+Last activity: 2026-09-09 -- Phase 34 all 9 plans executed; code review (1 critical, 2 warnings) fixed via /gsd:code-review --fix (e09347f, 98a8143, 23383c3, 09d0bdc); regression + drift gates green; verifier running
 
 Next: /gsd:execute-phase 34
 
