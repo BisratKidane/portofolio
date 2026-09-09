@@ -10,6 +10,7 @@ import InvitationsPage from './pages/InvitationsPage.jsx';
 import LinkAccountsPage from './pages/LinkAccountsPage.jsx';
 import ManagePage from './pages/ManagePage.jsx';
 import Pending from './pages/Pending.jsx';
+import AwaitingApproval from './pages/AwaitingApproval.jsx';
 import Register from './pages/Register.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
 import VerifyEmail from './pages/VerifyEmail.jsx';
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="reset-password" element={<ResetPassword />} />
         <Route path="verify-email" element={<VerifyEmail />} />
         <Route path="pending" element={<Pending />} />
+        <Route path="awaiting-approval" element={<AwaitingApproval />} />
         <Route element={<ProtectedRoute />}>
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="manage" element={<ManagePage />} />
