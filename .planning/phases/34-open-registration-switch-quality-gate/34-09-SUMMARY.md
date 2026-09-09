@@ -18,7 +18,7 @@ requires:
 provides:
   - "SC-5 gate record: npm test --workspaces green in one serial run, backend 72 files/648 passed+3 skipped, frontend 44 files/498 passed, fully reconciled against the measured baseline with every test-count delta attributed to a named file"
   - "Confirmation the pre-existing 3-skip backend count is unchanged, and no pre-existing test file lost coverage"
-  - "Task 2 (human sign-off on migration 021 / UI-SPEC visual match / the genuine mid-form race) staged and returned as a checkpoint — not yet resolved"
+  - "Task 2 human sign-off recorded: all three manual verifications (A migration 021, B UI-SPEC visual match, C the genuine mid-form race) APPROVED by the developer; production apply of migration 021 to Hetzner explicitly DEFERRED to a separate operator step"
 affects: []
 
 # Tech tracking
@@ -34,27 +34,29 @@ key-files:
 
 key-decisions:
   - "Reconciled the full per-file test-count delta via git diff --stat --diff-filter against the pre-phase-34 base commit plus static it()/it.each() counts, rather than re-running vitest a second time with a verbose per-file reporter — the plan's ~6.5-minute single-serial-run constraint is honored while still satisfying the 'compare file-by-file if totals do not reconcile' acceptance bar (they reconciled exactly, to the test)."
-  - "Task 2 is a blocking human-verify checkpoint (gate=\"blocking\"); per the executor's explicit instruction, no part of verifications A, B, or C was attempted, simulated, or marked complete from automated evidence. This SUMMARY records only Task 1's result and stages Task 2 for the developer."
+  - "Task 2 is a blocking human-verify checkpoint (gate=\"blocking\"); per the executor's explicit instruction, no part of verifications A, B, or C was attempted, simulated, or marked complete from automated evidence. The checkpoint was presented verbatim; the developer replied \"approved\" for all three, and separately selected \"Deferred\" for the production apply of migration 021 to Hetzner — the same treatment Phase 30 gave its 019 production apply (F-03)."
+  - "34-VALIDATION.md § Manual-Only Verifications has no status/outcome columns (Behavior / Requirement / Why Manual / Test Instructions only) — left untouched rather than force-fitting an outcome into a table not shaped to record one; the outcome is recorded here instead."
 
 patterns-established: []
 
-requirements-completed: []
+requirements-completed: [ADMIN-01, ADMIN-02, ADMIN-03, SEC-04, SEC-05]
 
 # Metrics
-duration: ~25min (Task 1 only; Task 2 pending)
+duration: ~30min (Task 1 ~25min + Task 2 sign-off recording ~5min)
 completed: 2026-09-09
 ---
 
-# Phase 34 Plan 09: SC-5 Full-Suite Gate — Green, Reconciled to the Test Summary
+# Phase 34 Plan 09: SC-5 Full-Suite Gate — Green, Reconciled to the Test, Human Sign-Off Recorded Summary
 
-**`npm test --workspaces` is green in one serial run (72 backend files / 648 passed + 3 skipped, 44 frontend files / 498 passed), with every test-count delta since the measured baseline attributed to a specific named file — no pre-existing test lost, backend skips unchanged at 3. Task 2 (the three manual sign-offs) is staged and returned as a checkpoint, unresolved.**
+**`npm test --workspaces` is green in one serial run (72 backend files / 648 passed + 3 skipped, 44 frontend files / 498 passed), with every test-count delta since the measured baseline attributed to a specific named file — no pre-existing test lost, backend skips unchanged at 3. All three manual verifications (A: migration 021, B: UI-SPEC visual match, C: the genuine mid-form race) were APPROVED by the developer; production apply of migration 021 to Hetzner is explicitly DEFERRED.**
 
 ## Performance
 
-- **Duration:** ~25 min (Task 1: file reads, one ~6.6-minute foreground `npm test --workspaces` run, plus git-diff-based reconciliation)
+- **Duration:** ~30 min (Task 1: file reads, one ~6.6-minute foreground `npm test --workspaces` run, plus git-diff-based reconciliation, ~25 min; Task 2: checkpoint presentation and recording the developer's response, ~5 min)
 - **Started:** 2026-09-09T13:56:00Z (approx.)
 - **Task 1 completed:** 2026-09-09T14:04:00Z (approx.)
-- **Tasks:** 1 of 2 completed (Task 2 is a blocking human-verify checkpoint, not yet resolved)
+- **Task 2 completed:** 2026-09-09 (developer sign-off recorded)
+- **Tasks:** 2 of 2 completed
 - **Files modified:** 0 source files (this plan makes no source changes); 1 file created (this SUMMARY)
 
 ## Accomplishments
@@ -68,10 +70,10 @@ completed: 2026-09-09
 
 ## Task Commits
 
-1. **Task 1: SC-5 — npm test --workspaces green, with counts recorded against the baseline** — committed with this SUMMARY.md (docs commit; no source files touched, per `files_modified: []` in the plan frontmatter).
-2. **Task 2: Human sign-off** — NOT executed. This is a `checkpoint:human-verify` (`gate="blocking"`) task. Per the executor's explicit instruction, none of verifications A, B, or C was attempted on the developer's behalf. See "Task 2: awaiting human sign-off" below.
+1. **Task 1: SC-5 — npm test --workspaces green, with counts recorded against the baseline** — `f914b77` (docs; no source files touched, per `files_modified: []` in the plan frontmatter).
+2. **Task 2: Human sign-off — migration 021 on a real database, the switch region's visuals, and the genuine mid-form race** — committed with this SUMMARY.md update (docs commit; no source files touched). The checkpoint (`checkpoint:human-verify`, `gate="blocking"`) was presented verbatim to the developer, who responded "approved" and separately selected "Deferred" for the production-apply decision. See "Task 2: human sign-off recorded" below.
 
-**Plan metadata:** committed together with Task 1 above (SUMMARY.md is the only artifact this plan can commit before the checkpoint).
+**Plan metadata:** committed together with Task 1 (`f914b77`) and this Task 2 recording commit.
 
 ## SC-5 Gate Record
 
@@ -133,23 +135,41 @@ None. The suite was green on the single run; no red test, no flake, no need to r
 
 ## User Setup Required
 
-None for Task 1. Task 2 requires the developer to run the backend/frontend dev servers and sign in as an ADMIN locally — see the checkpoint returned to the orchestrator for the exact commands and credentials.
+None for Task 1. Task 2 required the developer to run the backend/frontend dev servers and sign in as an ADMIN locally against the checkpoint's exact commands and credentials — completed by the developer as part of the sign-off below.
 
-## Task 2: awaiting human sign-off
+## Task 2: human sign-off recorded
 
-Task 2 (`checkpoint:human-verify`, `gate="blocking"`) has **not** been executed. It requires a human to:
+Task 2 (`checkpoint:human-verify`, `gate="blocking"`) was presented verbatim to the developer — prerequisites, verifications A, B and C, and the production-apply question — and this executor did not attempt, simulate, or infer the outcome of any of A/B/C itself.
 
-- **A.** Apply migration `021-create-app-settings.sql` to the real local dev database (`portofolio`, not `portofolio_test`) and confirm the seeded row, idempotent re-apply, backend boot, and the admin `/invitations` surface reading OPEN with the seeded-open attribution.
-- **B.** Visually sign off the `PublicSignupSwitch` region against `34-UI-SPEC.md` in both OPEN and CLOSED states in a real browser (layout, the 14px radius, `Switch` thumb/track colour, icon tint — all unobservable in jsdom).
-- **C.** Drive the genuine two-browser-session mid-form race and confirm the swap to the identical invitation-only view.
+**Developer's verbatim response to verifications A, B and C:**
 
-This executor did not attempt, simulate, or infer the outcome of any of A/B/C. The full structured checkpoint (prerequisites, exact commands, and the verbatim verification steps) has been returned to the orchestrator, which will present it to the developer and spawn a continuation agent with their response. Once the developer responds, the continuation agent will record the outcome in this section and in `34-VALIDATION.md` § Manual-Only Verifications, and only then will SC-5 / Phase 34 be considered fully closed.
+> approved
+
+All three manual verifications from `34-VALIDATION.md` § Manual-Only Verifications are recorded as **APPROVED**:
+
+- **A. Migration 021 against a real database (ADMIN-01).** APPROVED. `backend/migrations/manual/021-create-app-settings.sql` was applied to the real local dev database (`portofolio`, not `portofolio_test`); the seeded row, idempotent re-apply (no clobber on a second run), backend boot, and the admin `/invitations` surface reading "Public signup is open" / "Not changed since setup." were all confirmed by the developer.
+- **B. Visual sign-off of the switch region against `34-UI-SPEC.md` (ADMIN-01 / ADMIN-03).** APPROVED. The `PublicSignupSwitch` region — icon tint, headline text, `Switch` state, hover/tooltip text, the instant no-dialog close, the confirm-to-open dialog on re-opening, the narrow-viewport column stack, and state persistence across reload — matches the UI-SPEC in both OPEN and CLOSED states, confirmed in a real browser where jsdom cannot observe layout or computed colour.
+- **C. The genuine mid-form race (ADMIN-02 / D-07).** APPROVED. The two-browser-session race (anonymous visitor mid-form on `/register`, admin closes the door, visitor submits) swapped to the identical invitation-only view — same eyebrow, title, and info-alert copy as a direct-closed-state load, with no leftover error alert and no timing-leak wording — confirmed by the developer.
+
+**Production-apply decision for migration 021 (asked separately from A/B/C):**
+
+> Deferred
+
+The production apply of `backend/migrations/manual/021-create-app-settings.sql` to the Hetzner deployment is explicitly **DEFERRED** to a separate operator step before the v4.1 milestone closes — not performed as part of this phase. This is the same treatment Phase 30 gave its 019 production apply, recorded there as F-03.
+
+**34-VALIDATION.md § Manual-Only Verifications:** left untouched. That table has four columns (Behavior / Requirement / Why Manual / Test Instructions) with no status or outcome column to fill in — the sign-off outcome is recorded in this SUMMARY instead, per the executor's resume instructions.
+
+## Deferred / follow-ups
+
+- Apply `backend/migrations/manual/021-create-app-settings.sql` to the production (Hetzner) database before the v4.1 milestone closes — deferred by the developer on 2026-09-09.
 
 ## Next Phase Readiness
 
-- SC-5's automated half (the full workspace suite) is proven green and fully reconciled — this is not blocking anything further.
-- Phase 34 cannot be marked complete until Task 2's human sign-off is recorded (all three manual verifications, plus the production-apply decision for migration 021).
-- No blockers on the automated side. The only remaining work in this phase is human-driven.
+- SC-5's automated half (the full workspace suite) is proven green and fully reconciled.
+- All three manual verifications (A, B, C) are APPROVED — Task 2 is fully resolved.
+- Requirements ADMIN-01, ADMIN-02, ADMIN-03, SEC-04 and SEC-05 are delivered by this plan.
+- Phase 34's only remaining open item is the deferred production apply of migration 021 to Hetzner, tracked above as a follow-up, not a blocker to closing this plan.
+- No blockers.
 
 ## Self-Check: PASSED
 
@@ -157,7 +177,9 @@ This executor did not attempt, simulate, or infer the outcome of any of A/B/C. T
 - Verified via `npm test --workspaces` output (captured to scratchpad log): backend 72 files/648 passed+3 skipped, frontend 44 files/498 passed, exit code 0
 - Verified via `git diff 2f33d2f --diff-filter=A/D/M`: exactly 4 new test files (3 backend, 1 frontend), exactly 2 pre-existing test files modified (`Register.test.jsx`, `InvitationsPage.test.jsx`), 0 test files deleted
 - Verified via `git status --porcelain`: clean before and after the full suite run (only pre-existing, untouched `.vscode/`)
+- Verified Task 1 commit `f914b77` exists via `git log --oneline -1`
+- Task 2 outcome recorded verbatim from the developer's response as provided by the orchestrator; no automated evidence was substituted for any of A/B/C
 
 ---
 *Phase: 34-open-registration-switch-quality-gate*
-*Completed: 2026-09-09 (Task 1 only — Task 2 pending human sign-off)*
+*Completed: 2026-09-09*
