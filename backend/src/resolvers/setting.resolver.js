@@ -51,13 +51,29 @@ export const settingResolvers = {
       const sequelize = models.AppSetting.sequelize;
       await sequelize.transaction(async (t) => {
         // Captures the pre-flip value for the audit's from->to record. This
-        // read intentionally does NOT join the transaction: it must observe
-        // the committed old value, and no lock is held yet.
-        const previous = await isPublicRegistrationEnabled(models);
+        // read DOES join the transaction, under a row lock (SELECT ... FOR
+        // UPDATE): it must observe the value THIS transaction is about to
+        // overwrite, and the lock serialises concurrent flips on this row so
+        // a second flip's `previous` is the first flip's committed `to`, not
+        // a value read before either flip started (34-REVIEW.md CR-01 -- a
+        // prior version of this comment claimed an unlocked, out-of-
+        // transaction read was correct here; it was not: two concurrent
+        // flips both observed the same pre-flip value and produced an
+        // unreconstructible audit history). A read failure here now
+        // propagates (isPublicRegistrationEnabled rethrows when
+        // options.transaction is set) instead of being swallowed to `false`,
+        // so a transient DB error rolls back the flip instead of recording a
+        // fabricated `from`.
+        const previous = await isPublicRegistrationEnabled(models, { transaction: t, lock: t.LOCK.UPDATE });
 
         // upsert, not update -- D-02 allows the row to be absent, and an
         // admin flipping on a row-less database must CREATE it rather than
-        // silently no-op.
+        // silently no-op. On a row-less DB, two concurrent flips both take
+        // an InnoDB gap lock on the (absent) primary key via the FOR UPDATE
+        // read above; the second transaction's upsert then deadlocks and
+        // throws (ER_LOCK_DEADLOCK) instead of corrupting anything -- one
+        // admin sees an error, the door state stays consistent. No retry
+        // logic is added for this case.
         await models.AppSetting.upsert(
           { settingKey: PUBLIC_REGISTRATION_KEY, value: enabled ? 'true' : 'false', updatedById: user.id },
           { transaction: t }

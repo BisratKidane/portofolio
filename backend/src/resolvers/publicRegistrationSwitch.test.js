@@ -207,6 +207,34 @@ describe('settings layer (ADMIN-01 / ADMIN-03 / D-03)', () => {
       expect(parsedMetadata(rows[1])).toMatchObject({ from: false, to: true });
     });
 
+    it('two CONCURRENT flips to the same value chain their audit history rather than both recording the pre-flip value (CR-01 regression, 34-REVIEW.md)', async () => {
+      const admin = await createTestUser({ role: 'ADMIN', name: 'Bisrat', email: 'admin-concurrent@example.com' });
+      // Seeded initial value is true (resetTables' seedDefaultAppSettings).
+      // Both flips target the SAME value (false), not one true/one false --
+      // that way no interleaving of "which flip committed first" can
+      // accidentally produce the expected chain; only a lock that forces the
+      // second flip's read to observe the first flip's COMMITTED write can.
+      const [first, second] = await Promise.all([
+        graphql(SET_PUBLIC_REGISTRATION, { enabled: false }, admin),
+        graphql(SET_PUBLIC_REGISTRATION, { enabled: false }, admin)
+      ]);
+      expect(first.errors).toBeUndefined();
+      expect(second.errors).toBeUndefined();
+
+      const rows = await models.AuditLog.findAll({
+        where: { action: 'setting.public_registration_changed' },
+        order: [['id', 'ASC']]
+      });
+      expect(rows).toHaveLength(2);
+      const metadata = rows.map(parsedMetadata);
+      expect(metadata[0]).toMatchObject({ from: true, to: false });
+      expect(metadata[1]).toMatchObject({ from: false, to: false });
+      // The chain property itself: whichever flip committed second must have
+      // observed the FIRST flip's committed value, not the value that
+      // existed before either flip started (CR-01's stale, unlocked read).
+      expect(metadata[1].from).toBe(metadata[0].to);
+    });
+
     it('flipping against an ABSENT settings row CREATES it, proving upsert rather than update (D-02, T-34-03-F)', async () => {
       const admin = await createTestUser({ role: 'ADMIN', name: 'Bisrat', email: 'admin-absent@example.com' });
       await models.AppSetting.destroy({ where: { settingKey: PUBLIC_REGISTRATION_KEY } });

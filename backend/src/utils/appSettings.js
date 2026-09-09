@@ -41,21 +41,36 @@ export const PUBLIC_REGISTRATION_KEY = 'public_registration_enabled';
 // else. isPublicRegistrationEnabled is the ONLY function permitted to turn
 // this row into a boolean -- this accessor must never be used to derive the
 // open/closed answer.
-export async function getPublicRegistrationSettingRow(models) {
-  return models.AppSetting.findByPk(PUBLIC_REGISTRATION_KEY);
+//
+// `options` passes straight through to Sequelize's findByPk (e.g.
+// `{ transaction, lock }`) -- this is the CR-01 fix's mechanism for letting
+// the flip mutation take a locked, in-transaction read WITHOUT adding a
+// second findByPk call site (D-07 Layer 1 forbids that).
+export async function getPublicRegistrationSettingRow(models, options = {}) {
+  return models.AppSetting.findByPk(PUBLIC_REGISTRATION_KEY, options);
 }
 
 // true  <=> the row exists AND row.value === 'true' (strict equality against
 //           the exact string 'true' -- anything else, including 'TRUE', '1',
 //           or an empty string, is closed)
 // false <=> row absent | row.value is anything else | the read threw
+//           (untransacted callers only -- see below)
 //
 // No cache of any kind: a cache is a second source of truth, which is
 // exactly what D-07 forbids, and any TTL contradicts ADMIN-01's "a spam wave
 // can be stopped in seconds".
-export async function isPublicRegistrationEnabled(models) {
+//
+// `options` passes through to getPublicRegistrationSettingRow (see there).
+// When `options.transaction` is set, a read failure is RETHROWN instead of
+// swallowed: the caller is mid-transaction (the flip mutation, CR-01), and
+// swallowing to `false` there would write a guessed `from` into the audit
+// log, which is the ONLY history of a value that overwrites itself (D-03) --
+// a wrong audit row is worse than a rolled-back mutation. Untransacted
+// callers (Query.publicRegistrationEnabled, register's tokenless branch)
+// keep the original D-02 fail-closed swallow verbatim.
+export async function isPublicRegistrationEnabled(models, options = {}) {
   try {
-    const row = await getPublicRegistrationSettingRow(models);
+    const row = await getPublicRegistrationSettingRow(models, options);
     if (!row) {
       // D-02 fail-closed. Warn so a forgotten migration 021 leaves an
       // operator-visible trace without crashing the boot (E-8/E-9).
@@ -64,6 +79,9 @@ export async function isPublicRegistrationEnabled(models) {
     }
     return row.value === 'true';
   } catch (err) {
+    if (options.transaction) {
+      throw err;
+    }
     // House error-logging form (user.resolver.js): never the whole error
     // object -- a Sequelize DatabaseError's .sql/.parameters can carry
     // sensitive data on other codepaths, and this one must fail closed
