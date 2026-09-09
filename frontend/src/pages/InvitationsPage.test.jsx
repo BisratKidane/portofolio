@@ -18,26 +18,31 @@ beforeEach(() => {
   graphqlRequest.mockImplementation((query) => {
     if (query.includes('myInvitations')) return Promise.resolve({ myInvitations: [] });
     if (query.includes('pendingApprovals')) return Promise.resolve({ pendingApprovals: [] });
+    if (query.includes('publicRegistrationSetting')) {
+      return Promise.resolve({ publicRegistrationSetting: { enabled: true, updatedAt: null, updatedByName: null } });
+    }
     return Promise.resolve({});
   });
 });
 
 describe('InvitationsPage', () => {
-  it('shows the invite section but NOT approvals for a non-admin', async () => {
+  it('shows the invite section but NOT approvals or the public signup switch for a non-admin', async () => {
     useAuthMock.mockReturnValue({ user: { id: 1, role: 'USER' } });
 
     render(<InvitationsPage />);
 
     expect(await screen.findByText('Invite a family member')).toBeInTheDocument();
     expect(screen.queryByText('Pending approvals')).not.toBeInTheDocument();
+    expect(screen.queryByText('Public signup')).not.toBeInTheDocument();
   });
 
-  it('shows both the invite section and the approvals section for an admin', async () => {
+  it('shows the invite section, the approvals section, and the public signup switch for an admin', async () => {
     useAuthMock.mockReturnValue({ user: { id: 99, role: 'ADMIN' } });
 
     render(<InvitationsPage />);
 
     expect(await screen.findByText('Invite a family member')).toBeInTheDocument();
     expect(await screen.findByText('Pending approvals')).toBeInTheDocument();
+    expect(await screen.findByText('Public signup')).toBeInTheDocument();
   });
 });
