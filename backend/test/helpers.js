@@ -6,6 +6,7 @@ import { createLoaders } from '../src/loaders/familyMember.loaders.js';
 import { app } from '../src/server.js';
 import { rateLimitPlugin } from '../src/plugins/rateLimitPlugin.js';
 import { resetRateLimitStore } from '../src/utils/rateLimitStore.js';
+import { seedDefaultAppSettings } from '../src/utils/appSettings.js';
 
 const server = new ApolloServer({ typeDefs, resolvers, validationRules, plugins: [rateLimitPlugin] });
 
@@ -37,7 +38,17 @@ export async function resetTables() {
   await models.Spouse.destroy({ where: {}, truncate: true });
   await models.FamilyMember.destroy({ where: {}, truncate: true });
   await models.User.destroy({ where: {}, truncate: true });
+  await models.AppSetting.destroy({ where: {}, truncate: true });
   await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+
+  // Load-bearing reseed, not cleanup: globalSetup's sync({ force: true })
+  // creates app_settings but not this row, D-02 makes an absent row mean
+  // CLOSED, and register.test.js's ~25 tokenless cases assume OPEN. Without
+  // this, a large slice of the existing suite goes red for a reason that has
+  // nothing to do with whatever feature a given test file is exercising.
+  // Runs after FK checks are re-enabled so the insert commits against a
+  // normal, FK-checked connection.
+  await seedDefaultAppSettings(models);
 }
 
 export { resetRateLimitStore };
