@@ -171,3 +171,13 @@ None — no external service configuration required.
 ---
 *Phase: 35-post-verify-landing-invited-path-copy*
 *Completed: 2026-09-09*
+
+## Self-Check: PASSED
+
+- FOUND: frontend/src/pages/AwaitingApproval.jsx
+- FOUND: frontend/src/pages/verifyLanding.composed.test.jsx
+- FOUND: .planning/phases/35-post-verify-landing-invited-path-copy/35-01-SUMMARY.md
+- FOUND commit: f7424bb (Task 1)
+- FOUND commit: 6842f58 (Task 2)
+- FOUND commit: 4778ae5 (Task 3)
+- FOUND commit: d9f907d (SUMMARY.md)
