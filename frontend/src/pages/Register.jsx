@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Alert, Box, Button, Link, Stack, TextField, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Alert, Box, Button, CircularProgress, Link, Stack, TextField, Typography } from '@mui/material';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import AuthShell from '../components/AuthShell.jsx';
+import { graphqlRequest } from '../api/graphqlClient.js';
 import {
   validateFullName,
   validateEmail,
@@ -10,6 +11,8 @@ import {
   validateRelationshipNote,
   MAX_RELATIONSHIP_NOTE_LENGTH,
 } from './Register.validation.js';
+
+const PUBLIC_REGISTRATION_ENABLED_QUERY = `query PublicRegistrationEnabled { publicRegistrationEnabled }`;
 
 export default function Register() {
   const [searchParams] = useSearchParams();
@@ -19,7 +22,21 @@ export default function Register() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [publicOpen, setPublicOpen] = useState(null);
   const { register } = useAuth();
+
+  // Gates only the tokenless path (D-08): an invited visitor must render
+  // immediately with zero added latency, so this effect no-ops on `token`
+  // rather than being conditionally called. A rejected read fails closed
+  // (setPublicOpen(false)), matching the server's own D-02 fail-closed
+  // default, so the client and server never disagree in the direction
+  // that would expose the form.
+  useEffect(() => {
+    if (token) return;
+    graphqlRequest(PUBLIC_REGISTRATION_ENABLED_QUERY)
+      .then((data) => setPublicOpen(data.publicRegistrationEnabled))
+      .catch(() => setPublicOpen(false));
+  }, [token]);
 
   const nameCheck = validateFullName(form.name);
   const emailCheck = validateEmail(form.email);
@@ -81,12 +98,90 @@ export default function Register() {
       setResult(data);
     } catch (err) {
       setError(err.message);
+      // D-07 / T-34-06-B: never decide the door is closed by inspecting the
+      // rejection's message text. graphqlClient.js:26-28 flattens GraphQL
+      // errors into one joined-string Error, so extensions.code is not
+      // reachable without widening the shared client (do not do that here).
+      // A text match would give this component a second, independently
+      // derived notion of "closed" -- decoupled from the stored value,
+      // silently broken by any rewording of the server's message, and
+      // untestable against the real predicate. That is the precise bug
+      // class that has hit this project across Phases 14, 15, 30, 31, 32
+      // and 33. Instead, re-run the same query the mount effect uses and
+      // let the single invitation-only definition above pick it up.
+      //
+      // The swapped view must stay byte-identical to the initial-closed
+      // view: no "the door just closed while you were filling this in"
+      // line, no "your details weren't saved" line, no distinguishing
+      // severity. A second variant is copy that must be kept in sync by
+      // hand and will not be; and a message that differs by how the
+      // visitor arrived leaks that an admin closed the door in the last
+      // few seconds -- timing information about an administrative action,
+      // on a public unauthenticated page. Losing what the visitor typed is
+      // accepted: there is nothing left to submit it to.
+      try {
+        const stillOpen = await graphqlRequest(PUBLIC_REGISTRATION_ENABLED_QUERY);
+        if (!stillOpen.publicRegistrationEnabled) {
+          setPublicOpen(false);
+          setError('');
+        }
+      } catch {
+        // The re-query itself failed: leave the original error rendered
+        // rather than guessing at the door state from a network failure.
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  // D-07: this function is the SINGLE definition of the invitation-only
+  // view, called from both the initial-closed branch below and the
+  // mid-form-refusal swap inside handlePublicSubmit's catch. D-07 requires
+  // the two paths show the SAME message; duplicating this JSX at a second
+  // call site would create two copies that can drift, which is a small
+  // instance of the exact divergence class this phase exists to close. Do
+  // not inline a second AuthShell with this copy anywhere else.
+  function renderInvitationOnly() {
+    return (
+      <AuthShell
+        eyebrow="Invitation required"
+        title="You need an invitation"
+        subtitle="Agne is invitation-only right now."
+        footer={
+          <Typography variant="body2" color="text.secondary">
+            Already have an account?{' '}
+            <Link component={RouterLink} to="/login">
+              Sign in
+            </Link>
+          </Typography>
+        }
+      >
+        <Alert severity="info">
+          Registration is currently by invitation only. Ask an administrator to send you an invitation link, then
+          open the link from that email.
+        </Alert>
+      </AuthShell>
+    );
+  }
+
   if (!token) {
+    if (publicOpen === null) {
+      // No chrome, no title: every visible word differs between the open
+      // and closed outcomes, so there is no honest neutral chrome to show
+      // while the value is unknown. The outer Box is verbatim
+      // AuthShell.jsx:11 so the spinner lands where the card's top edge
+      // will be and there is no layout jump once the real view resolves.
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', pt: { xs: 1, md: 3 } }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (!publicOpen) {
+      return renderInvitationOnly();
+    }
+
     return (
       <AuthShell
         eyebrow="Request access"

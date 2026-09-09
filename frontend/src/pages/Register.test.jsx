@@ -196,3 +196,167 @@ describe('Register page (invitation-only)', () => {
     expect(screen.queryByText('a message the UI must never render on this branch')).not.toBeInTheDocument();
   });
 });
+
+describe('/register public-registration gate (ADMIN-02 / D-07)', () => {
+  it('Loading: paints no chrome -- a bare spinner only, until publicRegistrationEnabled resolves', () => {
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return new Promise(() => {});
+      return Promise.resolve({});
+    });
+
+    renderRegister(null);
+
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(screen.queryByText('Request access')).not.toBeInTheDocument();
+  });
+
+  it('Open: renders the untouched signup form once publicRegistrationEnabled resolves true', async () => {
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+      return Promise.resolve({});
+    });
+
+    renderRegister(null);
+
+    expect(await screen.findByText('Request access')).toBeInTheDocument();
+    expect(screen.getByLabelText('Full name', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Email address', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('Password', { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText('How are you related to the family?', { exact: false })).toBeInTheDocument();
+    expect(screen.queryByText('You need an invitation')).not.toBeInTheDocument();
+  });
+
+  it('Closed: renders the single invitation-only view once publicRegistrationEnabled resolves false', async () => {
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: false });
+      return Promise.resolve({});
+    });
+
+    renderRegister(null);
+
+    expect(await screen.findByText('You need an invitation')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Registration is currently by invitation only\./)
+    ).toBeInTheDocument();
+    expect(screen.getByText('Invitation required')).toBeInTheDocument();
+    expect(screen.getByText('Agne is invitation-only right now.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
+
+    expect(screen.queryByLabelText('Full name', { exact: false })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Email address', { exact: false })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Password', { exact: false })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('How are you related to the family?', { exact: false })).not.toBeInTheDocument();
+  });
+
+  it('Read failure fails closed: a rejected publicRegistrationEnabled read renders the invitation-only view', async () => {
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.reject(new Error('Network Error'));
+      return Promise.resolve({});
+    });
+
+    renderRegister(null);
+
+    // Matches the server's own D-02 fail-closed default, so client and
+    // server never disagree when the network fails.
+    expect(await screen.findByText('You need an invitation')).toBeInTheDocument();
+  });
+
+  it('Refused submit + server now closed -> swaps to the invitation-only view via re-query, not the message', async () => {
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+      return Promise.resolve({});
+    });
+
+    renderRegister(null);
+
+    const nameField = await screen.findByLabelText('Full name', { exact: false });
+    await userEvent.type(nameField, 'Ada Lovelace');
+    await userEvent.type(screen.getByLabelText('Email address', { exact: false }), 'ada@example.com');
+    await userEvent.type(screen.getByLabelText('Password', { exact: false }), 'secret123');
+    await userEvent.type(
+      screen.getByLabelText('How are you related to the family?', { exact: false }),
+      'cousin'
+    );
+
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: false });
+      if (query.includes('register(token'))
+        return Promise.reject(new Error('Registration is currently by invitation only.'));
+      return Promise.resolve({});
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByText('You need an invitation')).toBeInTheDocument();
+    // renderInvitationOnly()'s own <Alert severity="info"> also carries
+    // role="alert" (MUI's behaviour for every severity), so the "no error
+    // Alert remains" assertion must be scoped to error severity specifically
+    // rather than to role="alert" as a whole.
+    expect(document.querySelector('.MuiAlert-standardError')).not.toBeInTheDocument();
+
+    // The swap must be driven by the re-query resolving `false`, not by
+    // parsing the rejection's message -- assert the re-query actually
+    // happened (mount + post-refusal), not just that the view matches.
+    const publicOpenCallCount = graphqlRequest.mock.calls.filter(([query]) =>
+      query.includes('publicRegistrationEnabled')
+    ).length;
+    expect(publicOpenCallCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('Refused submit but server still open -> plain error, no swap (if this passes while the component string-matches the refusal text, the string-match has been reintroduced)', async () => {
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+      return Promise.resolve({});
+    });
+
+    renderRegister(null);
+
+    const nameField = await screen.findByLabelText('Full name', { exact: false });
+    await userEvent.type(nameField, 'Ada Lovelace');
+    await userEvent.type(screen.getByLabelText('Email address', { exact: false }), 'ada@example.com');
+    await userEvent.type(screen.getByLabelText('Password', { exact: false }), 'secret123');
+    await userEvent.type(
+      screen.getByLabelText('How are you related to the family?', { exact: false }),
+      'cousin'
+    );
+
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+      if (query.includes('register(token')) return Promise.reject(new Error('Something else went wrong.'));
+      return Promise.resolve({});
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something else went wrong.');
+    expect(screen.getByLabelText('Full name', { exact: false })).toBeInTheDocument();
+  });
+
+  it('Refusal-message rewording is irrelevant: the swap still happens on a message the UI has never seen (D-07 structural pin)', async () => {
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
+      return Promise.resolve({});
+    });
+
+    renderRegister(null);
+
+    const nameField = await screen.findByLabelText('Full name', { exact: false });
+    await userEvent.type(nameField, 'Ada Lovelace');
+    await userEvent.type(screen.getByLabelText('Email address', { exact: false }), 'ada@example.com');
+    await userEvent.type(screen.getByLabelText('Password', { exact: false }), 'secret123');
+    await userEvent.type(
+      screen.getByLabelText('How are you related to the family?', { exact: false }),
+      'cousin'
+    );
+
+    graphqlRequest.mockImplementation((query) => {
+      if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: false });
+      if (query.includes('register(token')) return Promise.reject(new Error('zzz unrelated server text'));
+      return Promise.resolve({});
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByText('You need an invitation')).toBeInTheDocument();
+  });
+});
