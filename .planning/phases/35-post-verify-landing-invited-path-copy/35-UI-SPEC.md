@@ -1,7 +1,7 @@
 ---
 phase: 35
 slug: post-verify-landing-invited-path-copy
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-09-09
@@ -61,11 +61,13 @@ No new spacing is introduced by this phase — every surface reuses `AuthShell.j
 | 2xl | 48px | Major section breaks (not used by this phase's single-card pages) |
 | 3xl | 64px | Page-level spacing (not used) |
 
-Exceptions: none for this phase.
+Exceptions: none introduced by this phase. `AuthShell.jsx`'s pre-existing header `Stack spacing={1.25}` (10px) sits outside the 4px grid; it is inherited, out of scope (AuthShell is not modified in Phase 35), and recorded here as standing debt rather than a new exception.
 
 ---
 
 ## Typography
+
+**Primary visual anchor:** on every surface this phase touches (`AwaitingApproval.jsx`, `Pending.jsx`, the invited success state in `Register.jsx`) the `AuthShell` `title` — `h4`, 34px / 700 / Sora — is the single largest, heaviest element and the first thing the eye lands on; the eyebrow above it and the body copy below are subordinate. Nothing else on these pages competes with it (no images, no buttons, no icons).
 
 No new sizes/weights are introduced. All three touched surfaces use existing MUI variants exactly as `theme.js` configures them (font sizes are MUI defaults; `theme.js` overrides only `fontFamily`/`fontWeight`/`letterSpacing`, not size or line-height):
 
@@ -134,7 +136,7 @@ The word **"approval"** (noun) does not appear in either string. **"approved"** 
 
 | | Current | New |
 |---|---|---|
-| Client paragraph (`Typography variant="body2" color="text.secondary"`, directly below the `Alert severity="success"`) | `We've sent a verification link to your email. After you verify, an administrator will review and approve your account before you can sign in.` | `We've sent a verification link to your email. Verify it and you can sign in right away — no admin review required.` |
+| Client paragraph (`Typography variant="body2" color="text.secondary"`, directly below the `Alert severity="success"`) | `We've sent a verification link to your email. After you verify, an administrator will review and approve your account before you can sign in.` | `We've sent a verification link to your email. Verify it and you can sign in right away.` |
 
 **Explicitly UNCHANGED, do not touch:** the `Alert severity="success"` above it renders `{result.message}` — the server's `TOKENLESS_REGISTER_MESSAGE`-equivalent invited-branch string (D-10, see below). Also explicitly UNCHANGED: the self-registration success paragraph at `Register.jsx` ~lines 211-215 (`Once you verify your email, an administrator reviews your request. You'll be able to sign in as soon as they approve it.`) — that promise is correct for the self-registration path (REG-04) and must remain byte-identical. Only the `token`-branch paragraph (lines 310-313) changes. No inviter-vouch sentence is added (considered and dropped per D-08 — the post-submit UI does not know the inviter's name without new plumbing).
 
@@ -142,10 +144,10 @@ The word **"approval"** (noun) does not appear in either string. **"approved"** 
 
 | Field | Current | New |
 |---|---|---|
-| `text` template, trailing sentence (~line 149, after `${noteLine}`) | `After you register, an administrator will review and approve your account before you can sign in.` | `Verify your email and you can sign in right away — no admin review required.` |
-| `renderHtml({ note })` (~line 160) | `After registering, an administrator reviews and approves your account before you can sign in.` | `Verify your email and you can sign in right away — no admin review required.` |
+| `text` template, trailing sentence (~line 149, after `${noteLine}`) | `After you register, an administrator will review and approve your account before you can sign in.` | `Once you register and verify your email, you can sign in right away.` |
+| `renderHtml({ note })` (~line 160) | `After registering, an administrator reviews and approves your account before you can sign in.` | `Once you register and verify your email, you can sign in right away.` |
 
-Per D-08, all three invited-path locations (Register.jsx client paragraph above, and these two mailer strings) carry the same canonical message — "verify, then sign in, no review". The two mailer strings are byte-identical to each other; the client paragraph adapts the lead-in ("Verify it" referring back to "your email") but ends on the same clause. No new interpolation is introduced — both edits are to static string literals; nothing here requires `escapeHtml()`.
+Per D-08, all three invited-path locations (Register.jsx client paragraph above, and these two mailer strings) carry the same canonical message — "verify, then sign in". The two mailer strings are byte-identical to each other and lead with "Once you register" because the invitation email is read *before* the invitee has registered; the client paragraph (read *after* submitting) drops that lead-in and says "Verify it", but ends on the same "sign in right away" clause. None of the three strings contains the words "review" or "approve" in any form — this is deliberate so tests can assert `not.toMatch(/review|approv/i)` on the whole rendered string rather than merely the absence of the old sentence (stronger mutation-test surface, Phase 34 D-13). No new interpolation is introduced — both edits are to static string literals; nothing here requires `escapeHtml()`.
 
 **5. Shared verification email — `backend/src/services/mailer.js`, `sendVerificationEmail` (D-09)**
 
@@ -177,7 +179,7 @@ Enumerated so the planner does not have to re-derive this from RESEARCH.md:
 | `frontend/src/pages/Pending.test.jsx` | `:34-38` and `:50-54` (`screen.getByText(...)` in both the base case and the APPR-06 regression case) | Update both to the new D-07 body string. The APPR-06 regression's *purpose* (approved+unlinked self-registrant sees the linking message) is unchanged — only the literal string changes. |
 | `frontend/src/pages/VerifyEmail.test.jsx` | `:65-76` (`'navigates to /pending when the verified account is still Pending'`) | Destination assertion changes from `'/pending'` to `'/awaiting-approval'`; rename the test description accordingly. This is a routing-destination change (D-01), not a copy change, but lands in the same file as the other copy-adjacent edits. |
 | `frontend/src/pages/Register.jsx` invited-branch paragraph | Check `frontend/src/pages/Register.test.jsx` for any assertion on the current client paragraph text (`"After you verify, an administrator will review and approve..."`) — if present, update to the new D-08 string. The `data.register.message`/`SUCCESS_MESSAGE` assertion (`Register.test.jsx:27`) pins the **server** string (D-10) and must NOT change. |
-| `backend/src/services/mailer.test.js` | `sendInvitationEmail` describe block (~`:133`+) | Add assertions that the old "review and approve" phrase is absent and the new "verify... right away... no admin review required" phrase is present, in both `text` and `html`. |
+| `backend/src/services/mailer.test.js` | `sendInvitationEmail` describe block (~`:133`+) | Add assertions that the new "Once you register and verify your email, you can sign in right away." sentence is present AND that `/review|approv/i` does not match, in both `text` and `html`. |
 | `backend/src/services/mailer.test.js` | `sendVerificationEmail` — **currently has zero coverage** (confirmed: not imported anywhere in the test file) | New describe block needed: assert `text`/`html` contain the new neutral line and do NOT contain "activate your account". This is new coverage, not a copy update to an existing assertion. |
 | New composed test (D-11/D-12/D-13) | New file `[DEFAULT: frontend/src/pages/verifyLanding.composed.test.jsx`, per RESEARCH.md Open Question 2's recommendation — a new file avoids restructuring `VerifyEmail.test.jsx`'s existing `useNavigate`-spy-based unit tests to share a file-scoped `vi.mock` with the composed style]` | Written red-first (D-12): must assert the `AwaitingApproval` copy renders (the exact eyebrow/title/body strings above), the login form never renders, and `localStorage.authToken` stays null. |
 
@@ -196,11 +198,11 @@ Not applicable — this project has no `components.json` / shadcn registry confi
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS (FLAG resolved — locked invited-path copy no longer contains "review")
+- [x] Dimension 2 Visuals: PASS (FLAG resolved — primary visual anchor declared under Typography)
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS (FLAG resolved — inherited AuthShell 10px gap recorded as standing debt)
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-09-09 (gsd-ui-checker: 6/6, 3 non-blocking FLAGs applied in-spec)
