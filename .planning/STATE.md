@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
-status: planning
-stopped_at: Phase 35 context gathered
-last_updated: "2026-09-09T18:58:56.679Z"
-last_activity: 2026-09-09 -- v4.1 milestone audit (tech_debt, 25/25 reqs); Phase 35 added to close W-1/W-2
+status: executing
+stopped_at: Phase 35 UI-SPEC approved
+last_updated: "2026-09-09T20:01:57.557Z"
+last_activity: 2026-09-09 -- Phase 35 planning complete
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 35
+  total_plans: 38
   completed_plans: 35
   percent: 83
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 Phase: 35
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-09-09 -- v4.1 milestone audit (tech_debt, 25/25 reqs); Phase 35 added to close W-1/W-2
+Status: Ready to execute
+Last activity: 2026-09-09 -- Phase 35 planning complete
 
 Next: /gsd-plan-phase 35
 
@@ -195,9 +195,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-09T18:58:56.672Z
-Stopped at: Phase 35 context gathered
-Resume file: .planning/phases/35-post-verify-landing-invited-path-copy/35-CONTEXT.md
+Last session: 2026-09-09T19:24:06.774Z
+Stopped at: Phase 35 UI-SPEC approved
+Resume file: .planning/phases/35-post-verify-landing-invited-path-copy/35-UI-SPEC.md
 
 ## Operator Next Steps
 
