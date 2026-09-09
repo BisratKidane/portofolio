@@ -493,17 +493,19 @@ Not applicable in the traditional sense (no external library/ecosystem shift). T
 
 **If this table is empty:** N/A — see rows above.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Is `InvitePage.jsx:107`'s stale "administrator approves every new account" copy in scope for this phase?**
+1. **RESOLVED — deferred, not folded.** Is `InvitePage.jsx:107`'s stale "administrator approves every new account" copy in scope for this phase?
    - What we know: `frontend/src/pages/InvitePage.jsx:106-109` (rendered inside `InvitationsPage.jsx` for admins composing a new invitation) states "We'll email them a single-use registration link. An administrator approves every new account before it becomes active." This is factually stale post-Phase-31 (INVITE-03: invited accounts auto-activate on verify, no approval step) — the same class of stale promise as W-2, just shown to the ADMIN sender rather than the invitee recipient.
    - What's unclear: CONTEXT.md's Phase Boundary and "Touches" list do not mention `InvitePage.jsx`, and the phase's Origin section (`.planning/v4.1-MILESTONE-AUDIT.md` W-2) is framed entirely around what the INVITEE is told, not what the ADMIN sees when creating the invitation. It's plausible this was deliberately scoped out (admin-facing, lower harm — an admin who has read Phase 31's ROADMAP already knows the real behavior) or plausible it was simply missed by the audit's grep, which likely searched invitee-facing surfaces.
    - Recommendation: Surface this to the user/planner explicitly before finalizing the plan. If out of scope, it costs nothing to leave as a noted `tech_debt` item (matching this project's established pattern of tracking such items in STATE.md/audit frontmatter) for a future phase. If in scope, it's a one-line, zero-risk addition (no test currently pins this string — confirmed via `grep -rn "administrator approves every new account" frontend/src` returning only the source line, no test file) that would fully close the "nobody is told to expect a review that doesn't exist" spirit of SC-3.
+   - **Resolution:** Deferred, not folded into this phase. `35-CONTEXT.md`'s "Deferred Ideas" section records it explicitly as "Admin-facing invite-composer copy" — `InvitePage.jsx:107-108` is shown to the admin while composing an invitation, not to the invitee, and stays outside INVITE-03's invited-path scope. The user decides whether to fix it as a separate quick task.
 
-2. **Should the composed test file be new or an extension of `VerifyEmail.test.jsx`?**
+2. **RESOLVED — new file.** Should the composed test file be new or an extension of `VerifyEmail.test.jsx`?
    - What we know: D-11 describes the harness as "`VerifyEmail.test.jsx`'s harness minus the `useNavigate` stub" but CONTEXT.md's Claude's Discretion section explicitly leaves file placement open, noting two options: a new file (e.g., `verifyLanding.composed.test.jsx`) or extending `VerifyEmail.test.jsx` itself.
    - What's unclear: Extending `VerifyEmail.test.jsx` in place would require removing its existing `vi.mock('react-router-dom', ...)`/`navigateSpy` for the new composed tests while KEEPING it for the file's four existing unit tests (which rely on the spy) — those two test styles cannot share one `vi.mock` call within a single file (a mock is file-scoped), so extending in place would actually require restructuring the existing spy-based tests to also use real routing, OR maintaining two different render helpers in one file.
    - Recommendation: A new file (`verifyLanding.composed.test.jsx` or similar) is the lower-risk choice — it avoids touching/risking the four already-passing `VerifyEmail.test.jsx` unit tests, and the two testing styles (isolated-with-navigate-spy vs. composed-with-real-router) are different enough in setup that co-locating them in one `describe` block would be confusing. This is a recommendation, not a re-litigation of CONTEXT.md's explicit discretion grant.
+   - **Resolution:** New file, `frontend/src/pages/verifyLanding.composed.test.jsx`, per Claude's-Discretion grant in `35-CONTEXT.md`. `VerifyEmail.test.jsx` keeps its four existing spy-based unit tests untouched (only its destination assertion at ~line 65-76 was updated for D-01); the composed suite lives entirely in the new file, per `35-01-PLAN.md` Task 1.
 
 ## Environment Availability
 
