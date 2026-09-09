@@ -308,7 +308,18 @@ Plans:
   4. A self-registered account cannot reach any authenticated resolver until both gates pass — proven against the resolvers, not just the client-side route guard.
   5. `npm test --workspaces` is green.
 
-**Plans**: TBD
+**Plans**: 9 plans in 6 waves
+
+Plans:
+- [ ] 34-01-PLAN.md — Settings storage foundation: AppSetting model, migration 021 + README, the shared isPublicRegistrationEnabled predicate, and the resetTables/globalSetup seeding (Wave 0)
+- [ ] 34-02-PLAN.md — Register.test.jsx harness migration: query-dispatching mocks + async-first-assert, landed before the loading gate (frontend Wave 0)
+- [ ] 34-03-PLAN.md — GraphQL settings layer: setting.schema.js + setting.resolver.js, requireAdmin flip with an in-transaction audit row, barrels, and settings-layer integration coverage
+- [ ] 34-04-PLAN.md — PublicSignupSwitch component per 34-UI-SPEC.md + its tests, wired as the first region of /invitations
+- [ ] 34-05-PLAN.md — register tokenless door check + the D-07 three-layer proof (call-count spy, five-state agreement table) and the D-08/D-09/D-10 controls
+- [ ] 34-06-PLAN.md — Register.jsx gated on publicRegistrationEnabled, one renderInvitationOnly(), re-query-and-swap on a refused mid-form submit, plus its tests
+- [ ] 34-07-PLAN.md — security.boundaries.test.js: the SEC-04 authorization matrix and the SEC-05 schema-driven sweep (two harnesses, one file) + the photo-route 401 cells
+- [ ] 34-08-PLAN.md — D-13 mutation testing: M1-M8 applied, run, and recorded with verbatim failure messages, then restored
+- [ ] 34-09-PLAN.md — SC-5 gate (npm test --workspaces) + human sign-off on migration 021, the switch visuals, and the genuine mid-form race
 
 **UI hint**: yes
 
@@ -352,4 +363,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete    | 2026-09-08 |
-| 34. Open-Registration Switch & Quality Gate | v4.1 | 0/– | Not started | — |
+| 34. Open-Registration Switch & Quality Gate | v4.1 | 0/9 | Planned | — |
