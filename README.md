@@ -336,6 +336,25 @@ Adds three optional Ge'ez-script (Ethiopic) name columns to `family_members` —
 
 **Prod apply deferred (D-04):** the production database (`agne.bisrat.ch`) is **deliberately not migrated in this phase**. The prod apply is deferred to the coordinated deploy that ships the Ge'ez API/UI (later v3.0 phases), so this schema change lands together with the code that reads and writes it.
 
+### Create the app_settings table (Phase 34 / ADMIN-01, D-01)
+
+Creates a generic key/value `app_settings` table and seeds a single row, `public_registration_enabled = 'true'`, so a correctly-migrated system starts in the same OPEN state production behaves in today. This table backs the admin-facing public-signup on/off switch. Run this **before** deploying a backend that references `app_settings` (an un-migrated DB has no table at all until `sequelize.sync()` creates it empty at next boot — see the caveat in step 2).
+
+1. Apply the migration against your database, using the `DB_USER`/`DB_PASSWORD`/`DB_NAME` values from the active env file:
+
+   ```bash
+   docker compose --env-file env/local.env exec -T mysql mysql -u"$DB_USER" -p"$DB_PASSWORD" "$DB_NAME" < backend/migrations/manual/021-create-app-settings.sql
+   ```
+
+   Or run the equivalent statements with any MySQL client pointed at your `DB_HOST`/`DB_PORT`/`DB_NAME`.
+
+2. Boot the backend against that same database and confirm — note this step's verification is different in kind from prior migrations: `sequelize.sync()` auto-creates `app_settings` if it was somehow missed, so there is no `Unknown column` error to look for here. Instead:
+   - `SELECT settingKey, value FROM app_settings;` returns exactly one row, `public_registration_enabled = 'true'`.
+   - `curl http://localhost:4000/health` returns `{"status":"ok"}`.
+   - Sign in as an ADMIN, open `/invitations`, and confirm the switch region reads **"Public signup is open"** — not "Public signup is closed — Not changed since setup.", which is the exact symptom of a forgotten migration (an empty, auto-created table reads as closed by design, D-02).
+
+This migration is idempotent — re-running it is always safe, and it never clobbers a value an admin has since changed (`ON DUPLICATE KEY UPDATE` is a no-op on an existing row). Nothing re-seeds this row at application boot, so an admin's intentional "closed" survives a redeploy.
+
 ## Project structure
 
 ```text
