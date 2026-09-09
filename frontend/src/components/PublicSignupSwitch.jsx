@@ -183,7 +183,13 @@ export default function PublicSignupSwitch() {
         )}
       </Paper>
 
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} fullWidth maxWidth="xs">
+      <Dialog
+        open={confirmOpen}
+        onClose={busy ? undefined : () => setConfirmOpen(false)}
+        disableEscapeKeyDown={busy}
+        fullWidth
+        maxWidth="xs"
+      >
         <DialogTitle>Open public signup?</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
@@ -191,7 +197,12 @@ export default function PublicSignupSwitch() {
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)}>Keep it closed</Button>
+          {/* Disabled while busy (WR-02, 34-REVIEW.md): once the open-flip
+              mutation is on the wire, "Keep it closed" can no longer keep it
+              closed -- clicking it, the backdrop, or Escape must all be
+              inert until the mutation settles, or the label makes a promise
+              the component cannot keep. */}
+          <Button disabled={busy} onClick={() => setConfirmOpen(false)}>Keep it closed</Button>
           <Button variant="contained" disabled={busy} onClick={handleConfirmOpen}>
             {busy ? 'Opening…' : 'Open signup'}
           </Button>

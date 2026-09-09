@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import PublicSignupSwitch from './PublicSignupSwitch.jsx';
 
@@ -20,6 +20,7 @@ let current;
 let loadShouldFail;
 let flipShouldFail;
 let neverResolveLoad;
+let neverResolveFlip;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -27,6 +28,7 @@ beforeEach(() => {
   loadShouldFail = false;
   flipShouldFail = false;
   neverResolveLoad = false;
+  neverResolveFlip = false;
 
   graphqlRequest.mockImplementation((query, variables) => {
     if (query.includes('publicRegistrationSetting')) {
@@ -35,6 +37,7 @@ beforeEach(() => {
       return Promise.resolve({ publicRegistrationSetting: current });
     }
     if (query.includes('setPublicRegistrationEnabled')) {
+      if (neverResolveFlip) return new Promise(() => {});
       if (flipShouldFail) return Promise.reject(new Error('Nope.'));
       current = { ...current, enabled: variables.enabled, updatedAt: '1757404800000', updatedByName: current.updatedByName };
       return Promise.resolve({ setPublicRegistrationEnabled: current });
@@ -133,6 +136,37 @@ describe('PublicSignupSwitch', () => {
       const readCalls = graphqlRequest.mock.calls.filter(([query]) => query.includes('publicRegistrationSetting'));
       expect(readCalls.length).toBeGreaterThanOrEqual(2);
     });
+  });
+
+  it('disables "Keep it closed" and ignores Escape while the open-flip is in flight, and fires only one request (WR-02, 34-REVIEW.md)', async () => {
+    const user = userEvent.setup();
+    current = settingFixture({ enabled: false, updatedAt: null, updatedByName: null });
+    neverResolveFlip = true;
+    render(<PublicSignupSwitch />);
+
+    await screen.findByText('Public signup is closed');
+    await user.click(screen.getByLabelText('Public signup'));
+    await screen.findByText('Open public signup?');
+
+    await user.click(screen.getByRole('button', { name: 'Open signup' }));
+    // The flip never resolves in this test -- the dialog must still be open,
+    // busy, and every dismiss path (button, Escape) must be inert while it
+    // is: the label "Keep it closed" makes a promise the component cannot
+    // keep once the mutation is already on the wire.
+    await screen.findByText('Opening…');
+    expect(screen.getByRole('button', { name: 'Keep it closed' })).toBeDisabled();
+
+    // fireEvent.click (not user.click, which refuses to interact with a
+    // pointer-events:none disabled control) confirms what a real disabled
+    // button also guarantees: no click handler fires at all.
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it closed' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    const flipCalls = graphqlRequest.mock.calls.filter(([query]) => query.includes('setPublicRegistrationEnabled'));
+    expect(flipCalls).toHaveLength(1);
   });
 
   it('shows the load-failure state with a working Retry, no Switch until it resolves', async () => {
