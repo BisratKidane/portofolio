@@ -313,8 +313,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 34-01-PLAN.md — Settings storage foundation: AppSetting model, migration 021 + README, the shared isPublicRegistrationEnabled predicate, and the resetTables/globalSetup seeding (Wave 0)
-- [ ] 34-02-PLAN.md — Register.test.jsx harness migration: query-dispatching mocks + async-first-assert, landed before the loading gate (frontend Wave 0)
+- [x] 34-01-PLAN.md — Settings storage foundation: AppSetting model, migration 021 + README, the shared isPublicRegistrationEnabled predicate, and the resetTables/globalSetup seeding (Wave 0)
+- [x] 34-02-PLAN.md — Register.test.jsx harness migration: query-dispatching mocks + async-first-assert, landed before the loading gate (frontend Wave 0)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -380,4 +380,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete    | 2026-09-08 |
-| 34. Open-Registration Switch & Quality Gate | v4.1 | 0/9 | Planned | — |
+| 34. Open-Registration Switch & Quality Gate | v4.1 | 2/9 | In Progress|  |
