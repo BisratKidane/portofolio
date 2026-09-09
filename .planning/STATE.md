@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
 status: planning
-stopped_at: v4.1 audit done; Phase 35 added, not yet planned
-last_updated: "2026-09-09T18:37:55.924Z"
+stopped_at: Phase 35 context gathered
+last_updated: "2026-09-09T18:58:56.679Z"
 last_activity: 2026-09-09 -- v4.1 milestone audit (tech_debt, 25/25 reqs); Phase 35 added to close W-1/W-2
 progress:
   total_phases: 6
@@ -195,9 +195,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-09T18:07:30Z
-Stopped at: v4.1 audit done; Phase 35 added, not yet planned
-Resume file: None
+Last session: 2026-09-09T18:58:56.672Z
+Stopped at: Phase 35 context gathered
+Resume file: .planning/phases/35-post-verify-landing-invited-path-copy/35-CONTEXT.md
 
 ## Operator Next Steps
 
