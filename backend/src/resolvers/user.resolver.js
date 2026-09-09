@@ -16,6 +16,10 @@ import {
   verificationTokenExpiry
 } from '../utils/auth.js';
 import { assertPasswordStrength } from '../utils/passwordPolicy.js';
+// The ONLY import this file takes from appSettings.js -- never the settings
+// model, its key constant, or the bare row accessor. This file is a call
+// site of the shared predicate, never a second definition of it (D-07).
+import { isPublicRegistrationEnabled } from '../utils/appSettings.js';
 import { assertRegistrationName } from '../utils/namePolicy.js';
 import { assertRegistrationEmail } from '../utils/emailPolicy.js';
 import { assertRelationshipNoteLength } from '../utils/relationshipNotePolicy.js';
@@ -104,6 +108,10 @@ export const MIN_RESET_RESPONSE_MS = 250;
 // ~217ms free-path p99, so the ~1.3ms measured timing delta (WR-01) between
 // the taken-email and free-email tokenless outcomes is swamped by noise.
 export const MIN_REGISTER_RESPONSE_MS = 400;
+// Wording deliberately mirrors the first sentence of the /register
+// invitation-only <Alert severity="info">, so a visitor who somehow sees the
+// raw GraphQL error reads the same thing the UI would have shown them.
+export const PUBLIC_REGISTRATION_CLOSED_MESSAGE = 'Registration is currently by invitation only.';
 
 function serializeUser(user) {
   return user ? user.get({ plain: true }) : null;
@@ -173,9 +181,44 @@ export const userResolvers = {
     // account in the 'Pending' state pending email verification; the
     // tokenless branch additionally requires admin approval before login
     // works (the invited branch does not -- see verifyEmail's
-    // auto-activation logic). No environment-gated feature switch guards
-    // this branch: it is live the moment this code deploys (D-03).
+    // auto-activation logic). The tokenless branch is gated by the stored
+    // app_settings row (Phase 34 D-01/D-02), read through
+    // isPublicRegistrationEnabled and checked before anything else the
+    // resolver does for a tokenless call; the row fails closed when absent
+    // or unreadable. Phase 32 D-03's ban on an *environment-variable* switch
+    // still stands -- do not add one and do not let any env value override
+    // the stored row.
     register: async (_parent, { token, name, email, password, relationshipNote }, { models }) => {
+      // Phase 34 ADMIN-02/D-09: the door check for a tokenless call is the
+      // LITERAL FIRST STATEMENT this resolver executes -- before
+      // assertPasswordStrength, before the relationship-note/name/email
+      // validators, before startedAt, before bcrypt.hash, before
+      // models.User.findOne, before any write and before any email. A
+      // closed door therefore costs one primary-key read and nothing else
+      // (D-09, locked verbatim: "checked first and refused plainly"). This
+      // check sits deliberately OUTSIDE the uniform-response machinery
+      // below (finishTokenlessRegistration): enumeration-silence (SEC-01 /
+      // Phase 32 D-08) hides whether a given EMAIL has an account, but it
+      // does not hide the door's state, which the public
+      // publicRegistrationEnabled query broadcasts by design -- folding
+      // this check into the uniform path would make the closed-door outcome
+      // indistinguishable from a real registration, the exact opposite of
+      // ADMIN-02's "the mutation rejects a tokenless registration". `!token`
+      // here and `token` on the branch below are exact complements of the
+      // SAME local variable, not two independently-computed notions of the
+      // same fact -- this is not the D-07 outer/inner-guard divergence
+      // class (which is about two different FUNCTIONS computing "the same"
+      // predicate and drifting apart); a single local value read twice by
+      // its own complement cannot drift the way two accessor
+      // implementations can. The predicate itself lives in
+      // utils/appSettings.js, and this is a call site of it, never a second
+      // definition (D-07).
+      if (!token) {
+        if (!(await isPublicRegistrationEnabled(models))) {
+          throw new Error(PUBLIC_REGISTRATION_CLOSED_MESSAGE);
+        }
+      }
+
       assertPasswordStrength(password);
 
       if (token) {
