@@ -270,3 +270,187 @@ describe('SEC-04 — the tokenless door (ADMIN-02)', () => {
     expect(errors?.[0]?.message).toBe(PUBLIC_REGISTRATION_CLOSED_MESSAGE);
   });
 });
+
+// ---------------------------------------------------------------------------
+// SEC-05 -- the schema-driven sweep (E-2's verified prototype, ported
+// verbatim). Enumerates every root field from the REAL SDL (buildSchema over
+// the same typeDefs array Apollo Server builds from), synthesizes a valid
+// operation for each, and executes it over real HTTP with a real Pending
+// user's JWT -- proving getUserFromRequest's REACH, not merely its presence.
+// ---------------------------------------------------------------------------
+
+const unwrap = (t) => (isNonNullType(t) || isListType(t) ? unwrap(t.ofType) : t);
+
+function selectionFor(type, depth = 0) {
+  const named = unwrap(type);
+  if (isScalarType(named) || isEnumType(named)) return '';
+  if (depth > 3) return ' { __typename }';
+  const fields = named.getFields();
+  for (const f of Object.values(fields)) {
+    const ft = unwrap(f.type);
+    if ((isScalarType(ft) || isEnumType(ft)) && f.args.every((a) => !isNonNullType(a.type))) {
+      return ` { ${f.name} }`;
+    }
+  }
+  for (const f of Object.values(fields)) {
+    const ft = unwrap(f.type);
+    if (isObjectType(ft) && f.args.every((a) => !isNonNullType(a.type))) {
+      return ` { ${f.name}${selectionFor(f.type, depth + 1)} }`;
+    }
+  }
+  return ' { __typename }';
+}
+
+function dummyValue(type) {
+  if (isNonNullType(type)) return dummyValue(type.ofType);
+  if (isListType(type)) return [dummyValue(type.ofType)];
+  if (isEnumType(type)) return type.getValues()[0].name;
+  if (isInputObjectType(type)) {
+    const out = {};
+    for (const f of Object.values(type.getFields())) {
+      if (isNonNullType(f.type)) out[f.name] = dummyValue(f.type);
+    }
+    return out;
+  }
+  switch (type.name) {
+    case 'ID':
+      return '1';
+    case 'Int':
+      return 1;
+    case 'Float':
+      return 1.0;
+    case 'Boolean':
+      return true;
+    default:
+      return 'x';
+  }
+}
+
+function buildOperation(opKind, fieldName, field) {
+  const varDefs = [];
+  const argStrs = [];
+  const variables = {};
+  for (const arg of field.args) {
+    if (!isNonNullType(arg.type)) continue; // only REQUIRED args
+    const varName = `v_${arg.name}`;
+    varDefs.push(`$${varName}: ${arg.type.toString()}`);
+    argStrs.push(`${arg.name}: $${varName}`);
+    variables[varName] = dummyValue(arg.type);
+  }
+  const varPart = varDefs.length ? `(${varDefs.join(', ')})` : '';
+  const argPart = argStrs.length ? `(${argStrs.join(', ')})` : '';
+  return {
+    query: `${opKind} Sweep${varPart} { ${fieldName}${argPart}${selectionFor(field.type)} }`,
+    variables
+  };
+}
+
+describe('SEC-05 — no Pending self-registrant reaches any authenticated root field', () => {
+  // This IS the security surface: a root field is authenticated by default
+  // unless someone deliberately writes its name down here. Adding a name is
+  // a reviewable, two-place edit (this Set + the pinned sorted-array
+  // assertion below), never a silent widening.
+  const PUBLIC_ALLOWLIST = new Set([
+    'login',
+    'publicRegistrationEnabled',
+    'register',
+    'requestPasswordReset',
+    'resendVerificationEmail',
+    'resetPassword',
+    'verifyEmail'
+  ]);
+
+  // A THIRD category, not public: `me` legitimately resolves to null for an
+  // unauthenticated/Pending caller instead of throwing. Putting it in the
+  // allowlist above would be a silent hole -- a future `me` that leaked a
+  // Pending user's row would pass a naive "is it allowlisted" sweep. It gets
+  // its own explicit assertion instead.
+  const NULL_RESULT_FIELDS = new Set(['me']);
+
+  const queryFields = Object.values(schema.getQueryType().getFields());
+  const mutationFields = Object.values(schema.getMutationType().getFields());
+  const sweepRows = [
+    ...queryFields
+      .filter((f) => !PUBLIC_ALLOWLIST.has(f.name))
+      .map((field) => ({ opKind: 'query', name: field.name, field })),
+    ...mutationFields
+      .filter((f) => !PUBLIC_ALLOWLIST.has(f.name))
+      .map((field) => ({ opKind: 'mutation', name: field.name, field }))
+  ];
+
+  // Deliberately does NOT use the graphql() helper anywhere in this block --
+  // graphql() injects contextValue.user directly (helpers.js:16-26), so
+  // getUserFromRequest never runs. It would hand every resolver a
+  // fully-populated Pending User that requireAuth happily accepts, testing a
+  // state production can never reach. Every execution below goes through
+  // httpClient().post('/graphql') with a real signToken(pending) header.
+  it.each(sweepRows)('$opKind field $name refuses a Pending self-registrant', async ({ opKind, name, field }) => {
+    const pending = await createTestUser({
+      status: 'Pending',
+      emailVerified: true,
+      email: `p-${name}@example.com`
+    });
+
+    const { query, variables } = buildOperation(opKind, name, field);
+
+    // Not optional. Without this, a future schema change (a new required
+    // argument of an unhandled type, a return type with no scalar leaf)
+    // could silently turn a sweep row into a validation error that a naive
+    // "some error exists" assertion would misread as a pass. This is what
+    // makes the sweep self-checking.
+    expect(validate(schema, parse(query))).toEqual([]);
+
+    const res = await httpClient()
+      .post('/graphql')
+      .set('Authorization', `Bearer ${signToken(pending)}`)
+      .send({ query, variables });
+
+    if (NULL_RESULT_FIELDS.has(name)) {
+      expect(res.body.errors).toBeUndefined();
+      expect(res.body.data[name]).toBeNull();
+      return;
+    }
+
+    // Every guard funnels through requireAuth first (auth.js:43,:48), so
+    // with a Pending user's token getUserFromRequest returns null and every
+    // one of these fields produces the identical message -- one string, not
+    // a set.
+    expect(res.body.errors[0].message).toBe(AUTH_ERROR);
+    // `path` is populated only during the execution phase, so its presence
+    // is positive proof the field's OWN resolver ran and threw -- a
+    // validation error has no `path` at all, which is what stops this sweep
+    // from being satisfied by a malformed-query false positive.
+    expect(res.body.errors[0].path).toEqual([name]);
+  });
+
+  // The only thing standing between the allowlist and becoming a dumping
+  // ground where a row that fails for an incidental reason gets
+  // "temporarily" allowlisted. Any addition is now a two-place, reviewable
+  // edit that shows up as a deliberate diff.
+  it('pins the public allowlist to exactly these seven names', () => {
+    expect([...PUBLIC_ALLOWLIST].sort()).toEqual([
+      'login',
+      'publicRegistrationEnabled',
+      'register',
+      'requestPasswordReset',
+      'resendVerificationEmail',
+      'resetPassword',
+      'verifyEmail'
+    ]);
+  });
+
+  // Pins the swept-field count so the sweep cannot silently shrink. If a
+  // plan legitimately adds a root field, this number and (if the field is
+  // public) the allowlist above are the two places that must change.
+  it('pins the swept root-field count: 14 Query + 21 Mutation, 7 allowlisted, 28 swept', () => {
+    expect(queryFields.length).toBe(14);
+    expect(mutationFields.length).toBe(21);
+    expect(PUBLIC_ALLOWLIST.size).toBe(7);
+    expect(sweepRows.length).toBe(28);
+  });
+
+  // Scope honesty: this sweep covers ROOT fields only. Nested field
+  // resolvers (Invitation.inviter, FamilyMember.createdBy) are unreachable
+  // without first passing a guarded root field, so root-level coverage is
+  // sufficient for SEC-05's claim.
+});
