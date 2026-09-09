@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
 status: planning
-stopped_at: Phase 34 context gathered
-last_updated: "2026-09-09T06:52:46.379Z"
+stopped_at: Phase 34 UI-SPEC approved
+last_updated: "2026-09-09T07:24:45.398Z"
 last_activity: 2026-09-08
 progress:
   total_phases: 5
@@ -190,9 +190,9 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-09T06:52:46.372Z
-Stopped at: Phase 34 context gathered
-Resume file: .planning/phases/34-open-registration-switch-quality-gate/34-CONTEXT.md
+Last session: 2026-09-09T07:24:45.392Z
+Stopped at: Phase 34 UI-SPEC approved
+Resume file: .planning/phases/34-open-registration-switch-quality-gate/34-UI-SPEC.md
 
 ## Operator Next Steps
 
