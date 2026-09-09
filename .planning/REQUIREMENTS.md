@@ -51,17 +51,17 @@ Approval now means exactly one thing: **is this stranger actually family?**
 
 ### Open-Registration Control (ADMIN)
 
-- [ ] **ADMIN-01**: An admin can turn public self-registration on or off from inside the app, without a redeploy, so a spam wave can be stopped in seconds.
-- [ ] **ADMIN-02**: While public registration is off, `/register` without a token shows the invitation-only message **and** the mutation rejects a tokenless registration — the switch is enforced on the server, not just in the UI.
-- [ ] **ADMIN-03**: The current on/off state is visible to admins wherever they can change it, so nobody has to guess whether the door is open.
+- [x] **ADMIN-01**: An admin can turn public self-registration on or off from inside the app, without a redeploy, so a spam wave can be stopped in seconds.
+- [x] **ADMIN-02**: While public registration is off, `/register` without a token shows the invitation-only message **and** the mutation rejects a tokenless registration — the switch is enforced on the server, not just in the UI.
+- [x] **ADMIN-03**: The current on/off state is visible to admins wherever they can change it, so nobody has to guess whether the door is open.
 
 ### Security & Abuse (SEC)
 
 - [x] **SEC-01**: The public signup path gives the same response whether or not that email already has an account, so it cannot be used to discover who has one; the real account owner is told by email that someone tried to register with their address. *(Partial: the originally-reported CR-01 enumeration oracle was closed by Plan 32-05, but 32-REVIEW.md's CR-03 finding -- models.User.findOne and createVerificationToken() running outside the uniform-response guard -- meant the underlying claim was not yet fully true. Plan 32-08 moves both calls inside the guarded path and adds regression coverage; re-verify via /gsd:verify-work 32 before re-checking this box.)*
 - [x] **SEC-02**: The existing per-IP rate limit on registration covers the tokenless path, so an open form cannot be used to flood the approval queue or probe the system.
 - [x] **SEC-03**: The relationship note is length-capped on the server and rendered safely everywhere it is shown — the admin UI and the admin notification email included. *(Complete: Phase 32 caps the note server-side and escapes it in the admin notification email; Phase 33 renders it in the admin UI as a plain React text child — no `dangerouslySetInnerHTML`, no markdown — with a regression test proving an HTML-bearing note renders as literal text.)*
-- [ ] **SEC-04**: Adversarial tests prove the boundaries hold: a non-admin cannot create an invitation, cannot approve or reject an account, and cannot register without a token while public registration is off.
-- [ ] **SEC-05**: A self-registered account cannot reach any authenticated surface before both gates pass — proven against the resolvers, not just the client-side route guard.
+- [x] **SEC-04**: Adversarial tests prove the boundaries hold: a non-admin cannot create an invitation, cannot approve or reject an account, and cannot register without a token while public registration is off.
+- [x] **SEC-05**: A self-registered account cannot reach any authenticated surface before both gates pass — proven against the resolvers, not just the client-side route guard.
 
 ---
 

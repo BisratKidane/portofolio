@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
-status: executing
-stopped_at: Phase 34 UI-SPEC approved
-last_updated: "2026-09-09T09:34:20.504Z"
+status: milestone_complete
+stopped_at: Milestone complete (Phase 34 was final phase)
+last_updated: 2026-09-09T15:56:42.100Z
 last_activity: 2026-09-09 -- Phase 34 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 35
-  completed_plans: 26
-  percent: 74
+  completed_plans: 35
+  percent: 80
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 34 — open-registration-switch-quality-gate
+**Current focus:** Milestone complete
 
 ## Current Position
 
-Phase: 34 (open-registration-switch-quality-gate) — EXECUTING
-Plan: 9 of 9
-Status: Executing Phase 34
-Last activity: 2026-09-09 -- Phase 34 all 9 plans executed; code review (1 critical, 2 warnings) fixed via /gsd:code-review --fix (e09347f, 98a8143, 23383c3, 09d0bdc); regression + drift gates green; verifier running
+Phase: 34
+Plan: Not started
+Status: Milestone complete
+Last activity: 2026-09-09
 
 Next: /gsd:execute-phase 34
 
@@ -68,7 +68,7 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 
 **Velocity:**
 
-- Total plans completed: 107 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
+- Total plans completed: 116 (v1.0: 13, v1.1: 19, v2.0: 27) — none yet in v3.0/v4.0
 - Average duration: - min
 - Total execution time: 0 hours (v4.0)
 
@@ -91,6 +91,7 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 | 31 | 5 | - | - |
 | 32 | 13 | - | - |
 | 33 | 4 | - | - |
+| 34 | 9 | - | - |
 
 **Recent Trend:**
 
