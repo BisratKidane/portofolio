@@ -111,6 +111,16 @@ None - no external service configuration required. This plan mocks `graphqlReque
 - `InvitationsPage.jsx` now has three stacked admin-gated regions (switch, invite form, approval queue) sharing one `Divider` convention; any future region should follow the same `isAdmin && (<><Region /><Divider .../></>)` shape.
 - No blockers. The full frontend suite (44 files / 491 tests) is green and this plan touched no backend files, so it is safe alongside plan 34-03's concurrent backend work per the plan's own `<verification>` note.
 
+## Self-Check: PASSED
+
+- FOUND: frontend/src/components/PublicSignupSwitch.jsx
+- FOUND: frontend/src/components/PublicSignupSwitch.test.jsx
+- FOUND: .planning/phases/34-open-registration-switch-quality-gate/34-04-SUMMARY.md
+- FOUND commit: d6695ed
+- FOUND commit: ccd08ec
+- FOUND commit: 081cc04
+- FOUND commit: 7331e44
+
 ---
 *Phase: 34-open-registration-switch-quality-gate*
 *Completed: 2026-09-09*
