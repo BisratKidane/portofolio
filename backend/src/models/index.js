@@ -4,6 +4,7 @@ import { initFamilyMember, FamilyMember } from './FamilyMember.js';
 import { initSpouse, Spouse } from './Spouse.js';
 import { initInvitation, Invitation } from './Invitation.js';
 import { initAuditLog, AuditLog } from './AuditLog.js';
+import { initAppSetting, AppSetting } from './AppSetting.js';
 import { assertRequiredColumns } from '../config/assertRequiredColumns.js';
 
 const User = initUser(sequelize);
@@ -11,6 +12,7 @@ initFamilyMember(sequelize);
 initSpouse(sequelize);
 initInvitation(sequelize);
 initAuditLog(sequelize);
+initAppSetting(sequelize);
 
 // --- Associations (first use of Sequelize associations in this codebase) ---
 
@@ -113,7 +115,8 @@ export const models = {
   FamilyMember,
   Spouse,
   Invitation,
-  AuditLog
+  AuditLog,
+  AppSetting
 };
 
 export async function initializeDatabase() {
