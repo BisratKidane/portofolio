@@ -323,8 +323,8 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 34-05-PLAN.md — register tokenless door check + the D-07 three-layer proof (call-count spy, five-state agreement table) and the D-08/D-09/D-10 controls
-- [ ] 34-06-PLAN.md — Register.jsx gated on publicRegistrationEnabled, one renderInvitationOnly(), re-query-and-swap on a refused mid-form submit, plus its tests
+- [x] 34-05-PLAN.md — register tokenless door check + the D-07 three-layer proof (call-count spy, five-state agreement table) and the D-08/D-09/D-10 controls
+- [x] 34-06-PLAN.md — Register.jsx gated on publicRegistrationEnabled, one renderInvitationOnly(), re-query-and-swap on a refused mid-form submit, plus its tests
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -380,4 +380,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete    | 2026-09-08 |
-| 34. Open-Registration Switch & Quality Gate | v4.1 | 4/9 | In Progress|  |
+| 34. Open-Registration Switch & Quality Gate | v4.1 | 6/9 | In Progress|  |
