@@ -311,14 +311,31 @@ Plans:
 **Plans**: 9 plans in 6 waves
 
 Plans:
+**Wave 1**
+
 - [ ] 34-01-PLAN.md — Settings storage foundation: AppSetting model, migration 021 + README, the shared isPublicRegistrationEnabled predicate, and the resetTables/globalSetup seeding (Wave 0)
 - [ ] 34-02-PLAN.md — Register.test.jsx harness migration: query-dispatching mocks + async-first-assert, landed before the loading gate (frontend Wave 0)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 34-03-PLAN.md — GraphQL settings layer: setting.schema.js + setting.resolver.js, requireAdmin flip with an in-transaction audit row, barrels, and settings-layer integration coverage
 - [ ] 34-04-PLAN.md — PublicSignupSwitch component per 34-UI-SPEC.md + its tests, wired as the first region of /invitations
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 34-05-PLAN.md — register tokenless door check + the D-07 three-layer proof (call-count spy, five-state agreement table) and the D-08/D-09/D-10 controls
 - [ ] 34-06-PLAN.md — Register.jsx gated on publicRegistrationEnabled, one renderInvitationOnly(), re-query-and-swap on a refused mid-form submit, plus its tests
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 34-07-PLAN.md — security.boundaries.test.js: the SEC-04 authorization matrix and the SEC-05 schema-driven sweep (two harnesses, one file) + the photo-route 401 cells
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 34-08-PLAN.md — D-13 mutation testing: M1-M8 applied, run, and recorded with verbatim failure messages, then restored
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 34-09-PLAN.md — SC-5 gate (npm test --workspaces) + human sign-off on migration 021, the switch visuals, and the genuine mid-form race
 
 **UI hint**: yes

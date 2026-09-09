@@ -839,13 +839,13 @@ await seedDefaultAppSettings(models);   // production-equivalent: door open
 **How to avoid:** SEC-05's gate is `getUserFromRequest` at `auth.js:33`. Only the HTTP path runs it. Use `httpClient()` + `signToken(pending)`.
 **Warning signs:** the sweep never imports `httpClient` or `signToken`; resolvers gain `if (user.status !== 'Active')` checks.
 
-### Pitfall 3: `assertPasswordStrength` runs before the switch check
+### Pitfall 3: `assertPasswordStrength` at `:179` would run before a switch check placed inside the tokenless branch
 
-**What goes wrong:** `assertPasswordStrength(password)` is at `:179`, above the `if (token)` branch, so it runs for both paths. A tokenless register with a weak password and a closed door throws the password error, not the closed-door message. An agreement test using `'weak'` as the password would then see an error and conclude "refused" for the wrong reason — and would keep passing after the switch check was deleted.
-**Why it happens:** the natural mental model is "the switch check is first", but it is first *within the tokenless branch*, not first in the resolver.
-**How to avoid:** every agreement/matrix case must use a password that satisfies `passwordPolicy.js` (existing tests use `'Password123!'`), and must assert the exact closed-door message rather than merely `errors.length > 0`.
-**Warning signs:** a refusal test that does not assert the message text; a test that still passes with the switch check commented out.
-*(Hoisting the check above `:179` inside an `if (!token)` was considered. It is not recommended: it duplicates the branch condition, and a password-policy error on a closed door leaks nothing — the door state is public by design, and 34-UI-SPEC.md's re-query fallback renders the invitation-only message correctly regardless of which error came back.)*
+**What goes wrong:** `assertPasswordStrength(password)` is at `:179`, above the `if (token)` branch, so it runs for both paths. If the switch check were placed at the top of the tokenless *continuation* (`:260`), a tokenless register with a weak password and a closed door would throw the password error, not the closed-door message. An agreement test using `'weak'` as the password would then see an error and conclude "refused" for the wrong reason — and would keep passing after the switch check was deleted.
+**Why it happens:** the natural mental model is "the switch check is first", but a check placed inside the tokenless continuation is only first *within that continuation*, not first in the resolver.
+**How to avoid:** **Resolved by the plan-checker (iteration 1) in favour of D-09's literal wording — the check is hoisted above `:179`** inside its own `if (!token) { ... }` guard, so it is the first statement a tokenless caller executes (Plan 34-05 Task 1, with an ordering gate in its acceptance criteria and a positive ordering test in Task 3: door closed + weak password ⇒ door message, not password error). `!token` and `token` are exact complements of one local, not the D-07 two-function-divergence class. Independently of the hoist, every agreement/matrix case still uses a password that satisfies `passwordPolicy.js` (existing tests use `'Password123!'`) and asserts the exact closed-door message rather than merely `errors.length > 0`, so no refusal test can pass for the wrong reason.
+**Warning signs:** a refusal test that does not assert the message text; a test that still passes with the switch check commented out; a `user.resolver.js` where `isPublicRegistrationEnabled(models)` appears on a line *after* the first `assertPasswordStrength(password)`.
+*(Earlier draft of this section recommended leaving the check at `:260` because hoisting "duplicates the branch condition" and a password-policy error on a closed door leaks nothing. Both observations are true; neither outweighs D-09's locked "checked first". Superseded.)*
 
 ### Pitfall 4: The allowlist becomes a dumping ground
 
