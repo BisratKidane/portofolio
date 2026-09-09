@@ -4,8 +4,8 @@ milestone: v4.1
 milestone_name: Open Registration with Approval
 status: executing
 stopped_at: Phase 35 UI-SPEC approved
-last_updated: "2026-09-09T20:01:57.557Z"
-last_activity: 2026-09-09 -- Phase 35 planning complete
+last_updated: "2026-09-09T20:05:23.527Z"
+last_activity: 2026-09-09 -- Phase 35 execution started
 progress:
   total_phases: 6
   completed_phases: 5
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 **Core value:** Changes to the app can be made with confidence — auth and core flows are protected by an automated test suite that fails loudly (locally and in CI) before broken code ships.
-**Current focus:** Phase 35 — close audit W-1/W-2 before v4.1 milestone close
+**Current focus:** Phase 35 — Post-Verify Landing & Invited-Path Copy
 
 ## Current Position
 
-Phase: 35
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-09-09 -- Phase 35 planning complete
+Phase: 35 (Post-Verify Landing & Invited-Path Copy) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 35
+Last activity: 2026-09-09 -- Phase 35 execution started
 
 Next: /gsd-plan-phase 35
 
