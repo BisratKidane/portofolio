@@ -146,7 +146,7 @@ export async function sendInvitationEmail({ to, url, inviterName, invitedName, r
   const rel = relationship ? ` as their ${relationship}` : '';
   const subject = 'You are invited to join the family';
   const noteLine = note ? `\n\nA note from ${inviterName || 'the inviter'}: ${note}` : '';
-  const text = `${greeting}\n\n${from}${rel} to join the family platform.\n\nRegister here (this link expires soon and can be used once):\n${url}${noteLine}\n\nAfter you register, an administrator will review and approve your account before you can sign in.`;
+  const text = `${greeting}\n\n${from}${rel} to join the family platform.\n\nRegister here (this link expires soon and can be used once):\n${url}${noteLine}\n\nOnce you register and verify your email, you can sign in right away.`;
 
   // Separate escaped values for the HTML branch -- `from`/`rel` above stay
   // raw for the plain-text body (escaping plain text would corrupt it).
@@ -157,7 +157,7 @@ export async function sendInvitationEmail({ to, url, inviterName, invitedName, r
     intro: `${fromHtml}${relHtml} to join the family platform. Use the button below to register — the link can be used once and expires soon.${note ? `<br /><br /><em>Note: ${escapeHtml(note)}</em>` : ''}`,
     ctaLabel: 'Register your account',
     ctaUrl: url,
-    note: 'After registering, an administrator reviews and approves your account before you can sign in.'
+    note: 'Once you register and verify your email, you can sign in right away.'
   });
 
   return sendMail({ to, subject, text, html });
@@ -166,10 +166,10 @@ export async function sendInvitationEmail({ to, url, inviterName, invitedName, r
 export async function sendVerificationEmail({ to, token }) {
   const link = `${env.clientUrl}/verify-email?token=${token}`;
   const subject = 'Verify your email';
-  const text = `Welcome! Please verify your email address to activate your account.\n\nOpen this link to verify:\n${link}\n\nThis link expires in 24 hours. If you did not create this account, you can ignore this email.`;
+  const text = `Welcome! Please confirm this is your email address.\n\nOpen this link to verify:\n${link}\n\nThis link expires in 24 hours. If you did not create this account, you can ignore this email.`;
   const html = renderHtml({
     heading: 'Verify your email',
-    intro: 'Welcome! Please verify your email address to activate your account.',
+    intro: 'Welcome! Please confirm this is your email address.',
     ctaLabel: 'Verify email',
     ctaUrl: link,
     note: 'This link expires in 24 hours. If you did not create this account, you can safely ignore this email.'
