@@ -318,8 +318,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 34-03-PLAN.md — GraphQL settings layer: setting.schema.js + setting.resolver.js, requireAdmin flip with an in-transaction audit row, barrels, and settings-layer integration coverage
-- [ ] 34-04-PLAN.md — PublicSignupSwitch component per 34-UI-SPEC.md + its tests, wired as the first region of /invitations
+- [x] 34-03-PLAN.md — GraphQL settings layer: setting.schema.js + setting.resolver.js, requireAdmin flip with an in-transaction audit row, barrels, and settings-layer integration coverage
+- [x] 34-04-PLAN.md — PublicSignupSwitch component per 34-UI-SPEC.md + its tests, wired as the first region of /invitations
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -380,4 +380,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34.
 | 31. Invitations Become Admin-Only | v4.1 | 5/5 | Complete    | 2026-08-30 |
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete    | 2026-09-08 |
-| 34. Open-Registration Switch & Quality Gate | v4.1 | 2/9 | In Progress|  |
+| 34. Open-Registration Switch & Quality Gate | v4.1 | 4/9 | In Progress|  |
