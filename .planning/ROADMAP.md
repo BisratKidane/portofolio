@@ -140,7 +140,7 @@ Full detail archived in [milestones/v4.0-ROADMAP.md](milestones/v4.0-ROADMAP.md)
     4. A self-registered account cannot reach any authenticated resolver until both gates pass — proven against the resolvers, not just the client-side route guard.
     5. `npm test --workspaces` is green.
 
-- [ ] **Phase 35: Post-Verify Landing & Invited-Path Copy** — a self-registrant who verifies sees where they stand, and an invitee is never promised a review that no longer happens
+- [x] **Phase 35: Post-Verify Landing & Invited-Path Copy** — a self-registrant who verifies sees where they stand, and an invitee is never promised a review that no longer happens (completed 2026-09-10)
   - Requirements: REG-04, REG-06, INVITE-03 (closure of v4.1 audit W-1 / W-2)
   - Success criteria:
     1. A self-registrant who clicks their verification link lands on a page that says their email is verified and an administrator now has to approve them — not on the login form with no explanation.
@@ -375,7 +375,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 35-03-PLAN.md — Do-not-use-list grep sweep, npm test --workspaces gate reconciled against the Phase 34 baseline, human sign-off on visual/email rendering
+- [x] 35-03-PLAN.md — Do-not-use-list grep sweep, npm test --workspaces gate reconciled against the Phase 34 baseline, human sign-off on visual/email rendering
 
 **UI hint**: yes
 
@@ -420,4 +420,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35.
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete    | 2026-09-08 |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 9/9 | Complete    | 2026-09-09 |
-| 35. Post-Verify Landing & Invited-Path Copy | v4.1 | 2/3 | In Progress|  |
+| 35. Post-Verify Landing & Invited-Path Copy | v4.1 | 3/3 | Complete   | 2026-09-10 |
