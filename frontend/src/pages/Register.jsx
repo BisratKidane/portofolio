@@ -308,8 +308,7 @@ export default function Register() {
           <>
             <Alert severity="success">{result.message}</Alert>
             <Typography variant="body2" color="text.secondary">
-              We&apos;ve sent a verification link to your email. After you verify, an administrator will review and
-              approve your account before you can sign in.
+              We&apos;ve sent a verification link to your email. Verify it and you can sign in right away.
             </Typography>
           </>
         ) : (

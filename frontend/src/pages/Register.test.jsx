@@ -89,6 +89,17 @@ describe('Register page (invitation-only)', () => {
     expect(screen.queryByLabelText('Full name', { exact: false })).not.toBeInTheDocument();
   });
 
+  it('D-08/W-2: invited-path success paragraph promises "verify, then sign in" with no review/approve wording', async () => {
+    renderRegister('tok-abc');
+
+    await userEvent.type(screen.getByLabelText('Full name', { exact: false }), 'Ada');
+    await userEvent.type(screen.getByLabelText('Password', { exact: false }), 'secret123');
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+
+    expect(await screen.findByText(/verify it and you can sign in right away/i)).toBeInTheDocument();
+    expect(screen.queryByText(/review|approv/i)).not.toBeInTheDocument();
+  });
+
   it('shows an error alert and keeps the form on a rejected registration', async () => {
     graphqlRequest.mockImplementation((query) => {
       if (query.includes('publicRegistrationEnabled')) return Promise.resolve({ publicRegistrationEnabled: true });
