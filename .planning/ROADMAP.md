@@ -370,8 +370,8 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 35-01-PLAN.md — /awaiting-approval stateless landing page (D-01..D-07), App.jsx route, VerifyEmail.jsx retarget, red-first composed test (D-11/D-12/D-13), Pending.jsx retitle
-- [ ] 35-02-PLAN.md — Invited-path copy (D-08): Register.jsx + sendInvitationEmail; shared sendVerificationEmail neutralized (D-09); D-10 locked-string boundary proven
+- [x] 35-01-PLAN.md — /awaiting-approval stateless landing page (D-01..D-07), App.jsx route, VerifyEmail.jsx retarget, red-first composed test (D-11/D-12/D-13), Pending.jsx retitle
+- [x] 35-02-PLAN.md — Invited-path copy (D-08): Register.jsx + sendInvitationEmail; shared sendVerificationEmail neutralized (D-09); D-10 locked-string boundary proven
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -420,4 +420,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35.
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete    | 2026-09-08 |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 9/9 | Complete    | 2026-09-09 |
-| 35. Post-Verify Landing & Invited-Path Copy | v4.1 | 0/3 | Not started | - |
+| 35. Post-Verify Landing & Invited-Path Copy | v4.1 | 2/3 | In Progress|  |
