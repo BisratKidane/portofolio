@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Open Registration with Approval
-status: milestone_complete
-stopped_at: Milestone complete (Phase 35 was final phase)
-last_updated: 2026-09-10T09:44:44.430Z
-last_activity: 2026-09-09 -- Phase 35 execution started
+status: Awaiting next milestone
+stopped_at: Phase 35 UI-SPEC approved
+last_updated: "2026-09-10T12:53:24.099Z"
+last_activity: 2026-09-10 — Milestone v4.1 completed and archived
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 38
   completed_plans: 38
-  percent: 83
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,10 @@ See: .planning/PROJECT.md (updated 2026-08-03 for v4.0)
 
 ## Current Position
 
-Phase: 35
-Plan: Not started
-Status: Milestone complete
-Last activity: 2026-09-10
-
-Next: /gsd-plan-phase 35
+Phase: Milestone v4.1 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-09-10 — Milestone v4.1 completed and archived
 
 ## Deferred Items
 
@@ -63,6 +61,21 @@ Items acknowledged and deferred at the v4.0 milestone close on 2026-08-05 (13 op
 | verification | Phase 26 & 27 VERIFICATION.md `human_needed` — same root as the two UAT items above (browser-only checks jsdom cannot make). | pending — resolves with the verify-work passes |
 | housekeeping | 9 completed quick-tasks (`260726-*`, `260727-*`, `260801-*`) flagged "missing" by the pre-close audit — work is done (see Quick Tasks Completed below); tracking stubs were cleaned up. | acknowledged — no action |
 | code-review | v4.0 advisory follow-ups: Phase 29 WR-01 (gender card **border**/avatar-ring non-text contrast, Female 2.97:1 vs WCAG 1.4.11 3:1 — invisible to jest-axe + the text-only gate); plus per-phase warnings in each `*-REVIEW.md`. | open — `/gsd:code-review <phase> --fix` candidates |
+
+Items acknowledged and deferred at the v4.1 milestone close on 2026-09-10 (pre-close audit + refreshed milestone audit):
+
+| Category | Item | Status |
+|----------|------|--------|
+| deployment | **W-3** — manual migrations 019, 020, 021 are NOT applied to production (Hetzner). `assertRequiredColumns.js` covers only 020's column; a missing 019 boots cleanly then fails every authenticated request. Apply in order 019→020→021 **before deploying v4.1 images**. | open — blocks deploy, not the milestone |
+| tech-debt | **W-4** (APPR-06 adjacent) — `unlinkedUsers` (`user.resolver.js:158-161`) and `LinkAccountsPage` are status-blind: a Pending/Rejected/unverified account is shown and can be linked. No security impact (`auth.js:33` chokepoint). | open |
+| todo | **CR-02** account pre-hijacking (`.planning/todos/pending/20260903-cr02-account-pre-hijacking.md`) — anonymous caller binds a password to a third party's email on the tokenless path. Explicit user decision to defer (32-CONTEXT / 33-CONTEXT D-01). | deferred to v4.2 |
+| uat | Phase 31 — 1 open HUMAN-UAT scenario: confirm the `31-05` TOCTOU-lock test passes on CI (MySQL 8.4); `ctx.skip`-gated on local MariaDB so it has never executed. Blocked on pushing main. | pending — resolves on first green CI run |
+| uat | Phase 33 — 2 open HUMAN-UAT scenarios: approval-queue scannability with ~10 pending accounts carrying 400–500-char notes; the four-simultaneous-inline-errors state on an empty public-form submit. | pending — `/gsd-verify-work 33` when convenient |
+| verification | Phases 31 & 33 VERIFICATION.md `human_needed` — same root as the two UAT items above; all must-haves were verified in both. | pending — resolves with the verify-work passes |
+| nyquist | Phases 31 & 32 have no VALIDATION.md. Coverage is demonstrably present (P32: 4 verification rounds across 13 plans; P31: 5 plans with mutation-tested guards) — the artifact is missing, not the tests. | open — `/gsd-validate-phase 31` / `32` |
+| release | `main` is 357 commits ahead of `origin/main` — the entire v4.1 milestone is unpushed and has never run on CI (MySQL 8.4). Last CI run 2026-08-26; the two runs before that were failures. | open — triage on first push |
+| copy | `frontend/src/pages/InvitePage.jsx:107` still tells admins "An administrator approves every new account before it becomes active" — the stale claim Phase 35 removed everywhere else, on the admin-facing invite composer. | open — one-line `/gsd-quick` |
+| housekeeping | 13 quick-tasks flagged "missing" by the pre-close audit are a **false positive**: all 13 do contain a `{slug}-SUMMARY.md` (verified 13 with / 0 without). The detector looks for a bare `SUMMARY.md` rather than this project's naming convention. | acknowledged — no action |
 
 ## Performance Metrics
 
