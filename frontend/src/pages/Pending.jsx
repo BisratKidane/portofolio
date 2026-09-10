@@ -10,10 +10,11 @@ export default function Pending() {
   if (user.familyMemberId || user.role === 'ADMIN') return <Navigate to="/dashboard" replace />;
 
   return (
-    <AuthShell eyebrow="Almost there" title="Waiting for admin approval">
+    <AuthShell eyebrow="Almost there" title="Waiting to be linked to your family">
       <Box>
         <Typography>
-          Your account is awaiting an admin to link you to your family member; you'll get access once linked.
+          Your account is approved. An administrator still needs to link you to your family member in the tree —
+          you'll get access as soon as that happens.
         </Typography>
       </Box>
     </AuthShell>

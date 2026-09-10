@@ -33,7 +33,7 @@ describe('Pending page', () => {
 
     expect(
       screen.getByText(
-        "Your account is awaiting an admin to link you to your family member; you'll get access once linked."
+        "Your account is approved. An administrator still needs to link you to your family member in the tree — you'll get access as soon as that happens."
       )
     ).toBeInTheDocument();
   });
@@ -49,7 +49,7 @@ describe('Pending page', () => {
 
     expect(
       screen.getByText(
-        "Your account is awaiting an admin to link you to your family member; you'll get access once linked."
+        "Your account is approved. An administrator still needs to link you to your family member in the tree — you'll get access as soon as that happens."
       )
     ).toBeInTheDocument();
   });

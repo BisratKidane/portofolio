@@ -62,7 +62,7 @@ describe('VerifyEmail page', () => {
     await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith('/dashboard'));
   });
 
-  it('navigates to /pending when the verified account is still Pending', async () => {
+  it('navigates to /awaiting-approval when the verified account is still Pending (D-01)', async () => {
     graphqlRequest.mockResolvedValueOnce({
       verifyEmail: {
         token: 'tok-pending',
@@ -72,7 +72,7 @@ describe('VerifyEmail page', () => {
 
     renderVerifyEmail(['/verify-email?token=pending-token']);
 
-    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith('/pending'));
+    await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith('/awaiting-approval'));
   });
 
   it('shows a recoverable error state and never navigates when verification fails', async () => {
