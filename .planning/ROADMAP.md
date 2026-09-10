@@ -420,4 +420,4 @@ Phases execute in numeric order: 30 → 31 → 32 → 33 → 34 → 35.
 | 32. Tokenless Registration | v4.1 | 13/13 | Complete    | 2026-09-03 |
 | 33. Public Signup Form & Approval Queue | v4.1 | 4/4 | Complete    | 2026-09-08 |
 | 34. Open-Registration Switch & Quality Gate | v4.1 | 9/9 | Complete    | 2026-09-09 |
-| 35. Post-Verify Landing & Invited-Path Copy | v4.1 | 3/3 | Complete   | 2026-09-10 |
+| 35. Post-Verify Landing & Invited-Path Copy | v4.1 | 3/3 | Complete    | 2026-09-10 |
