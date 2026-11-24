@@ -442,11 +442,11 @@ describe('SEC-05 — no Pending self-registrant reaches any authenticated root f
   // Pins the swept-field count so the sweep cannot silently shrink. If a
   // plan legitimately adds a root field, this number and (if the field is
   // public) the allowlist above are the two places that must change.
-  it('pins the swept root-field count: 14 Query + 21 Mutation, 7 allowlisted, 28 swept', () => {
-    expect(queryFields.length).toBe(14);
+  it('pins the swept root-field count: 15 Query + 21 Mutation, 7 allowlisted, 29 swept', () => {
+    expect(queryFields.length).toBe(15);
     expect(mutationFields.length).toBe(21);
     expect(PUBLIC_ALLOWLIST.size).toBe(7);
-    expect(sweepRows.length).toBe(28);
+    expect(sweepRows.length).toBe(29);
   });
 
   // Scope honesty: this sweep covers ROOT fields only. Nested field
