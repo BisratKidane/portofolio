@@ -70,11 +70,13 @@ describe('GET /api/members.pdf', () => {
   it('does not read members or build a PDF for unauthorized callers', async () => {
     await seedMember();
     const findAll = vi.spyOn(models.FamilyMember, 'findAll');
+    const spouseFindAll = vi.spyOn(models.Spouse, 'findAll');
     const build = vi.spyOn(pdfService, 'buildMembersPdf');
     await httpClient().get('/api/members.pdf');
     const unlinked = await createTestUser({ role: 'USER', familyMemberId: null });
     await httpClient().get('/api/members.pdf').set('Authorization', `Bearer ${signToken(unlinked)}`);
     expect(findAll).not.toHaveBeenCalled();
+    expect(spouseFindAll).not.toHaveBeenCalled();
     expect(build).not.toHaveBeenCalled();
   });
 
@@ -91,6 +93,19 @@ describe('GET /api/members.pdf', () => {
     expect(res.headers['content-disposition']).toBe('attachment; filename="members.pdf"');
     expect(res.headers['cache-control']).toBe('no-store');
     expect(res.body.subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  });
+
+  it('passes members to the PDF builder in depth-first order', async () => {
+    const root = await models.FamilyMember.create({ firstname: 'Zed', lastname: 'Zulu', gender: 'Male' });
+    const child = await models.FamilyMember.create({ firstname: 'Abe', lastname: 'Mid', gender: 'Male', fatherId: root.id });
+    const spouse = await models.FamilyMember.create({ firstname: 'Bea', lastname: 'Aaa', gender: 'Female' });
+    await models.Spouse.create({ memberAId: root.id, memberBId: spouse.id });
+    const user = await createTestUser({ role: 'USER', familyMemberId: root.id });
+    const build = vi.spyOn(pdfService, 'buildMembersPdf');
+    const res = await httpClient().get('/api/members.pdf').set('Authorization', `Bearer ${signToken(user)}`);
+    expect(res.status).toBe(200);
+    expect(build).toHaveBeenCalledTimes(1);
+    expect(build.mock.calls[0][0].map((x) => Number(x.id))).toEqual([root.id, spouse.id, child.id].map(Number));
   });
 
   it('serves a PDF to an unlinked ADMIN', async () => {
