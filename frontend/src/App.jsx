@@ -9,6 +9,7 @@ import Login from './pages/Login.jsx';
 import InvitationsPage from './pages/InvitationsPage.jsx';
 import LinkAccountsPage from './pages/LinkAccountsPage.jsx';
 import ManagePage from './pages/ManagePage.jsx';
+import MembersPage from './pages/MembersPage.jsx';
 import Pending from './pages/Pending.jsx';
 import AwaitingApproval from './pages/AwaitingApproval.jsx';
 import Register from './pages/Register.jsx';
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="manage" element={<ManagePage />} />
           <Route path="family" element={<FamilyTreePage />} />
           <Route path="detail" element={<DetailPage />} />
+          <Route path="members" element={<MembersPage />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
           <Route path="link-accounts" element={<LinkAccountsPage />} />
