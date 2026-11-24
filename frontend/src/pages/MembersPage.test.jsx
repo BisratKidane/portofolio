@@ -57,7 +57,7 @@ function renderPage() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  graphqlRequest.mockResolvedValue({ familyMembers: MEMBERS });
+  graphqlRequest.mockResolvedValue({ familyMembersDepthFirst: MEMBERS });
 });
 
 describe('MembersPage', () => {
@@ -71,7 +71,19 @@ describe('MembersPage', () => {
     expect(screen.getByText('አበባ')).toBeInTheDocument();
     expect(screen.getByText('Bo Zed')).toBeInTheDocument();
     expect(screen.getByText('Cy Yoo')).toBeInTheDocument();
-    expect(graphqlRequest.mock.calls[0][0]).toContain('familyMembers');
+    expect(graphqlRequest.mock.calls[0][0]).toContain('familyMembersDepthFirst');
+  });
+
+  it('renders rows in the server order without re-sorting', async () => {
+    graphqlRequest.mockResolvedValue({ familyMembersDepthFirst: [MEMBERS[2], MEMBERS[0], MEMBERS[1]] });
+    renderPage();
+    await screen.findByText('Ada Lovelace');
+    const names = screen
+      .getAllByRole('row')
+      .map((r) => r.textContent)
+      .filter((t) => /Cy Yoo|Ada Lovelace|Bo Zed/.test(t))
+      .map((t) => t.match(/Cy Yoo|Ada Lovelace|Bo Zed/)[0]);
+    expect(names).toEqual(['Cy Yoo', 'Ada Lovelace', 'Bo Zed']);
   });
 
   it('renders null values as an en dash', async () => {

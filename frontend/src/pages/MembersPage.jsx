@@ -19,7 +19,7 @@ import { downloadMembersPdf } from '../api/membersPdfClient.js';
 
 const MEMBERS_QUERY = `
   query Members {
-    familyMembers {
+    familyMembersDepthFirst {
       id
       firstname
       lastname
@@ -57,7 +57,7 @@ export default function MembersPage() {
     setError('');
     try {
       const data = await graphqlRequest(MEMBERS_QUERY);
-      setMembers(data.familyMembers);
+      setMembers(data.familyMembersDepthFirst);
     } catch (err) {
       setError(err.message);
     } finally {

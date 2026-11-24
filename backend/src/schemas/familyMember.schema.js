@@ -79,6 +79,8 @@ export const familyMemberTypeDefs = `#graphql
 
   extend type Query {
     familyMembers: [FamilyMember!]!
+    # Roster order (depth-first through the tree); familyMembers stays alphabetical.
+    familyMembersDepthFirst: [FamilyMember!]!
     familyMember(id: ID!): FamilyMember
     myEditableMembers: [FamilyMember!]!
     familyHead: FamilyMember

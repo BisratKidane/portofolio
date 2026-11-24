@@ -9,6 +9,7 @@ import {
   deleteMember as deleteFamilyMember,
   getFamilyHeadId
 } from '../services/familyMember.service.js';
+import { loadMembersDepthFirst } from '../services/memberOrder.service.js';
 
 // D-04: server-side ceiling independent of any client-requested `limit` --
 // a client can request FEWER results than SEARCH_RESULT_CAP but never more
@@ -21,6 +22,10 @@ export const familyMemberResolvers = {
     familyMembers: async (_parent, _args, { models, user }) => {
       requireFamilyAccess(user);
       return models.FamilyMember.findAll({ order: [['lastname', 'ASC'], ['firstname', 'ASC']] });
+    },
+    familyMembersDepthFirst: async (_parent, _args, { models, user }) => {
+      requireFamilyAccess(user);
+      return loadMembersDepthFirst(models);
     },
     familyMember: async (_parent, { id }, { models, user }) => {
       requireFamilyAccess(user);

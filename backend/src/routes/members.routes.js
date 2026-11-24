@@ -1,6 +1,7 @@
 import express from 'express';
 import { models } from '../models/index.js';
 import { getUserFromRequest, requireFamilyAccess, requireAuth } from '../utils/auth.js';
+import { loadMembersDepthFirst } from '../services/memberOrder.service.js';
 import * as membersPdfService from '../services/membersPdf.service.js';
 
 // Same 401/403 mapping as photo.routes.js (duplicated on purpose so the photo
@@ -28,7 +29,7 @@ membersRouter.get('/members.pdf', async (req, res) => {
     const denied = mapAuthFailure(user, res);
     if (denied) return denied;
 
-    const members = await models.FamilyMember.findAll({ order: [['lastname', 'ASC'], ['firstname', 'ASC']] });
+    const members = await loadMembersDepthFirst(models);
     const pdf = await membersPdfService.buildMembersPdf(members);
 
     res.setHeader('Content-Type', 'application/pdf');
