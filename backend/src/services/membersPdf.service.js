@@ -21,7 +21,6 @@ export function genderStyle(gender) {
 }
 
 const ETHIOPIC_RE = /[ሀ-፿]/;
-const DASH = '–';
 
 function fontFor(text) {
   return ETHIOPIC_RE.test(text) ? 'AbyssinicaEthiopic' : 'AbyssinicaLatin';
@@ -29,20 +28,49 @@ function fontFor(text) {
 
 function valueOf(member, key) {
   const raw = typeof member.get === 'function' ? member.get(key) : member[key];
-  return raw == null || String(raw).trim() === '' ? null : String(raw).trim();
+  return raw == null ? '' : String(raw).trim();
 }
 
 function joinNames(first, last) {
-  const parts = [first, last].filter(Boolean);
-  return parts.length ? parts.join(' ') : null;
+  return [first, last].filter(Boolean).join(' ');
+}
+
+export function memberRowCells(member) {
+  return {
+    id: valueOf(member, 'id'),
+    name: joinNames(valueOf(member, 'firstname'), valueOf(member, 'lastname')),
+    geezName: joinNames(valueOf(member, 'geezFirstname'), valueOf(member, 'geezLastname')),
+    mother: valueOf(member, 'mothersname'),
+    geezMother: valueOf(member, 'geezMothersname'),
+    email: valueOf(member, 'email'),
+    phone: valueOf(member, 'phone')
+  };
+}
+
+export function fitFontSize(measure, text, width, start = 10, min = 6) {
+  for (let size = start; size > min; size -= 0.5) {
+    if (measure(text, size) <= width) return size;
+  }
+  return min;
 }
 
 const MARGIN = 40;
-const COLS = [
-  { key: 'name', title: 'Name', x: MARGIN, width: 190 },
-  { key: 'mother', title: "Mother's name", x: MARGIN + 200, width: 190 },
-  { key: 'gender', title: 'Gender', x: MARGIN + 400, width: 80 }
+const GAP = 11;
+const TABLE_WIDTH = 515;
+const COL_DEFS = [
+  { key: 'id', title: 'ID', width: 36 },
+  { key: 'name', title: 'Name', width: 118 },
+  { key: 'mother', title: "Mother's name", width: 108 },
+  { key: 'contact', title: 'Contact', width: 160 },
+  { key: 'gender', title: 'Gender', width: 48 }
 ];
+let nextX = MARGIN;
+const COLS = COL_DEFS.map((col) => {
+  const placed = { ...col, x: nextX };
+  nextX += col.width + GAP;
+  return placed;
+});
+const [ID_COL, NAME_COL, MOTHER_COL, CONTACT_COL, GENDER_COL] = COLS;
 const ROW_HEIGHT = 40;
 
 function drawHeader(doc) {
@@ -52,13 +80,20 @@ function drawHeader(doc) {
     doc.text(col.title, col.x, y, { width: col.width, lineBreak: false });
   }
   const lineY = y + 16;
-  doc.moveTo(MARGIN, lineY).lineTo(MARGIN + 480, lineY).strokeColor('#9ca3af').lineWidth(0.5).stroke();
+  doc.moveTo(MARGIN, lineY).lineTo(MARGIN + TABLE_WIDTH, lineY).strokeColor('#9ca3af').lineWidth(0.5).stroke();
   doc.y = lineY + 6;
 }
 
-function drawCell(doc, text, col, y, color) {
+function drawCell(doc, text, col, y, color, size = 10) {
+  if (text === '') return;
   doc.fillColor(color);
-  doc.font(fontFor(text)).fontSize(10).text(text, col.x, y, { width: col.width, lineBreak: false, ellipsis: true });
+  doc.font(fontFor(text)).fontSize(size).text(text, col.x, y, { width: col.width, lineBreak: false, ellipsis: true });
+}
+
+function drawFitted(doc, text, col, y, color) {
+  if (text === '') return;
+  const size = fitFontSize((t, s) => doc.font(fontFor(t)).fontSize(s).widthOfString(t), text, col.width);
+  drawCell(doc, text, col, y, color, size);
 }
 
 export async function buildMembersPdf(members) {
@@ -86,17 +121,17 @@ export async function buildMembersPdf(members) {
       drawHeader(doc);
     }
     const y = doc.y;
-    const name = joinNames(valueOf(member, 'firstname'), valueOf(member, 'lastname')) || DASH;
-    const geezName = joinNames(valueOf(member, 'geezFirstname'), valueOf(member, 'geezLastname')) || DASH;
-    const mother = valueOf(member, 'mothersname') || DASH;
-    const geezMother = valueOf(member, 'geezMothersname') || DASH;
+    const cells = memberRowCells(member);
     const { label, color } = genderStyle(valueOf(member, 'gender'));
 
-    drawCell(doc, name, COLS[0], y, '#111827');
-    drawCell(doc, geezName, COLS[0], y + 14, '#374151');
-    drawCell(doc, mother, COLS[1], y, '#111827');
-    drawCell(doc, geezMother, COLS[1], y + 14, '#374151');
-    drawCell(doc, label, COLS[2], y, color);
+    drawFitted(doc, cells.id, ID_COL, y, '#111827');
+    drawCell(doc, cells.name, NAME_COL, y, '#111827');
+    drawCell(doc, cells.geezName, NAME_COL, y + 14, '#374151');
+    drawCell(doc, cells.mother, MOTHER_COL, y, '#111827');
+    drawCell(doc, cells.geezMother, MOTHER_COL, y + 14, '#374151');
+    drawFitted(doc, cells.email, CONTACT_COL, y, '#111827');
+    drawFitted(doc, cells.phone, CONTACT_COL, y + 14, '#374151');
+    drawCell(doc, label, GENDER_COL, y, color);
     doc.y = y + ROW_HEIGHT;
   }
 
