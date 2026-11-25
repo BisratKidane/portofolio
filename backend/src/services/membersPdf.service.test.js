@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildMembersPdf, genderStyle, memberRowCells, fitFontSize } from './membersPdf.service.js';
+import { buildMembersPdf, genderStyle, memberRowCells, fitFontSize, normalizeText, fontRuns } from './membersPdf.service.js';
 
 const member = (overrides = {}) => ({
   firstname: 'Ada',
@@ -110,5 +110,37 @@ describe('buildMembersPdf contact column', () => {
       { id: 99999999 }
     ];
     expect((await buildMembersPdf(list)).subarray(0, 5).toString('latin1')).toBe('%PDF-');
+  });
+});
+
+describe('normalizeText', () => {
+  it('collapses tabs, newlines, NBSP, zero-width and control chars to one space', () => {
+    expect(normalizeText('ኣብረሀት\t \n  ገረዝጊሄር')).toBe('ኣብረሀት ገረዝጊሄር');
+    expect(normalizeText('a  b​c\u0000d\r\ne')).toBe('a b c d e');
+    expect(normalizeText('\t\n  ')).toBe('');
+    expect(normalizeText(null)).toBe('');
+  });
+
+  it('is applied to row cells so a row cannot carry newlines', () => {
+    const cells = memberRowCells({ firstname: 'ኣብረሀት\t \n  ', lastname: ' ገረዝጊሄር' });
+    expect(cells.name).toBe('ኣብረሀት ገረዝጊሄር');
+    expect(memberRowCells({ firstname: '\n\t', email: '   ' })).toMatchObject({ name: '', email: '' });
+  });
+});
+
+describe('fontRuns', () => {
+  it('draws Ethiopic runs in the Ethiopic font and spaces/Latin in the Latin font', () => {
+    expect(fontRuns('ኣብ ገረ x')).toEqual([
+      { text: 'ኣብ', font: 'AbyssinicaEthiopic' },
+      { text: ' ', font: 'AbyssinicaLatin' },
+      { text: 'ገረ', font: 'AbyssinicaEthiopic' },
+      { text: ' x', font: 'AbyssinicaLatin' }
+    ]);
+    expect(fontRuns('')).toEqual([]);
+  });
+
+  it('builds a PDF for a Ge\'ez Latin-field name with odd whitespace', async () => {
+    const buf = await buildMembersPdf([member({ firstname: 'ኣብረሀት\t \n  ', lastname: ' ገረዝጊሄር' })]);
+    expect(buf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
   });
 });

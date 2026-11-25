@@ -20,15 +20,35 @@ export function genderStyle(gender) {
   return GENDER_STYLES[gender] || GENDER_STYLES.Other;
 }
 
-const ETHIOPIC_RE = /[ሀ-፿]/;
 
-function fontFor(text) {
-  return ETHIOPIC_RE.test(text) ? 'AbyssinicaEthiopic' : 'AbyssinicaLatin';
+const LATIN = 'AbyssinicaLatin';
+const ETHIOPIC = 'AbyssinicaEthiopic';
+const ETHIOPIC_CHAR_RE = /[ሀ-፿]/;
+// Whitespace, control, zero-width and bidi/format characters: the Ethiopic font
+// has no glyph for most of them, and a newline would break the row.
+const NOISE_RE = /[\s\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]+/g;
+
+export function normalizeText(value) {
+  return value == null ? '' : String(value).replace(NOISE_RE, ' ').trim();
+}
+
+// Split into runs so each run is drawn in the font that has its glyphs.
+// Spaces and Latin text use the Latin font; only Ethiopic characters use the
+// Ethiopic font (which does have a space glyph, but is not needed for it).
+export function fontRuns(text) {
+  const runs = [];
+  for (const ch of text) {
+    const font = ETHIOPIC_CHAR_RE.test(ch) ? ETHIOPIC : LATIN;
+    const last = runs[runs.length - 1];
+    if (last && last.font === font) last.text += ch;
+    else runs.push({ text: ch, font });
+  }
+  return runs;
 }
 
 function valueOf(member, key) {
   const raw = typeof member.get === 'function' ? member.get(key) : member[key];
-  return raw == null ? '' : String(raw).trim();
+  return normalizeText(raw);
 }
 
 function joinNames(first, last) {
@@ -84,15 +104,32 @@ function drawHeader(doc) {
   doc.y = lineY + 6;
 }
 
+function runsWidth(doc, runs, size) {
+  let total = 0;
+  for (const run of runs) total += doc.font(run.font).fontSize(size).widthOfString(run.text);
+  return total;
+}
+
 function drawCell(doc, text, col, y, color, size = 10) {
   if (text === '') return;
+  let runs = fontRuns(text);
+  if (runsWidth(doc, runs, size) > col.width) {
+    // Last resort at the size floor: trim characters and add an ellipsis.
+    let chars = [...text];
+    while (chars.length > 1 && runsWidth(doc, fontRuns(`${chars.join('')}…`), size) > col.width) chars.pop();
+    runs = fontRuns(`${chars.join('').trimEnd()}…`);
+  }
   doc.fillColor(color);
-  doc.font(fontFor(text)).fontSize(size).text(text, col.x, y, { width: col.width, lineBreak: false, ellipsis: true });
+  let x = col.x;
+  for (const run of runs) {
+    doc.font(run.font).fontSize(size).text(run.text, x, y, { lineBreak: false });
+    x += doc.widthOfString(run.text);
+  }
 }
 
 function drawFitted(doc, text, col, y, color) {
   if (text === '') return;
-  const size = fitFontSize((t, s) => doc.font(fontFor(t)).fontSize(s).widthOfString(t), text, col.width);
+  const size = fitFontSize((t, s) => runsWidth(doc, fontRuns(t), s), text, col.width);
   drawCell(doc, text, col, y, color, size);
 }
 
