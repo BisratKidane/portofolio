@@ -145,6 +145,16 @@ describe('MembersPage', () => {
     expect(within(lines[1]).getByRole('link')).toHaveAttribute('href', 'tel:+41 79 999 88 77');
   });
 
+  it('collapses odd whitespace in names to one space', async () => {
+    graphqlRequest.mockResolvedValue({
+      familyMembersDepthFirst: [
+        { ...MEMBERS[2], id: '9', firstname: 'ኣብረሀት\t \n  ', lastname: ' ​ገረዝጊሄር' }
+      ]
+    });
+    renderPage();
+    expect(await screen.findByText('ኣብረሀት ገረዝጊሄር')).toBeInTheDocument();
+  });
+
   it('selects email and phone in the query', async () => {
     renderPage();
     await screen.findByText('Ada Lovelace');
