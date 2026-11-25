@@ -23,7 +23,9 @@ const MEMBERS = [
     mothersname: 'Anne',
     geezFirstname: 'ሰላም',
     geezLastname: 'ተስፋዬ',
-    geezMothersname: 'አበባ'
+    geezMothersname: 'አበባ',
+    email: 'ada@example.com',
+    phone: '+41 79 111 22 33'
   },
   {
     id: '2',
@@ -33,17 +35,21 @@ const MEMBERS = [
     mothersname: null,
     geezFirstname: null,
     geezLastname: null,
-    geezMothersname: null
+    geezMothersname: null,
+    email: null,
+    phone: '+41 79 999 88 77'
   },
   {
     id: '3',
     firstname: 'Cy',
     lastname: 'Yoo',
     gender: 'Other',
-    mothersname: null,
-    geezFirstname: null,
+    mothersname: '   ',
+    geezFirstname: '',
     geezLastname: null,
-    geezMothersname: null
+    geezMothersname: null,
+    email: '',
+    phone: '  '
   }
 ];
 
@@ -86,10 +92,63 @@ describe('MembersPage', () => {
     expect(names).toEqual(['Cy Yoo', 'Ada Lovelace', 'Bo Zed']);
   });
 
-  it('renders null values as an en dash', async () => {
+  it('leaves empty values blank with no placeholder', async () => {
+    renderPage();
+    for (const name of ['Bo Zed', 'Cy Yoo']) {
+      const row = (await screen.findByText(name)).closest('tr');
+      expect(row.textContent).not.toMatch(/[–-]/);
+    }
+    expect(screen.queryByText('–')).toBeNull();
+    const cyRow = screen.getByText('Cy Yoo').closest('tr');
+    const cells = within(cyRow).getAllByRole('cell');
+    expect(cells[2].textContent).toBe('');
+    expect(cells[3].textContent).toBe('');
+    expect(cyRow.querySelectorAll('[lang="am"]').length).toBe(2);
+    for (const el of cyRow.querySelectorAll('[lang="am"]')) expect(el.textContent).toBe('');
+  });
+
+  it('has headers in order ID, Name, Mother\'s name, Contact, Gender', async () => {
+    renderPage();
+    await screen.findByText('Ada Lovelace');
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
+      'ID',
+      'Name',
+      "Mother's name",
+      'Contact',
+      'Gender'
+    ]);
+  });
+
+  it('shows the id exactly as stored in the first cell', async () => {
+    renderPage();
+    const row = (await screen.findByText('Ada Lovelace')).closest('tr');
+    expect(within(row).getAllByRole('cell')[0].textContent).toBe('1');
+  });
+
+  it('links email (mailto) over phone (tel) in the Contact cell', async () => {
+    renderPage();
+    const row = (await screen.findByText('Ada Lovelace')).closest('tr');
+    const email = within(row).getByRole('link', { name: 'ada@example.com' });
+    const phone = within(row).getByRole('link', { name: '+41 79 111 22 33' });
+    expect(email).toHaveAttribute('href', 'mailto:ada@example.com');
+    expect(phone).toHaveAttribute('href', 'tel:+41 79 111 22 33');
+    expect(email.compareDocumentPosition(phone) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('keeps a phone-only contact on the bottom line with an empty top line', async () => {
     renderPage();
     const row = (await screen.findByText('Bo Zed')).closest('tr');
-    expect(within(row).getAllByText('–').length).toBeGreaterThanOrEqual(3);
+    const contact = within(row).getAllByRole('cell')[3];
+    const lines = contact.querySelectorAll('p');
+    expect(lines).toHaveLength(2);
+    expect(lines[0].textContent).toBe('');
+    expect(within(lines[1]).getByRole('link')).toHaveAttribute('href', 'tel:+41 79 999 88 77');
+  });
+
+  it('selects email and phone in the query', async () => {
+    renderPage();
+    await screen.findByText('Ada Lovelace');
+    expect(graphqlRequest.mock.calls[0][0]).toMatch(/email[\s\S]*phone/);
   });
 
   it('labels gender with text, not color alone', async () => {

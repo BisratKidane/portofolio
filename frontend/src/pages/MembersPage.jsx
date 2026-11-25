@@ -5,6 +5,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Link,
   Paper,
   Table,
   TableBody,
@@ -28,6 +29,8 @@ const MEMBERS_QUERY = `
       geezFirstname
       geezLastname
       geezMothersname
+      email
+      phone
     }
   }
 `;
@@ -38,11 +41,14 @@ const GENDER_COLORS = {
   Other: '#4b5563'
 };
 
-const DASH = '–';
+const LINE_SX = { minHeight: '1.43em' };
+
+function clean(value) {
+  return value == null ? '' : String(value).trim();
+}
 
 function joinNames(first, last) {
-  const parts = [first, last].filter(Boolean);
-  return parts.length ? parts.join(' ') : DASH;
+  return [clean(first), clean(last)].filter(Boolean).join(' ');
 }
 
 export default function MembersPage() {
@@ -118,28 +124,41 @@ export default function MembersPage() {
         <Table size="small">
           <TableHead>
             <TableRow>
+              <TableCell>ID</TableCell>
               <TableCell>Name</TableCell>
               <TableCell>Mother&apos;s name</TableCell>
+              <TableCell>Contact</TableCell>
               <TableCell>Gender</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {members.map((member) => {
               const geezName = joinNames(member.geezFirstname, member.geezLastname);
-              const geezMother = member.geezMothersname || DASH;
+              const geezMother = clean(member.geezMothersname);
+              const email = clean(member.email);
+              const phone = clean(member.phone);
               const color = GENDER_COLORS[member.gender] || GENDER_COLORS.Other;
               return (
                 <TableRow key={member.id}>
+                  <TableCell>{String(member.id)}</TableCell>
                   <TableCell>
-                    <Typography variant="body2">{joinNames(member.firstname, member.lastname)}</Typography>
-                    <Typography variant="body2" color="text.secondary" lang="am" sx={{ fontFamily: '"Abyssinica SIL", serif' }}>
+                    <Typography variant="body2" sx={LINE_SX}>{joinNames(member.firstname, member.lastname)}</Typography>
+                    <Typography variant="body2" color="text.secondary" lang="am" sx={{ ...LINE_SX, fontFamily: '"Abyssinica SIL", serif' }}>
                       {geezName}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{member.mothersname || DASH}</Typography>
-                    <Typography variant="body2" color="text.secondary" lang="am" sx={{ fontFamily: '"Abyssinica SIL", serif' }}>
+                    <Typography variant="body2" sx={LINE_SX}>{clean(member.mothersname)}</Typography>
+                    <Typography variant="body2" color="text.secondary" lang="am" sx={{ ...LINE_SX, fontFamily: '"Abyssinica SIL", serif' }}>
                       {geezMother}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ ...LINE_SX, wordBreak: 'break-all' }}>
+                      {email && <Link href={`mailto:${email}`}>{email}</Link>}
+                    </Typography>
+                    <Typography variant="body2" sx={LINE_SX}>
+                      {phone && <Link href={`tel:${phone}`}>{phone}</Link>}
                     </Typography>
                   </TableCell>
                   <TableCell>
